@@ -42,6 +42,7 @@ add_executable(cpphsfc-test test/cpphsfc-test.cpp)
 target_link_libraries(cpphsfc-test cpphsfc_static ${Boost_LIBRARIES})
 
 add_test(
-  NAME HSFCTest 
+  NAME CppHSFCTest 
   WORKING_DIRECTORY "${hsfc_SOURCE_DIR}/testing"
-  COMMAND cpphsfc-test "--log_level=test_suite")
+  COMMAND cpphsfc-test "--log_level=test_suite"
+)

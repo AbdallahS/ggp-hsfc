@@ -37,4 +37,15 @@ target_link_libraries(pyhsfc ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
 
 install(TARGETS pyhsfc LIBRARY DESTINATION "lib/python${PYTHON_BASE_VERSION}/site-packages")
 
+#----------------------------------------------------
+# Unit testing
+#----------------------------------------------------
 
+enable_testing()
+
+add_test(
+  NAME PyHSFCTest
+  WORKING_DIRECTORY "${hsfc_SOURCE_DIR}/testing"
+  COMMAND python "${PROJECT_SOURCE_DIR}/test/pyhsfc-test.py"
+)
+set_tests_properties(PyHSFCTest PROPERTIES ENVIRONMENT "PYTHONPATH=PYTHONPATH:${PROJECT_BINARY_DIR}")
