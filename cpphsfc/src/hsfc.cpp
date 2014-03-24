@@ -1,5 +1,6 @@
 #include <iterator>
 #include <sstream>
+#include <cstring>
 #include <hsfc/hsfc.h>
 
 namespace HSFC
@@ -16,6 +17,16 @@ std::string Player::tostring() const
 	std::ostringstream ss;
 	ss << *this;
 	return ss.str();
+}
+
+bool Player::operator==(const Player& other) const
+{
+	return roleid_ == other.roleid_;
+}
+
+bool Player::operator!=(const Player& other) const
+{
+	return roleid_ != other.roleid_;
 }
 
 std::ostream& operator<<(std::ostream& os, const Player& player)
@@ -36,6 +47,30 @@ std::string Move::tostring() const
 	std::ostringstream ss;
 	ss << *this;
 	return ss.str();
+}
+
+bool operator==(const hsfcLegalMove& a, const hsfcLegalMove& b)
+{
+	return (a.RoleIndex == b.RoleIndex && 
+			strcmp(a.Text, b.Text) == 0 &&
+			a.Tuple.RelationIndex == b.Tuple.RelationIndex &&
+			a.Tuple.ID == b.Tuple.ID);
+}
+
+bool operator!=(const hsfcLegalMove& a, const hsfcLegalMove& b)
+{
+	return !(a == b);
+}
+
+
+bool Move::operator==(const Move& other) const 
+{
+	return move_ == other.move_;
+}
+
+bool Move::operator!=(const Move& other) const
+{
+	return move_ != other.move_;
 }
 
 std::ostream& operator<<(std::ostream& os, const Move& move)
@@ -68,18 +103,19 @@ Game::Game(const std::string& gdlfilename)
 		ss << "Failed to initialise the HSFC engine. Error code: " << result;
 		throw HSFCException() << ErrorMsgInfo(ss.str());
 	}	
+
+	// NOTE: The roles (and maybe other things) are not initialised until a state is created.
+	// So we create, initialise, then delete a state to make sure things are initialise properly.
+	hsfcState* tmpstate_;
+	if (manager_.CreateGameState(&tmpstate_))
+		throw HSFCException() << ErrorMsgInfo("Failed to create HSFC game state");
+	manager_.SetInitialGameState(tmpstate_);
+	manager_.FreeGameState(tmpstate_);
 }
 
 void Game::players(std::vector<Player>& plyrs) const
 {
 	this->players(std::back_inserter(plyrs));
-
-	// Note: currently no way to match the roleid to the name.
-/*	for (unsigned int i = 0; i < manager_.NumRoles; ++i)
-	{
-		players.push_back(Player(i)); //  Note: assuming index starts at 0.
-	}
-*/
 }
 
 unsigned int Game::numPlayers() const

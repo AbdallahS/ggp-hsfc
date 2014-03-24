@@ -59,6 +59,7 @@ BOOST_AUTO_TEST_CASE(tictactoe)
 //	BOOST_CHECK_THROW(Game game1("./nonexistentfile"), HSFCException);
 
 	Game game("./tictactoe.gdl");
+	BOOST_CHECK_EQUAL(game.numPlayers(), 2);
 	State state(game);
 	BOOST_CHECK(!state.isTerminal());
 	BOOST_TEST_MESSAGE("Sucessfully created a HSFC instance for tictactoe.");

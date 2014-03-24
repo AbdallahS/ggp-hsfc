@@ -39,6 +39,8 @@ class Player
 	Player(unsigned int roleid);	
 public:
 	std::string tostring() const;
+	bool operator==(const Player& other) const;
+	bool operator!=(const Player& other) const;
 };
 
 std::ostream& operator<<(std::ostream& os, const Player& player);
@@ -52,6 +54,8 @@ class Move
 	Move(const hsfcLegalMove& move);
 public:
 	std::string tostring() const;
+	bool operator==(const Move& other) const;
+	bool operator!=(const Move& other) const;
 };
 
 std::ostream& operator<<(std::ostream& os, const Move& move);
