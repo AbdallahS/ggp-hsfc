@@ -5,6 +5,7 @@ The directories:
     - libhsfc: the base HSFC as maintain by Michael S.
     - cpphsfc: a simple C++ wrapper about libhsfc.
     - pyhsfc: a python module for using the HSFC.
+    - testing: contains GDL files for regression testing.
 
 To build the libraries, run: 
 

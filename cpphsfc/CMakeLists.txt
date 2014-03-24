@@ -43,5 +43,5 @@ target_link_libraries(cpphsfc-test cpphsfc_static ${Boost_LIBRARIES})
 
 add_test(
   NAME HSFCTest 
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
+  WORKING_DIRECTORY "${hsfc_SOURCE_DIR}/testing"
   COMMAND cpphsfc-test "--log_level=test_suite")
