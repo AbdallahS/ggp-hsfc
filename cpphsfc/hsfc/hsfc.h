@@ -167,10 +167,10 @@ public:
 	/* 
 	 * Return the goals after a playout. There must be exactly one move per player.
 	 */
-	void playOut(std::vector<PlayerGoal>& dest);
+	void playout(std::vector<PlayerGoal>& dest);
 	
 	template<typename OutputIterator>
-	void playOut(OutputIterator dest)
+	void playout(OutputIterator dest)
 	{
 		std::vector<int> vals;
 		BOOST_ASSERT_MSG(!this->isTerminal(), "Test for terminal state before calling playOut()");

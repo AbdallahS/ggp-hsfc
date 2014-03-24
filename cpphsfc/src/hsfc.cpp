@@ -176,9 +176,9 @@ void State::goals(std::vector<PlayerGoal>& results) const
 	this->goals(std::back_inserter(results));
 }
 
-void State::playOut(std::vector<PlayerGoal>& results) 
+void State::playout(std::vector<PlayerGoal>& results) 
 {
-	this->playOut(std::back_inserter(results));
+	this->playout(std::back_inserter(results));
 }
 
 void State::play(const std::vector<PlayerMove>& moves)

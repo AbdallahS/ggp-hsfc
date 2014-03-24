@@ -14,7 +14,7 @@ class TictactoeTest(unittest.TestCase):
         if state.IsTerminal(): return
         tmpstate = State(state)
         results = []
-        tmpstate.PlayOut(results)
+        tmpstate.Playout(results)
         self.assertEqual(len(results),2)
         if results[0].goal == 100:
             self.assertEqual(results[1].goal,0)

@@ -54,7 +54,7 @@ std::vector<PlayerGoal> state_goals(const State& state)
 std::vector<PlayerGoal> state_playout(State& state)
 {
 	std::vector<PlayerGoal> pgs;
-	state.playOut(std::back_inserter(pgs));
+	state.playout(std::back_inserter(pgs));
 	return pgs;
 }
 
@@ -110,7 +110,7 @@ BOOST_PYTHON_MODULE(pyhsfc)
 		.def("IsTerminal", &State::isTerminal)
 		.def("Legals", &state_legals)
 		.def("Goals", &state_goals)
-		.def("PlayOut", &state_playout)
+		.def("Playout", &state_playout)
 		.def("Play", &state_play)
 		;
 }

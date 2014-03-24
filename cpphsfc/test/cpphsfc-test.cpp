@@ -39,7 +39,7 @@ void tictactoe_playout_check(State &state)
 	if (state.isTerminal()) return;
 	State tmpstate(state);
 	std::vector<PlayerGoal> results;
-	tmpstate.playOut(results);
+	tmpstate.playout(results);
 	bool haswinner = 
 		(results[0].second == 100 && results[1].second == 0) || 
 		(results[1].second == 100 && results[0].second == 0);
