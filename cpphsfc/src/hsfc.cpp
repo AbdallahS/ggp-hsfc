@@ -1,3 +1,4 @@
+#include <iterator>
 #include <sstream>
 #include <hsfc/hsfc.h>
 
@@ -10,14 +11,11 @@ namespace HSFC
 Player::Player(unsigned int roleid): roleid_(roleid)
 { }
 
-const std::string& Player::tostring(std::string& str) const
+std::string Player::tostring() const
 {
-//	static std::ostringstream ss;
 	std::ostringstream ss;
 	ss << *this;
-	str = ss.str();
-	//return ss.str();
-    return str;
+	return ss.str();
 }
 
 std::ostream& operator<<(std::ostream& os, const Player& player)
@@ -33,13 +31,11 @@ std::ostream& operator<<(std::ostream& os, const Player& player)
 Move::Move(const hsfcLegalMove& move): move_(move)
 { }
 
-const std::string& Move::tostring(std::string& str) const
+std::string Move::tostring() const
 {
 	std::ostringstream ss;
-	ss << move_.Text;
-
-	str = ss.str();
-	return str;
+	ss << *this;
+	return ss.str();
 }
 
 std::ostream& operator<<(std::ostream& os, const Move& move)
@@ -74,14 +70,16 @@ Game::Game(const std::string& gdlfilename)
 	}	
 }
 
-void Game::players(std::vector<Player>& players) const
+void Game::players(std::vector<Player>& plyrs) const
 {
+	this->players(std::back_inserter(plyrs));
 
 	// Note: currently no way to match the roleid to the name.
-	for (unsigned int i = 0; i < manager_.NumRoles; ++i)
+/*	for (unsigned int i = 0; i < manager_.NumRoles; ++i)
 	{
 		players.push_back(Player(i)); //  Note: assuming index starts at 0.
 	}
+*/
 }
 
 unsigned int Game::numPlayers() const
@@ -132,6 +130,38 @@ bool State::isTerminal() const
 	return game_.manager_.IsTerminal(state_);
 }
 
+void State::legals(std::vector<PlayerMove>& moves) const
+{
+	this->legals(std::back_inserter(moves));
+}
+
+void State::goals(std::vector<PlayerGoal>& results) const
+{
+	this->goals(std::back_inserter(results));
+}
+
+void State::playOut(std::vector<PlayerGoal>& results) 
+{
+	this->playOut(std::back_inserter(results));
+}
+
+void State::play(const std::vector<PlayerMove>& moves)
+{
+	this->play(moves.begin(), moves.end());
+}
+
+
+/*
+//  OLD VERSION BEFORE THE TEMPLATED FUNCTIONS WERE INTRODUCED
+
+void Game::players(std::vector<Player>& plyrs) const
+{
+	// Note: currently no way to match the roleid to the name.
+	for (unsigned int i = 0; i < manager_.NumRoles; ++i)
+	{
+		players.push_back(Player(i)); //  Note: assuming index starts at 0.
+	}
+}
 
 void State::legals(std::vector<PlayerMove>& moves) const
 {
@@ -182,7 +212,6 @@ void State::playOut(std::vector<PlayerGoal>& results)
 	}
 }
 
-
 void State::play(const std::vector<PlayerMove>& moves)
 {
 	boost::unordered_set<int> ok;
@@ -197,5 +226,7 @@ void State::play(const std::vector<PlayerMove>& moves)
 	BOOST_ASSERT_MSG(ok.size() == game_.numPlayers(), "Must be exactly one move per player");
 	game_.manager_.DoMove(state_, lms);
 }
+
+*/
 
 };

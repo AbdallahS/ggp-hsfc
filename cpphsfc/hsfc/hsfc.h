@@ -38,7 +38,7 @@ class Player
 	unsigned int roleid_;
 	Player(unsigned int roleid);	
 public:
-	const std::string& tostring(std::string&) const;
+	std::string tostring() const;
 };
 
 std::ostream& operator<<(std::ostream& os, const Player& player);
@@ -51,7 +51,7 @@ class Move
 	hsfcLegalMove move_;
 	Move(const hsfcLegalMove& move);
 public:
-	const std::string& tostring(std::string&) const;
+	std::string tostring() const;
 };
 
 std::ostream& operator<<(std::ostream& os, const Move& move);
@@ -69,10 +69,25 @@ class Game
 	hsfcGDLManager manager_;
 	Game(const Game& other);  // make sure we can't copy this object
 public:
+	// Note: might look at changing this to either have an extra 
+	// constructor that works from strings or an istream that will
+    // work for both files and strings.
 	Game(const std::string& gdlfilename);
-	void players(std::vector<Player>& players) const;
+	void players(std::vector<Player>& plyrs) const;
 	unsigned int numPlayers() const;
 	bool operator==(const Game& other) const;
+
+	template<typename OutputIterator>
+	void players(OutputIterator dest) const
+	{
+		// Note: currently no way to match the roleid to the name.
+        //  Also assuming RoleIndex starts at 0.
+		for (unsigned int i = 0; i < manager_.NumRoles; ++i)
+		{
+			*dest++=Player(i); 
+		}
+
+	}
 };
 
 
@@ -102,6 +117,25 @@ public:
 	 */
 	void legals(std::vector<PlayerMove>& moves) const;
 
+	template<typename OutputIterator>
+	void legals(OutputIterator dest) const
+	{
+		boost::unordered_set<int> ok;
+		std::vector<hsfcLegalMove> lms;
+		BOOST_ASSERT_MSG(!(this->isTerminal()), "Test for non-terminal state before calling legals()");
+		game_.manager_.GetLegalMoves(state_, lms);
+		BOOST_FOREACH( hsfcLegalMove& lm, lms)
+		{
+			dest++=PlayerMove(lm.RoleIndex, lm);
+			ok.insert(lm.RoleIndex);
+		}
+		if (ok.size() != game_.numPlayers())
+		{
+			throw HSFCException() << ErrorMsgInfo("HSFC internal error: missing moves for some players");
+		}
+	}
+
+
 	/* 
 	 * Return the goals. Must be called only in terminal states.
 	 *
@@ -109,58 +143,64 @@ public:
 	 */
 	void goals(std::vector<PlayerGoal>& results) const;
 
+	template<typename OutputIterator>
+	void goals(OutputIterator dest) const
+	{
+		std::vector<int> vals;
+		BOOST_ASSERT_MSG(this->isTerminal(), "Test for terminal state before calling goals()");
+		game_.manager_.GetGoalValues(state_, vals);
+		if (vals.size() != game_.numPlayers())
+		{
+			throw HSFCException() << ErrorMsgInfo("HSFC internal error: no goal value for some players");
+		}
+		
+		for (unsigned int i = 0; i < vals.size(); ++i)
+		{
+			dest++=PlayerGoal(i, (unsigned int)vals[i]);
+		}		
+	}
+
 	/* 
-	 * Return the goals. There must be exactly one move per player.
+	 * Return the goals after a playout. There must be exactly one move per player.
 	 */
+	void playOut(std::vector<PlayerGoal>& dest);
+	
+	template<typename OutputIterator>
+	void playOut(OutputIterator dest)
+	{
+		std::vector<int> vals;
+		BOOST_ASSERT_MSG(!this->isTerminal(), "Test for terminal state before calling playOut()");
+		game_.manager_.PlayOut(state_, vals);
+		if (vals.size() != game_.numPlayers())
+		{
+			throw HSFCException() << ErrorMsgInfo("HSFC internal error: no goal value for some players");
+		}
+		
+		for (unsigned int i = 0; i < vals.size(); ++i)
+		{
+			dest++= PlayerGoal(i, (unsigned int)vals[i]);
+		}
+	}
+
 	void play(const std::vector<PlayerMove>& moves);
 
-	
-	void playOut(std::vector<PlayerGoal>& results);
 
-
-/*
-	// FOR INTEREST:
-	// Interface 2
-	template<typename OutputIterator>
-	void legals(OutputIterator ot)
-	{	
-		boost::unordered_set ok;
+	template<typename Iterator>
+	void play(Iterator begin, Iterator end)
+	{
+		boost::unordered_set<int> ok;
 		std::vector<hsfcLegalMove> lms;
-		BOOST_ASSERT(game_.IsTerminal(*state_));
-		game_.GetLegalMoves(*state_, lms);
-		BOOST_FOREACH( hsfcLegalMove& lm, lms)
+		BOOST_ASSERT_MSG(!(this->isTerminal()), "Test for non-terminal state before calling play()");
+		while (begin != end)
 		{
-			*(ot++) = PlayerMove(lm.RoleIndex, lm);
-			ok[lm.RoleIndex];
+			BOOST_ASSERT_MSG(begin->first.roleid_ == begin->second.move_.RoleIndex, "Player and Move do not match");
+			lms.push_back(begin->second.move_);
+			ok.insert(begin->first.roleid_);
+			++begin;
 		}
-		if (ok.size() != game_.NumRoles)
-		{
-			//			throw excemtpin
-		}
-	}
-
-	// Interface 3
-	template<typename Fn>
-	void legals(Fn fn)
-	{	
-		boost::unordered_set ok;
-		std::vector<hsfcLegalMove> lms;
-		BOOST_ASSERT(game_.IsTerminal(*state_));
-		game_.GetLegalMoves(*state_, lms);
-		BOOST_FOREACH( hsfcLegalMove& lm, lms)
-		{
-			PlayerMove pm(lm.RoleIndex, lm);
-			ok[lm.RoleIndex];
-			fn(pm);
-		}
-		if (ok.size() != game_.NumRoles)
-		{
-			//			throw excemtpin
-		}
-	}
-*/
-
-
+		BOOST_ASSERT_MSG(ok.size() == game_.numPlayers(), "Must be exactly one move per player");
+		game_.manager_.DoMove(state_, lms);	   		
+	}  
 };
 
 };
