@@ -5,6 +5,7 @@
 #ifndef HSFC_H
 #define HSFC_H
 
+#include <iostream>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -32,20 +33,28 @@ class Player
 {
 	friend class Game;
 	friend class State;
+	friend std::ostream& operator<<(std::ostream& os, const Player& player);
+
 	unsigned int roleid_;
 	Player(unsigned int roleid);	
 public:
 	const std::string& tostring(std::string&) const;
 };
 
+std::ostream& operator<<(std::ostream& os, const Player& player);
+
 class Move
 {
 	friend class State;
+	friend std::ostream& operator<<(std::ostream& os, const Move& move);
+
 	hsfcLegalMove move_;
 	Move(const hsfcLegalMove& move);
 public:
 	const std::string& tostring(std::string&) const;
 };
+
+std::ostream& operator<<(std::ostream& os, const Move& move);
 
 
 /*****************************************************************************************

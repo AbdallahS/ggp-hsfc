@@ -14,11 +14,17 @@ const std::string& Player::tostring(std::string& str) const
 {
 //	static std::ostringstream ss;
 	std::ostringstream ss;
-	ss << "player" << roleid_;
+	ss << *this;
 	str = ss.str();
 	//return ss.str();
     return str;
 }
+
+std::ostream& operator<<(std::ostream& os, const Player& player)
+{
+	return os << "player" << player.roleid_;
+}
+
 
 /*****************************************************************************************
  * Implementation of Move
@@ -35,6 +41,12 @@ const std::string& Move::tostring(std::string& str) const
 	str = ss.str();
 	return str;
 }
+
+std::ostream& operator<<(std::ostream& os, const Move& move)
+{
+	return os << move.move_.Text;
+}
+
 
 /*****************************************************************************************
  * Implementation of Game
