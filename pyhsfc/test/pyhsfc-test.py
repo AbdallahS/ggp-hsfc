@@ -29,7 +29,7 @@ class TictactoeTest(unittest.TestCase):
     #-----------------------------
     def pick_first_legal_move(self, moves, player):
         for m in moves:
-            if m.player == player:
+            if str(m.player) == player:
                 return m
 
 
@@ -39,7 +39,7 @@ class TictactoeTest(unittest.TestCase):
     def count_legal_moves(self, moves, player):
         count = 0
         for m in moves:
-            if m.player == player:
+            if str(m.player) == player:
                 count = count + 1
         return count
 
@@ -58,6 +58,7 @@ class TictactoeTest(unittest.TestCase):
         turn=0
         while not state.IsTerminal():
             legals = state.Legals()
+            self.assertNotEqual(len(legals), 0)
             if turn == 0:
                 self.assertEqual(self.count_legal_moves(legals, "player0"), step)
                 self.assertEqual(self.count_legal_moves(legals, "player1"), 1)
@@ -65,8 +66,8 @@ class TictactoeTest(unittest.TestCase):
                 self.assertEqual(self.count_legal_moves(legals, "player0"), 1)
                 self.assertEqual(self.count_legal_moves(legals, "player1"), step)
 
-            movep0 = pick_first(legals, "player0")
-            movep1 = pick_first(legals, "player1")
+            movep0 = self.pick_first_legal_move(legals, "player0")
+            movep1 = self.pick_first_legal_move(legals, "player1")
             state.Play((movep0,movep1))
             turn = (turn + 1) % 2
             step = step - 1
@@ -75,8 +76,8 @@ class TictactoeTest(unittest.TestCase):
 	# Tictactoe will terminate early only if there is a winner
 	# so test for this and also that a draw is 50/50.
         self.assertTrue(step < 5)
-        goals = state.Goals()
-        self.assertEqual(goals, 2)
+        results = state.Goals()
+        self.assertEqual(len(results), 2)
         if step > 1:
             self.assertTrue(((results[0].goal == 100) and (results[1].goal == 0)) or 
                             ((results[1].goal == 100) and (results[0].goal == 0)))

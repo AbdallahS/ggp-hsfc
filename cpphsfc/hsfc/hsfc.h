@@ -1,5 +1,5 @@
 /*****************************************************************************************
- *
+ * The GDL High Speed Forward Chainer (HSFC).
  *****************************************************************************************/
 
 #ifndef HSFC_H
@@ -19,7 +19,6 @@
 
 namespace HSFC
 {
-
 
 typedef boost::error_info<struct tag_Message, std::string> ErrorMsgInfo;
 class HSFCException : public boost::exception, public std::exception {};
@@ -90,7 +89,6 @@ public:
 		{
 			*dest++=Player(i); 
 		}
-
 	}
 };
 

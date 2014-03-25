@@ -3,6 +3,8 @@
 #include <iterator>
 #include <boost/foreach.hpp>
 #include <boost/python.hpp>
+#include <boost/python/object.hpp>
+#include <boost/python/stl_iterator.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <hsfc/hsfc.h>
 
@@ -58,9 +60,21 @@ std::vector<PlayerGoal> state_playout(State& state)
 	return pgs;
 }
 
-void state_play(State& state, const std::vector<PlayerMove>& jm)
+void state_play1(State& state, const std::vector<PlayerMove>& jm)
 {
 	state.play(jm);
+}
+
+void state_play2(State& state, const boost::python::list& obj)
+{
+	py::stl_input_iterator<PlayerMove> begin(obj), end;
+	state.play(begin, end);
+}
+
+void state_play3(State& state, const boost::python::tuple& obj)
+{
+	py::stl_input_iterator<PlayerMove> begin(obj), end;
+	state.play(begin, end);
 }
 
 
@@ -111,6 +125,8 @@ BOOST_PYTHON_MODULE(pyhsfc)
 		.def("Legals", &state_legals)
 		.def("Goals", &state_goals)
 		.def("Playout", &state_playout)
-		.def("Play", &state_play)
+		.def("Play", &state_play1)
+		.def("Play", &state_play2)
+		.def("Play", &state_play3)
 		;
 }
