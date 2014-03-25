@@ -14,20 +14,16 @@ export CPATH=$HSFC_INCLUDE:$CPATH
 # NOTE: Difference between LD_LIBRARY_PATH and LIBRARY_PATH:
 #       LIBRARY_PATH is used by gcc at compile time. LD_LIBRARY_PATH
 #       is used at execution time to load shared libraries.    
-for subdir in "lib" "lib64" ; do
+for subdir in "lib" ; do
     dir=$HSFC_DIR/$subdir
-    if [ -d "$dir" ] ; then
-	export LD_LIBRARY_PATH=$dir:$LD_LIBRARY_PATH
-	export LIBRARY_PATH=$dir:$LIBRARY_PATH
-    fi
+    export LD_LIBRARY_PATH=$dir:$LD_LIBRARY_PATH
+    export LIBRARY_PATH=$dir:$LIBRARY_PATH
 done
 
 #--------------------------------------------------------------------
 # Setup locally installed python modules if present
 PYTHON_BASE_VERSION=$(python -V 2>&1 | sed -e s'/Python\s*\([0-9]*\.[0-9]*\)\..*$/\1/')
-for subdir in "lib" "lib64" ; do
+for subdir in "lib" ; do
     dir=$HSFC_DIR/$subdir/python$PYTHON_BASE_VERSION/site-packages
-    if [ -d "$dir" ] ; then
-	export PYTHONPATH=$dir:$PYTHONPATH
-    fi
+    export PYTHONPATH=$dir:$PYTHONPATH
 done
