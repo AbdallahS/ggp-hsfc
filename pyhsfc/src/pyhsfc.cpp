@@ -84,26 +84,47 @@ void state_play3(State& state, const boost::python::tuple& obj)
 
 BOOST_PYTHON_MODULE(pyhsfc)
 {
-	py::class_<Player>("Player", py::no_init)
+	// Enable user-defined docstrings and python signatures, but disable
+	// the C++ signatures.
+	py::docstring_options local_docstring_options(true, true, false);
+
+	py::class_<Player>("Player", 
+"Player class represents individual GDL roles. Instances of the Player class\n\
+are not created explicitly but are instead created through queries to Game\n\
+and State objects.\n\n\
+Use the str(object) function to return a printable name of the player.",
+					   py::no_init)
 		.def(py::self_ns::str(py::self_ns::self))
 		.def("__repr__", &Player::tostring)
 		;
 
-	py::class_<Move>("Move", py::no_init)
+	py::class_<Move>("Move",
+"Move class represents an individual GDL action. Instances of the Move class are\n\
+not created explicitly but are instead created through queries to State objects.\n\n\
+Use the str(object) function to return a GDL formatted string of the action.",
+					 py::no_init)
 		.def(py::self_ns::str(py::self_ns::self))
 		.def("__repr__", &Move::tostring)
 		;
 
-	py::class_<PlayerMove>("PlayerMove", py::no_init)
+	py::class_<PlayerMove>("PlayerMove", 
+"PlayerMove class represents an player-action pair. Each PlayerMove object is\n\
+the result of a query to a State object. The object is mutable with read-only\n\
+properties.",
+						   py::no_init)
 		.def("__repr__", &to_string<PlayerMove>)
-		.def_readonly("player", &PlayerMove::first)
-		.def_readonly("move", &PlayerMove::second)
+		.def_readonly("player", &PlayerMove::first, "Read-only property of the Player object")
+		.def_readonly("move", &PlayerMove::second, "Read-only property of the Move object")
 		;
 
-	py::class_<PlayerGoal>("PlayerGoal", py::no_init)
+	py::class_<PlayerGoal>("PlayerGoal", 
+"PlayerGoal class represents an player-goal pair that is the score for the player in some\n\
+(terminal) game state. Each PlayerGoal object is the result of a query to a State object\n\
+that represents a terminal game state.The object is mutable with read-only properties.",
+						   py::no_init)
 		.def("__repr__", &to_string<PlayerGoal>)
-		.def_readonly("player", &PlayerGoal::first)
-		.def_readonly("goal", &PlayerGoal::second)
+		.def_readonly("player", &PlayerGoal::first, "Read-only property of the Player object")
+		.def_readonly("goal", &PlayerGoal::second, "Read-only property of the score (integer: 0 - 100)")
 		;
 
 	py::class_<std::vector<Player> >("PlayerVec")
@@ -115,17 +136,22 @@ BOOST_PYTHON_MODULE(pyhsfc)
 	py::class_<std::vector<PlayerGoal> >("PlayerGoalVec")
 		.def(py::vector_indexing_suite<std::vector<PlayerGoal> >() );
 
-	py::class_<Game, boost::noncopyable>("Game", py::init<const std::string&>())
-		.def("NumPlayers", &Game::numPlayers)
-		.def("Players", &game_players)
+	py::class_<Game, boost::noncopyable>("Game", 
+"Game class represents GDL game instance. This is a finite state machine with each state\n\
+being a valid game state and joint moves the transitions between states.", 
+										 py::init<const std::string&>())
+		.def("NumPlayers", &Game::numPlayers, "Returns the number of players/roles in the game")
+		.def("Players", &game_players, "Returns a list of the Player objects")
 		;
 
-	py::class_<State>("State", py::init<Game&>())
-		.def("IsTerminal", &State::isTerminal)
-		.def("Legals", &state_legals)
-		.def("Goals", &state_goals)
-		.def("Playout", &state_playout)
-		.def("Play", &state_play1)
+	py::class_<State>("State", 
+					  "State class represents a GDL game state. States are Game specific and are copyable.",					  
+					  py::init<Game&>())
+		.def("IsTerminal", &State::isTerminal, "Returns true if the state is a terminal game state.")
+		.def("Legals", &state_legals, "Returns the list of legal PlayerMoves for a non-terminal state.")
+		.def("Goals", &state_goals, "Returns the PlayerGoals for a terminal state.")
+		.def("Playout", &state_playout, "Perform a random playout to termination and return the PlayerGoals for the terminal state.")
+		.def("Play", &state_play1, "Execute a joint move of a move per player. Performs a transition to the next game state.")
 		.def("Play", &state_play2)
 		.def("Play", &state_play3)
 		;
