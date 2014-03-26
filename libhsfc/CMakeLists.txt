@@ -21,9 +21,9 @@ add_library(hsfc_shobj OBJECT ${LIBHSFC_SRC})
 add_library(hsfc_stobj OBJECT ${LIBHSFC_SRC})
 set_target_properties(hsfc_shobj PROPERTIES COMPILE_FLAGS "-fPIC")
 
-add_library(hsfc_shared SHARED $<TARGET_OBJECTS:hsfc_shobj>)
-add_library(hsfc_static $<TARGET_OBJECTS:hsfc_stobj>)
-set_target_properties(hsfc_shared hsfc_static PROPERTIES OUTPUT_NAME hsfc)
+#add_library(hsfc_shared SHARED $<TARGET_OBJECTS:hsfc_shobj>)
+#add_library(hsfc_static $<TARGET_OBJECTS:hsfc_stobj>)
+#set_target_properties(hsfc_shared hsfc_static PROPERTIES OUTPUT_NAME hsfc)
 
 #---------------------------------------------------
 # Installing
@@ -31,8 +31,8 @@ set_target_properties(hsfc_shared hsfc_static PROPERTIES OUTPUT_NAME hsfc)
 
 FILE(GLOB incfiles "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
 INSTALL(FILES ${incfiles} DESTINATION include)
-INSTALL(TARGETS hsfc_shared LIBRARY DESTINATION lib)
-INSTALL(TARGETS hsfc_static ARCHIVE DESTINATION lib)
+#INSTALL(TARGETS hsfc_shared LIBRARY DESTINATION lib)
+#INSTALL(TARGETS hsfc_static ARCHIVE DESTINATION lib)
 
 #---------------------------------------------------
 # Testing
