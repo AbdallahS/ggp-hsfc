@@ -28,18 +28,23 @@ class HSFCException : public boost::exception, public std::exception {};
  * move as independent from a player, so not the move as take by a player.
  *****************************************************************************************/
 
+class Game;
+
 class Player
 {
-	friend class Game;
 	friend class State;
+	friend class Game;
 	friend std::ostream& operator<<(std::ostream& os, const Player& player);
 
+	const Game* game_;
 	unsigned int roleid_;
-	Player(unsigned int roleid);	
+	Player(const Game* game, unsigned int roleid);	
 public:
+	Player(const Player& other);	
 	std::string tostring() const;
 	bool operator==(const Player& other) const;
 	bool operator!=(const Player& other) const;
+	Player& operator=(const Player& other);
 };
 
 std::ostream& operator<<(std::ostream& os, const Player& player);
@@ -51,6 +56,7 @@ class Move
 
 	hsfcLegalMove move_;
 	Move(const hsfcLegalMove& move);
+	
 public:
 	std::string tostring() const;
 	bool operator==(const Move& other) const;
@@ -69,8 +75,18 @@ class State;
 class Game
 {
 	friend class State;
+	friend class Player;
+	friend std::ostream& operator<<(std::ostream& os, const Player& player);
+
 	hsfcGDLManager manager_;
 	Game(const Game& other);  // make sure we can't copy this object
+
+	// Because the hsfcGDLManager doesn't provide an easy way to get
+	// the role names we need to jump through some hoops.
+	std::vector<std::string> playernames_;
+	void populatePlayerNamesFromLegalMoves(hsfcState* state);
+
+	const std::string& getPlayerName(unsigned int roleid) const;
 public:
 	// Note: might look at changing this to either have an extra 
 	// constructor that works from strings or an istream that will
@@ -87,7 +103,7 @@ public:
         //  Also assuming RoleIndex starts at 0.
 		for (unsigned int i = 0; i < manager_.NumRoles; ++i)
 		{
-			*dest++=Player(i); 
+			*dest++=Player(this, i); 
 		}
 	}
 };
@@ -128,7 +144,7 @@ public:
 		game_.manager_.GetLegalMoves(state_, lms);
 		BOOST_FOREACH( hsfcLegalMove& lm, lms)
 		{
-			dest++=PlayerMove(lm.RoleIndex, lm);
+			dest++=PlayerMove(Player(&game_, lm.RoleIndex), lm);
 			ok.insert(lm.RoleIndex);
 		}
 		if (ok.size() != game_.numPlayers())
@@ -158,7 +174,7 @@ public:
 		
 		for (unsigned int i = 0; i < vals.size(); ++i)
 		{
-			dest++=PlayerGoal(i, (unsigned int)vals[i]);
+			dest++=PlayerGoal(Player(&game_, i), (unsigned int)vals[i]);
 		}		
 	}
 
@@ -180,7 +196,7 @@ public:
 		
 		for (unsigned int i = 0; i < vals.size(); ++i)
 		{
-			dest++= PlayerGoal(i, (unsigned int)vals[i]);
+			dest++= PlayerGoal(Player(&game_,i), (unsigned int)vals[i]);
 		}
 	}
 

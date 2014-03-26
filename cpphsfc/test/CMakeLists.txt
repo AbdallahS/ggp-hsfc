@@ -14,6 +14,9 @@ include_directories("${libhsfc_SOURCE_DIR}/src")
 
 enable_testing()
 
+add_executable(sexprtoflat-test sexprtoflat-test.cpp)
+target_link_libraries(sexprtoflat-test cpphsfc_static ${Boost_LIBRARIES})
+
 add_executable(cpphsfc-test cpphsfc-test.cpp)
 target_link_libraries(cpphsfc-test cpphsfc_static ${Boost_LIBRARIES})
 
@@ -21,4 +24,9 @@ add_test(
   NAME CppHSFCTest 
   WORKING_DIRECTORY "${hsfc_SOURCE_DIR}/testing"
   COMMAND cpphsfc-test "--log_level=test_suite"
+)
+
+add_test(
+  NAME TermFormatConversionTest 
+  COMMAND sexprtoflat-test "--log_level=test_suite"
 )

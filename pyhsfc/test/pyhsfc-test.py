@@ -60,14 +60,14 @@ class TictactoeTest(unittest.TestCase):
             legals = state.Legals()
             self.assertNotEqual(len(legals), 0)
             if turn == 0:
-                self.assertEqual(self.count_legal_moves(legals, "player0"), step)
-                self.assertEqual(self.count_legal_moves(legals, "player1"), 1)
+                self.assertEqual(self.count_legal_moves(legals, "xplayer"), step)
+                self.assertEqual(self.count_legal_moves(legals, "oplayer"), 1)
             else:
-                self.assertEqual(self.count_legal_moves(legals, "player0"), 1)
-                self.assertEqual(self.count_legal_moves(legals, "player1"), step)
+                self.assertEqual(self.count_legal_moves(legals, "xplayer"), 1)
+                self.assertEqual(self.count_legal_moves(legals, "oplayer"), step)
 
-            movep0 = self.pick_first_legal_move(legals, "player0")
-            movep1 = self.pick_first_legal_move(legals, "player1")
+            movep0 = self.pick_first_legal_move(legals, "xplayer")
+            movep1 = self.pick_first_legal_move(legals, "oplayer")
             state.Play((movep0,movep1))
             turn = (turn + 1) % 2
             step = step - 1

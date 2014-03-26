@@ -76,17 +76,17 @@ BOOST_AUTO_TEST_CASE(tictactoe)
 		state.legals(legs);	   
 		if (turn == 0)
 		{
-			BOOST_CHECK_EQUAL(count_player_moves(legs, "player0"), step);
-			BOOST_CHECK_EQUAL(count_player_moves(legs, "player1"), 1);			
+			BOOST_CHECK_EQUAL(count_player_moves(legs, "xplayer"), step);
+			BOOST_CHECK_EQUAL(count_player_moves(legs, "oplayer"), 1);			
 		}
 		else
 		{
-			BOOST_CHECK_EQUAL(count_player_moves(legs, "player0"), 1);
-			BOOST_CHECK_EQUAL(count_player_moves(legs, "player1"), step);
+			BOOST_CHECK_EQUAL(count_player_moves(legs, "xplayer"), 1);
+			BOOST_CHECK_EQUAL(count_player_moves(legs, "oplayer"), step);
 		}
 		std::vector<PlayerMove> does;
-		does.push_back(pick_first(legs, "player0"));
-		does.push_back(pick_first(legs, "player1"));
+		does.push_back(pick_first(legs, "xplayer"));
+		does.push_back(pick_first(legs, "oplayer"));
 		state.play(does);
 		turn = (++turn) % 2;
 		--step;

@@ -1,7 +1,9 @@
 #include <iterator>
 #include <sstream>
 #include <cstring>
+#include <boost/variant/get.hpp>
 #include <hsfc/hsfc.h>
+#include "sexprtoflat.h"
 
 namespace HSFC
 {
@@ -9,14 +11,17 @@ namespace HSFC
 /*****************************************************************************************
  * Implementation of Player
  *****************************************************************************************/
-Player::Player(unsigned int roleid): roleid_(roleid)
+Player::Player(const Game* game, unsigned int roleid): game_(game), roleid_(roleid)
+{ }
+
+Player::Player(const Player& other): game_(other.game_), roleid_(other.roleid_)
 { }
 
 std::string Player::tostring() const
 {
 	std::ostringstream ss;
 	ss << *this;
-	return ss.str();
+	return ss.str();	
 }
 
 bool Player::operator==(const Player& other) const
@@ -29,9 +34,15 @@ bool Player::operator!=(const Player& other) const
 	return roleid_ != other.roleid_;
 }
 
+Player& Player::operator=(const Player& other)
+{
+	this->game_ = other.game_;
+	this->roleid_ = other.roleid_;
+}
+
 std::ostream& operator<<(std::ostream& os, const Player& player)
 {
-	return os << "player" << player.roleid_;
+	return os << player.game_->getPlayerName(player.roleid_);
 }
 
 
@@ -46,7 +57,7 @@ std::string Move::tostring() const
 {
 	std::ostringstream ss;
 	ss << *this;
-	return ss.str();
+	return ss.str();	
 }
 
 bool operator==(const hsfcLegalMove& a, const hsfcLegalMove& b)
@@ -73,9 +84,24 @@ bool Move::operator!=(const Move& other) const
 	return move_ != other.move_;
 }
 
+struct gdl_move_visitor : public boost::static_visitor<std::ostream&>
+{
+	std::ostream& os_;
+	gdl_move_visitor(std::ostream& os) : os_(os){}
+	std::ostream& operator()(const std::string& name) { return os_ << name; }
+	std::ostream& operator()(const Term& t){ return generate_sexpr(t,os_); }
+};
+
 std::ostream& operator<<(std::ostream& os, const Move& move)
 {
-	return os << move.move_.Text;
+	Term term;
+	parse_flat(move.move_.Text, term);
+	if (term.children_.size() != 3)
+		throw HSFCException() << ErrorMsgInfo("HSFC internal error: move_.Text term != 3");
+	if (boost::get<std::string>(term.children_[0]) != "does")
+		throw HSFCException() << ErrorMsgInfo("HSFC internal error: move_.Text not 'does' relation");
+	gdl_move_visitor gmv(os);
+	return boost::apply_visitor(gmv, term.children_[2]);
 }
 
 
@@ -110,7 +136,37 @@ Game::Game(const std::string& gdlfilename)
 	if (manager_.CreateGameState(&tmpstate_))
 		throw HSFCException() << ErrorMsgInfo("Failed to create HSFC game state");
 	manager_.SetInitialGameState(tmpstate_);
+	playernames_.assign(this->numPlayers(), std::string());	
+	populatePlayerNamesFromLegalMoves(tmpstate_);
 	manager_.FreeGameState(tmpstate_);
+}
+
+void Game::populatePlayerNamesFromLegalMoves(hsfcState* state)
+{
+	std::vector<hsfcLegalMove> hlms;
+	manager_.GetLegalMoves(state, hlms);
+	BOOST_FOREACH(hsfcLegalMove& hlm, hlms)
+	{
+		Term term;
+		parse_flat(hlm.Text, term);
+		if (term.children_.size() != 3)
+			throw HSFCException() << ErrorMsgInfo("HSFC internal error: move_.Text term != 3");
+		if (boost::get<std::string>(term.children_[0]) != "does")
+			throw HSFCException() << ErrorMsgInfo("HSFC internal error: move_.Text not 'does' relation");
+		playernames_[hlm.RoleIndex] = boost::get<std::string>(term.children_[1]);
+	}
+	BOOST_FOREACH(const std::string& s, playernames_)
+	{
+		if (s.empty())
+			throw HSFCException() << ErrorMsgInfo("HSFC internal error: Failed to find names for roles");
+	}
+}
+
+const std::string& Game::getPlayerName(unsigned int roleid) const
+{
+	if (roleid >= this->numPlayers())
+		throw HSFCException() << ErrorMsgInfo("HSFC internal error: not a valid roleid");
+	return playernames_[roleid];
 }
 
 void Game::players(std::vector<Player>& plyrs) const
@@ -130,7 +186,9 @@ bool Game::operator==(const Game& other) const
 	return this == &other;
 }
 
-
+/*****************************************************************************************
+ * Implementation of State
+ *****************************************************************************************/
 
 State::State(Game& game): game_(game)
 {  
