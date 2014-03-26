@@ -14,6 +14,7 @@
 #include <boost/foreach.hpp>
 #include <boost/assert.hpp>
 #include <boost/exception/all.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include <hsfcAPI.h>
 
@@ -52,15 +53,17 @@ std::ostream& operator<<(std::ostream& os, const Player& player);
 class Move
 {
 	friend class State;
+	friend class Game;
 	friend std::ostream& operator<<(std::ostream& os, const Move& move);
 
 	hsfcLegalMove move_;
 	Move(const hsfcLegalMove& move);
-	
 public:
+	Move(const Move& other);
 	std::string tostring() const;
 	bool operator==(const Move& other) const;
 	bool operator!=(const Move& other) const;
+	Move& operator=(const Move& other);
 };
 
 std::ostream& operator<<(std::ostream& os, const Move& move);
@@ -79,12 +82,14 @@ class Game
 	friend std::ostream& operator<<(std::ostream& os, const Player& player);
 
 	hsfcGDLManager manager_;
+	boost::scoped_ptr<State> initstate_;
+
 	Game(const Game& other);  // make sure we can't copy this object
 
 	// Because the hsfcGDLManager doesn't provide an easy way to get
 	// the role names we need to jump through some hoops.
 	std::vector<std::string> playernames_;
-	void populatePlayerNamesFromLegalMoves(hsfcState* state);
+	void populatePlayerNamesFromLegalMoves(State& state);
 
 	const std::string& getPlayerName(unsigned int roleid) const;
 public:
@@ -96,6 +101,9 @@ public:
 	unsigned int numPlayers() const;
 	bool operator==(const Game& other) const;
 
+	// Return the initial state
+	const State& initState() const;
+   	
 	template<typename OutputIterator>
 	void players(OutputIterator dest) const
 	{

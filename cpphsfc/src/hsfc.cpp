@@ -38,6 +38,7 @@ Player& Player::operator=(const Player& other)
 {
 	this->game_ = other.game_;
 	this->roleid_ = other.roleid_;
+	return *this;
 }
 
 std::ostream& operator<<(std::ostream& os, const Player& player)
@@ -51,6 +52,9 @@ std::ostream& operator<<(std::ostream& os, const Player& player)
  *****************************************************************************************/
 
 Move::Move(const hsfcLegalMove& move): move_(move)
+{ }
+
+Move::Move(const Move& other): move_(other.move_)
 { }
 
 std::string Move::tostring() const
@@ -82,6 +86,12 @@ bool Move::operator==(const Move& other) const
 bool Move::operator!=(const Move& other) const
 {
 	return move_ != other.move_;
+}
+
+Move& Move::operator=(const Move& other)
+{
+	move_ = other.move_;
+	return *this;
 }
 
 struct gdl_move_visitor : public boost::static_visitor<std::ostream&>
@@ -130,30 +140,28 @@ Game::Game(const std::string& gdlfilename)
 		throw HSFCException() << ErrorMsgInfo(ss.str());
 	}	
 
-	// NOTE: The roles (and maybe other things) are not initialised until a state is created.
-	// So we create, initialise, then delete a state to make sure things are initialise properly.
-	hsfcState* tmpstate_;
-	if (manager_.CreateGameState(&tmpstate_))
-		throw HSFCException() << ErrorMsgInfo("Failed to create HSFC game state");
-	manager_.SetInitialGameState(tmpstate_);
+	// Usefull to maintain a link to an initial state. Also within the HSFC internals, 
+	// the roles (and maybe other things) are not initialised until a state is created.	
+	initstate_.reset(new State(*this));
+
+	// Now jump through hoops to setup workout the names of the players.
 	playernames_.assign(this->numPlayers(), std::string());	
-	populatePlayerNamesFromLegalMoves(tmpstate_);
-	manager_.FreeGameState(tmpstate_);
+	populatePlayerNamesFromLegalMoves(*initstate_);
 }
 
-void Game::populatePlayerNamesFromLegalMoves(hsfcState* state)
+void Game::populatePlayerNamesFromLegalMoves(State& state)
 {
-	std::vector<hsfcLegalMove> hlms;
-	manager_.GetLegalMoves(state, hlms);
-	BOOST_FOREACH(hsfcLegalMove& hlm, hlms)
+	std::vector<PlayerMove> pms;
+	state.legals(pms);
+	BOOST_FOREACH(PlayerMove& pm, pms)
 	{
 		Term term;
-		parse_flat(hlm.Text, term);
+		parse_flat(pm.second.move_.Text, term);
 		if (term.children_.size() != 3)
 			throw HSFCException() << ErrorMsgInfo("HSFC internal error: move_.Text term != 3");
 		if (boost::get<std::string>(term.children_[0]) != "does")
 			throw HSFCException() << ErrorMsgInfo("HSFC internal error: move_.Text not 'does' relation");
-		playernames_[hlm.RoleIndex] = boost::get<std::string>(term.children_[1]);
+		playernames_[pm.second.move_.RoleIndex] = boost::get<std::string>(term.children_[1]);
 	}
 	BOOST_FOREACH(const std::string& s, playernames_)
 	{
@@ -169,6 +177,7 @@ const std::string& Game::getPlayerName(unsigned int roleid) const
 	return playernames_[roleid];
 }
 
+
 void Game::players(std::vector<Player>& plyrs) const
 {
 	this->players(std::back_inserter(plyrs));
@@ -177,6 +186,12 @@ void Game::players(std::vector<Player>& plyrs) const
 unsigned int Game::numPlayers() const
 {
 	return (unsigned int)manager_.NumRoles;
+}
+
+const State& Game::initState() const
+{
+
+
 }
 
 bool Game::operator==(const Game& other) const
@@ -211,7 +226,9 @@ State::State(const State& other) : game_(other.game_)
 State& State::operator=(const State& other)
 {
 	BOOST_ASSERT_MSG(game_ == other.game_, "Cannot assign to States from different games");
+	game_.manager_.FreeGameState(state_);
 	game_.manager_.CopyGameState(state_, other.state_);
+	return *this;
 }
 
 State::~State()
