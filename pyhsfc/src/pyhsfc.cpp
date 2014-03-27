@@ -101,7 +101,11 @@ Use the str(object) function to return a printable name of the player.",
 					   py::no_init)
 		.def(py::self_ns::str(py::self_ns::self))
 		.def("__repr__", &Player::tostring)
+		.def("__hash__", &Player::hash_value)
+		.def("__eq__", &Player::operator==)
+		.def("__ne__", &Player::operator!=)
 		;
+
 
 	py::class_<Move>("Move",
 "Move class represents an individual GDL action. Instances of the Move class are\n\

@@ -46,7 +46,11 @@ public:
 	bool operator==(const Player& other) const;
 	bool operator!=(const Player& other) const;
 	Player& operator=(const Player& other);
+
+	std::size_t hash_value() const;
 };
+
+std::size_t hash_value(const Player& player);
 
 std::ostream& operator<<(std::ostream& os, const Player& player);
 

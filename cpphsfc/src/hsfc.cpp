@@ -2,6 +2,7 @@
 #include <sstream>
 #include <cstring>
 #include <boost/variant/get.hpp>
+#include <boost/functional/hash.hpp>
 #include <hsfc/hsfc.h>
 #include "sexprtoflat.h"
 
@@ -40,6 +41,21 @@ Player& Player::operator=(const Player& other)
 	this->roleid_ = other.roleid_;
 	return *this;
 }
+
+std::size_t Player::hash_value() const
+{
+	size_t seed = 0;
+	boost::hash_combine(seed, roleid_);
+	boost::hash_combine(seed, game_);
+	return seed;
+}
+
+
+std::size_t hash_value(const Player& player)
+{
+	return player.hash_value();
+}
+
 
 std::ostream& operator<<(std::ostream& os, const Player& player)
 {
