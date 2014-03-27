@@ -8,6 +8,8 @@
 #include "stdafx.h"
 #include "hsfcEngine.h"
 
+#include "hsfc_config.h"
+
 using namespace std;
 
 //=============================================================================

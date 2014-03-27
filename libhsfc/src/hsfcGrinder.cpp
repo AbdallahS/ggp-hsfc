@@ -8,6 +8,7 @@
 #include "stdafx.h"
 #include "hsfcGrinder.h"
 
+#include "hsfc_config.h"
 using namespace std;
 
 //=============================================================================

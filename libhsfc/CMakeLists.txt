@@ -17,9 +17,15 @@ set(LIBHSFC_SRC
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
+# This is a drastic way to remove the large amount of (uncontrolled)
+# debugging output.
+add_definitions( -DREMOVE_PRINTF_MADNESS )
+
+
 add_library(hsfc_shobj OBJECT ${LIBHSFC_SRC})
 add_library(hsfc_stobj OBJECT ${LIBHSFC_SRC})
 set_target_properties(hsfc_shobj PROPERTIES COMPILE_FLAGS "-fPIC")
+
 
 #add_library(hsfc_shared SHARED $<TARGET_OBJECTS:hsfc_shobj>)
 #add_library(hsfc_static $<TARGET_OBJECTS:hsfc_stobj>)

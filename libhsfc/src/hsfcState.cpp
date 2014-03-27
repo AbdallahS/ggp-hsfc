@@ -7,6 +7,7 @@
 #include "stdafx.h"
 #include "hsfcState.h"
 
+#include "hsfc_config.h"
 using namespace std;
 
 //=============================================================================
