@@ -110,3 +110,13 @@ BOOST_AUTO_TEST_CASE(tictactoe)
 }
 
 
+BOOST_AUTO_TEST_CASE(statefunctions)
+{
+	Game game("./tictactoe.gdl");
+	State state1 = game.initState();
+	BOOST_CHECK(!state1.isTerminal());
+
+	State state2 = game.initState();
+
+
+}

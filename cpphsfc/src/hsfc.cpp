@@ -190,8 +190,7 @@ unsigned int Game::numPlayers() const
 
 const State& Game::initState() const
 {
-
-
+	return *initstate_;
 }
 
 bool Game::operator==(const Game& other) const
@@ -205,7 +204,7 @@ bool Game::operator==(const Game& other) const
  * Implementation of State
  *****************************************************************************************/
 
-State::State(Game& game): game_(game)
+State::State(Game& game): game_(game), state_(NULL)
 {  
 	if (game_.manager_.CreateGameState(&state_))
 	{
@@ -214,7 +213,7 @@ State::State(Game& game): game_(game)
 	game_.manager_.SetInitialGameState(state_);
 }
 
-State::State(const State& other) : game_(other.game_)
+State::State(const State& other) : game_(other.game_), state_(NULL)
 {
 	if (game_.manager_.CreateGameState(&state_))
 	{
@@ -226,13 +225,15 @@ State::State(const State& other) : game_(other.game_)
 State& State::operator=(const State& other)
 {
 	BOOST_ASSERT_MSG(game_ == other.game_, "Cannot assign to States from different games");
-	game_.manager_.FreeGameState(state_);
+	if (state_ != NULL)
+		game_.manager_.FreeGameState(state_);
 	game_.manager_.CopyGameState(state_, other.state_);
 	return *this;
 }
 
 State::~State()
 {
+	if (state_ != NULL)
 	game_.manager_.FreeGameState(state_);
 }
 

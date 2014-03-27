@@ -13,8 +13,7 @@ class TictactoeTest(unittest.TestCase):
     def playout_check(self, state):
         if state.IsTerminal(): return
         tmpstate = State(state)
-        results = []
-        tmpstate.Playout(results)
+        results = tmpstate.Playout()
         self.assertEqual(len(results),2)
         if results[0].goal == 100:
             self.assertEqual(results[1].goal,0)
@@ -53,10 +52,18 @@ class TictactoeTest(unittest.TestCase):
         game = Game("./tictactoe.gdl")
         self.assertEqual(game.NumPlayers(), 2)
 
+        # Test that the different ways of create states work
+        state = game.InitState()
+        self.assertFalse(state.IsTerminal())
         state = State(game)
+        self.assertFalse(state.IsTerminal())
+        state2 = State(state)
+        self.assertFalse(state2.IsTerminal())
+
         step=9
         turn=0
         while not state.IsTerminal():
+            self.playout_check(state)
             legals = state.Legals()
             self.assertNotEqual(len(legals), 0)
             if turn == 0:
