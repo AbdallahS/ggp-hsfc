@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(tictactoe)
 
 	Game game("./tictactoe.gdl");
 	BOOST_CHECK_EQUAL(game.numPlayers(), 2);
-	State state(game);
+	State state = game.initState();
 	BOOST_CHECK(!state.isTerminal());
 	BOOST_TEST_MESSAGE("Sucessfully created a HSFC instance for tictactoe.");
 

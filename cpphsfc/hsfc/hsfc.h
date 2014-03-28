@@ -15,14 +15,14 @@
 #include <boost/assert.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 
-#include <hsfc/impl/hsfcAPI.h>
+#include <hsfc/hsfcexception.h>
+#include <hsfc/impl/hsfcwrapper.h>
 
 namespace HSFC
 {
 
-typedef boost::error_info<struct tag_Message, std::string> ErrorMsgInfo;
-class HSFCException : public boost::exception, public std::exception {};
 
 /*****************************************************************************************
  * Player (role) and Move classes. Note: To clear any ambiguity Move represents the 
@@ -37,9 +37,9 @@ class Player
 	friend class Game;
 	friend std::ostream& operator<<(std::ostream& os, const Player& player);
 
-	const Game* game_;
+	const HSFCManager* manager_;
 	unsigned int roleid_;
-	Player(const Game* game, unsigned int roleid);	
+	Player(const HSFCManager* manager_, unsigned int roleid);	
 public:
 	Player(const Player& other);	
 	std::string tostring() const;
@@ -57,11 +57,11 @@ std::ostream& operator<<(std::ostream& os, const Player& player);
 class Move
 {
 	friend class State;
-	friend class Game;
 	friend std::ostream& operator<<(std::ostream& os, const Move& move);
-
+	
+	HSFCManager* manager_;
 	hsfcLegalMove move_;
-	Move(const hsfcLegalMove& move);
+	Move(HSFCManager* manager, const hsfcLegalMove& move);
 public:
 	Move(const Move& other);
 	std::string tostring() const;
@@ -81,43 +81,38 @@ class State;
 
 class Game
 {
-	friend class State;
-	friend class Player;
-	friend std::ostream& operator<<(std::ostream& os, const Player& player);
-
-	hsfcGDLManager manager_;
-	boost::scoped_ptr<State> initstate_;
+	HSFCManager manager_;
+	boost::scoped_ptr<State> initstate_; // Useful to maintain an init state
 
 	Game(const Game& other);  // make sure we can't copy this object
 
-	// Because the hsfcGDLManager doesn't provide an easy way to get
-	// the role names we need to jump through some hoops.
-	std::vector<std::string> playernames_;
-	void populatePlayerNamesFromLegalMoves(State& state);
-
-	const std::string& getPlayerName(unsigned int roleid) const;
 public:
 	// Note: might look at changing this to either have an extra 
 	// constructor that works from strings or an istream that will
     // work for both files and strings.
 	Game(const std::string& gdlfilename);
-	void players(std::vector<Player>& plyrs) const;
-	unsigned int numPlayers() const;
-	bool operator==(const Game& other) const;
 
+	unsigned int numPlayers() const;
 	// Return the initial state
 	const State& initState() const;
-   	
+
+	bool operator==(const Game& other) const;
+
+
+	/*
+	 * Returns the players 
+	 */
+	void players(std::vector<Player>& plyrs) const;
+
 	template<typename OutputIterator>
 	void players(OutputIterator dest) const
-	{
-		// Note: currently no way to match the roleid to the name.
-        //  Also assuming RoleIndex starts at 0.
-		for (unsigned int i = 0; i < manager_.NumRoles; ++i)
+	{		
+		for (unsigned int i = 0; i < manager_.NumPlayers(); ++i)
 		{
-			*dest++=Player(this, i); 
+			*dest++=Player(&manager_, i); 
 		}
 	}
+   	
 };
 
 
@@ -130,10 +125,13 @@ typedef std::pair<Player,unsigned int> PlayerGoal;
 
 class State
 {
+	friend class Game;
+
 	hsfcState* state_;
-	Game& game_;
+	HSFCManager* manager_;
+
+	State(HSFCManager* manager);
 public:
-	State(Game& game);
 	State(const State& other);
 	State& operator=(const State& other);
 	~State();
@@ -153,18 +151,17 @@ public:
 		boost::unordered_set<int> ok;
 		std::vector<hsfcLegalMove> lms;
 		BOOST_ASSERT_MSG(!(this->isTerminal()), "Test for non-terminal state before calling legals()");
-		game_.manager_.GetLegalMoves(state_, lms);
+		manager_->GetLegalMoves(*state_, lms);
 		BOOST_FOREACH( hsfcLegalMove& lm, lms)
 		{
-			dest++=PlayerMove(Player(&game_, lm.RoleIndex), lm);
+			dest++=PlayerMove(Player(manager_, lm.RoleIndex), Move(manager_, lm));
 			ok.insert(lm.RoleIndex);
 		}
-		if (ok.size() != game_.numPlayers())
+		if (ok.size() != manager_->NumPlayers())
 		{
 			throw HSFCException() << ErrorMsgInfo("HSFC internal error: missing moves for some players");
 		}
 	}
-
 
 	/* 
 	 * Return the goals. Must be called only in terminal states.
@@ -178,15 +175,15 @@ public:
 	{
 		std::vector<int> vals;
 		BOOST_ASSERT_MSG(this->isTerminal(), "Test for terminal state before calling goals()");
-		game_.manager_.GetGoalValues(state_, vals);
-		if (vals.size() != game_.numPlayers())
+		manager_->GetGoalValues(*state_, vals);
+		if (vals.size() != manager_->NumPlayers())
 		{
 			throw HSFCException() << ErrorMsgInfo("HSFC internal error: no goal value for some players");
 		}
 		
 		for (unsigned int i = 0; i < vals.size(); ++i)
 		{
-			dest++=PlayerGoal(Player(&game_, i), (unsigned int)vals[i]);
+			dest++=PlayerGoal(Player(manager_, i), (unsigned int)vals[i]);
 		}		
 	}
 
@@ -200,20 +197,23 @@ public:
 	{
 		std::vector<int> vals;
 		BOOST_ASSERT_MSG(!this->isTerminal(), "Test for terminal state before calling playOut()");
-		game_.manager_.PlayOut(state_, vals);
-		if (vals.size() != game_.numPlayers())
+		manager_->PlayOut(*state_, vals);
+		if (vals.size() != manager_->NumPlayers())
 		{
 			throw HSFCException() << ErrorMsgInfo("HSFC internal error: no goal value for some players");
 		}
 		
 		for (unsigned int i = 0; i < vals.size(); ++i)
 		{
-			dest++= PlayerGoal(Player(&game_,i), (unsigned int)vals[i]);
+			dest++= PlayerGoal(Player(manager_,i), (unsigned int)vals[i]);
 		}
 	}
 
-	void play(const std::vector<PlayerMove>& moves);
+	/*
+	 * Make a move. 
+	 */
 
+	void play(const std::vector<PlayerMove>& moves);
 
 	template<typename Iterator>
 	void play(Iterator begin, Iterator end)
@@ -228,8 +228,8 @@ public:
 			ok.insert(begin->first.roleid_);
 			++begin;
 		}
-		BOOST_ASSERT_MSG(ok.size() == game_.numPlayers(), "Must be exactly one move per player");
-		game_.manager_.DoMove(state_, lms);	   		
+		BOOST_ASSERT_MSG(ok.size() == manager_->NumPlayers(), "Must be exactly one move per player");
+		manager_->DoMove(*state_, lms);	   		
 	}  
 };
 
