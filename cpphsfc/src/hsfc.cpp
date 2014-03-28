@@ -61,7 +61,7 @@ std::size_t hash_value(const Player& player)
 
 std::ostream& operator<<(std::ostream& os, const Player& player)
 {
-	return os << player.manager_->PrintPlayer(os, player.roleid_);
+	return player.manager_->PrintPlayer(os, player.roleid_);
 }
 
 
@@ -114,7 +114,7 @@ Move& Move::operator=(const Move& other)
 
 std::ostream& operator<<(std::ostream& os, const Move& move)
 {
-	return os << move.manager_->PrintMove(os, move.move_);
+	return move.manager_->PrintMove(os, move.move_);
 }
 
 

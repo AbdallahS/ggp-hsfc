@@ -55,7 +55,7 @@ class TictactoeTest(unittest.TestCase):
         # Test that the different ways of create states work
         state = game.InitState()
         self.assertFalse(state.IsTerminal())
-        state = State(game)
+        state = game.InitState()
         self.assertFalse(state.IsTerminal())
         state2 = State(state)
         self.assertFalse(state2.IsTerminal())

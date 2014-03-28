@@ -231,6 +231,7 @@ public:
 		BOOST_ASSERT_MSG(ok.size() == manager_->NumPlayers(), "Must be exactly one move per player");
 		manager_->DoMove(*state_, lms);	   		
 	}  
+	
 };
 
 };

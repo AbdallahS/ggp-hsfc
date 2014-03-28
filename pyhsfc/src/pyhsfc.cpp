@@ -155,9 +155,9 @@ being a valid game state and joint moves the transitions between states.",
 		;
 
 	py::class_<State>("State", 
-					  "State class represents a GDL game state. States are Game specific and are copyable.",					  
-					  py::init<Game&>())
-		.def(py::init<const State&>())
+					  "State class represents a GDL game state. States are Game specific and are copyable.",
+					  py::init<const State&>()
+					  )
 		.def("IsTerminal", &State::isTerminal, "Returns true if the state is a terminal game state.")
 		.def("Legals", &state_legals, "Returns the list of legal PlayerMoves for a non-terminal state.")
 		.def("Goals", &state_goals, "Returns the PlayerGoals for a terminal state.")

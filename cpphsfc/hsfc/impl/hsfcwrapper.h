@@ -30,6 +30,7 @@ private:
 	void populatePlayerNamesFromLegalMoves();
 
 public:
+	HSFCManager();
 
 	/* Functions from hsfcGDLManager with const fixes */
 	void Initialise(const std::string& GDLFileName, const hsfcGDLParamaters& Paramaters);

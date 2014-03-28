@@ -15,6 +15,8 @@ namespace HSFC
  * Implementation of HSFCManager
  *****************************************************************************************/
 
+HSFCManager::HSFCManager() : internal_(new hsfcGDLManager())
+{  }
 
 /*****************************************************************************************
  * Internal extra functions. 
@@ -27,6 +29,8 @@ void HSFCManager::populatePlayerNamesFromLegalMoves()
 	try
 	{
 		tmpstate = this->CreateGameState();
+		this->SetInitialGameState(*tmpstate);
+		playernames_.assign(this->NumPlayers(), std::string());	
 		
 		std::vector<hsfcLegalMove> legalmoves;
 		this->GetLegalMoves(*tmpstate, legalmoves);
@@ -69,8 +73,7 @@ void HSFCManager::Initialise(const std::string& GDLFileName, const hsfcGDLParama
 		throw HSFCException() << ErrorMsgInfo(ss.str());
 	}	
 
-	// Now jump through hoops to setup workout the names of the players.
-	playernames_.assign(this->NumPlayers(), std::string());	
+	// Now jump through hoops to workout the names of the players.
 	populatePlayerNamesFromLegalMoves();
 }
 
@@ -136,7 +139,7 @@ void HSFCManager::PrintState(const hsfcState& GameState) const
 
 unsigned int HSFCManager::NumPlayers() const
 {
-	return playernames_.size();
+	return (unsigned int) internal_->NumRoles;
 }
 
 std::ostream& HSFCManager::PrintPlayer(std::ostream& os, unsigned int roleid) const
