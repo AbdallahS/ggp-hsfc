@@ -58,7 +58,7 @@ foreach(hdrfile ${LIBHSFC_HEADERS})
      DEPENDS "${HDR_ORIG_DIR}/${hdrfile}"
      )
 endforeach(hdrfile)
-add_custom_target(run ALL DEPENDS ${LIBHSFC_PATCHED_HEADERS})
+add_custom_target(patched_libhsfc_headers ALL DEPENDS ${LIBHSFC_PATCHED_HEADERS})
 
 #---------------------------------------------------
 # Installation
