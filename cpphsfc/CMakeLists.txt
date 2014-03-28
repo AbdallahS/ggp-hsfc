@@ -22,6 +22,10 @@ add_library(cpphsfc_stobj OBJECT ${CPPHSFC_SRC})
 add_library(cpphsfc_shobj OBJECT ${CPPHSFC_SRC})
 set_target_properties(cpphsfc_shobj PROPERTIES COMPILE_FLAGS "-fPIC")
 
+# Add the generated libhsfc header files as a dependency
+add_dependencies(cpphsfc_stobj patched_libhsfc_headers)
+add_dependencies(cpphsfc_shobj patched_libhsfc_headers)
+
 #add_library(cpphsfc_shared SHARED $<TARGET_OBJECTS:cpphsfc_shobj> $<TARGET_OBJECTS:hsfc_shobj>)
 add_library(cpphsfc_static $<TARGET_OBJECTS:cpphsfc_stobj> $<TARGET_OBJECTS:hsfc_stobj>)
 #set_target_properties(cpphsfc_shared cpphsfc_static PROPERTIES OUTPUT_NAME cpphsfc)
