@@ -32,11 +32,40 @@ set_target_properties(hsfc_shobj PROPERTIES COMPILE_FLAGS "-fPIC")
 #set_target_properties(hsfc_shared hsfc_static PROPERTIES OUTPUT_NAME hsfc)
 
 #---------------------------------------------------
-# Installing
+# Fix the header files for later installation
 #---------------------------------------------------
 
-FILE(GLOB incfiles "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
-INSTALL(FILES ${incfiles} DESTINATION include)
+set(LIBHSFC_HEADERS
+  hsfcAPI.h
+  hsfcEngine.h
+  hsfcGDL.h
+  hsfcGrinder.h
+  hsfcLexicon.h
+  hsfcSchema.h
+  hsfcState.h
+)  
+
+set(HDR_ORIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(LIBHSFC_PATCHED_HEADERS_DIR "${CMAKE_CURRENT_BINARY_DIR}/patched_headers")
+set(HDR_DEST_DIR "${LIBHSFC_PATCHED_HEADERS_DIR}/hsfc/impl/")
+set(PATCH_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/patch_hsfc_headers.py")
+file(MAKE_DIRECTORY "${HDR_DEST_DIR}")
+foreach(hdrfile ${LIBHSFC_HEADERS})
+   list(APPEND LIBHSFC_PATCHED_HEADERS "${HDR_DEST_DIR}/${hdrfile}")
+   add_custom_command(
+     OUTPUT "${HDR_DEST_DIR}/${hdrfile}"
+     COMMAND python "${PATCH_SCRIPT}" "${HDR_ORIG_DIR}/${hdrfile}" "${HDR_DEST_DIR}/${hdrfile}"
+     DEPENDS "${HDR_ORIG_DIR}/${hdrfile}"
+     )
+endforeach(hdrfile)
+add_custom_target(run ALL DEPENDS ${LIBHSFC_PATCHED_HEADERS})
+
+#---------------------------------------------------
+# Installation
+#---------------------------------------------------
+
+#FILE(GLOB incfiles "${HDR_DEST_DIR}/*.h")
+INSTALL(FILES ${LIBHSFC_PATCHED_HEADERS} DESTINATION include/hsfc/impl)
 #INSTALL(TARGETS hsfc_shared LIBRARY DESTINATION lib)
 #INSTALL(TARGETS hsfc_static ARCHIVE DESTINATION lib)
 

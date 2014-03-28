@@ -16,7 +16,7 @@
 #include <boost/exception/all.hpp>
 #include <boost/scoped_ptr.hpp>
 
-#include <hsfcAPI.h>
+#include <hsfc/impl/hsfcAPI.h>
 
 namespace HSFC
 {

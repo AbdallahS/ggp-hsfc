@@ -21,7 +21,7 @@ endif()
 #include_directories("${Boost_INCLUDE_DIRS}" "/usr/include/python${PYTHON_BASE_VERSION}")
 
 include_directories("${Boost_INCLUDE_DIRS}" "${PYTHON_INCLUDE_PATH}")
-include_directories("${cpphsfc_SOURCE_DIR}" "${libhsfc_SOURCE_DIR}/src")
+include_directories("${cpphsfc_SOURCE_DIR}" "${libhsfc_BINARY_DIR}/patched_headers")
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)

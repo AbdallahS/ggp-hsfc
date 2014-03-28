@@ -147,7 +147,7 @@ Game::Game(const std::string& gdlfilename)
 	params.MaxReferenceSize = 1000000;	// Max bytes per lookup table for grounding
 	params.OrderRules = true;			// Optimise the rule execution cost
 
-	string tmpstr(gdlfilename); // needed to avoid non-const in hsfcGDLManager::Initialise
+	std::string tmpstr(gdlfilename); // needed to avoid non-const in hsfcGDLManager::Initialise
 	int result = manager_.Initialise(&tmpstr, params);
 	if (result != 0)
 	{

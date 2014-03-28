@@ -9,7 +9,7 @@ find_package(Boost 1.4 REQUIRED)
 include_directories("${Boost_INCLUDE_DIRS}")
 
 include_directories("${PROJECT_SOURCE_DIR}")
-include_directories("${libhsfc_SOURCE_DIR}/src")
+include_directories("${libhsfc_BINARY_DIR}/patched_headers")
 
 set(CPPHSFC_SRC
   src/hsfc.cpp
