@@ -38,8 +38,11 @@ target_link_libraries(cpphsfc_static ${Boost_LIBRARIES})
 # Installing
 #---------------------------------------------------
 
-file(GLOB incfiles "${CMAKE_CURRENT_SOURCE_DIR}/hsfc/*.h")
-install(FILES ${incfiles} DESTINATION include/hsfc)
+file(GLOB incfiles1 "${CMAKE_CURRENT_SOURCE_DIR}/hsfc/*.h")
+install(FILES ${incfiles1} DESTINATION include/hsfc)
+file(GLOB incfiles2 "${CMAKE_CURRENT_SOURCE_DIR}/hsfc/impl/*.h")
+install(FILES ${incfiles2} DESTINATION include/hsfc/impl)
+
 install(TARGETS cpphsfc_static ARCHIVE DESTINATION lib)
 #install(TARGETS cpphsfc_shared LIBRARY DESTINATION lib)
 
