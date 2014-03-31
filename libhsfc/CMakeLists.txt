@@ -13,6 +13,7 @@ set(LIBHSFC_SRC
   src/hsfcLexicon.cpp  
   src/hsfcSchema.cpp  
   src/hsfcState.cpp
+  src/kpWFT.cpp
 )
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
@@ -43,6 +44,7 @@ set(LIBHSFC_HEADERS
   hsfcLexicon.h
   hsfcSchema.h
   hsfcState.h
+  kpWFT.h
 )  
 
 set(HDR_ORIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")

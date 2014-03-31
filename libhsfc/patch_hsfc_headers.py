@@ -30,7 +30,7 @@ def run(infile, outfile):
             continue
         mtch = regex_lcl_inclde.match(line)
         if mtch:
-            outfile.write("#include <hsfc/impl/{0}>".format(mtch.group(1)))
+            outfile.write("#include <hsfc/impl/{0}>\n".format(mtch.group(1)))
             continue
         if regex_type_string.search(line):
             line = re.sub(r'(?<!^\w)?string(?!^\w)','std::string', line)
