@@ -33,6 +33,9 @@ hsfcRelationSchema::hsfcRelationSchema(hsfcLexicon* Lexicon){
 	// Set up the Lexicon
 	this->Lexicon = Lexicon;
 
+	// Initialise the pointers
+	this->Domain = NULL;
+
 }
 
 //-----------------------------------------------------------------------------
@@ -41,10 +44,17 @@ hsfcRelationSchema::hsfcRelationSchema(hsfcLexicon* Lexicon){
 hsfcRelationSchema::~hsfcRelationSchema(void){
 
 	// Free the domains
-	for (unsigned int i = 0; i < this->Domain.size(); i++) {
-		this->Domain[i].clear();
+	for (unsigned int i = 0; i < this->vDomain.size(); i++) {
+		this->vDomain[i].clear();
 	}
-	this->Domain.clear();
+	this->vDomain.clear();
+	if (this->Domain != NULL) {
+		for (int i = 0; i < this->Arity; i++) {
+			delete[] this->Domain[i]->Entry;
+			delete this->Domain[i];
+		}
+		delete[] this->Domain;
+	}
 
 }
 
@@ -54,13 +64,21 @@ hsfcRelationSchema::~hsfcRelationSchema(void){
 void hsfcRelationSchema::Initialise(int PredicateIndex, int Arity){
 
 	// Free the domains
-	for (unsigned int i = 0; i < this->Domain.size(); i++) {
-		this->Domain[i].clear();
+	for (unsigned int i = 0; i < this->vDomain.size(); i++) {
+		this->vDomain[i].clear();
 	}
-	this->Domain.clear();
+	this->vDomain.clear();
+	if (this->Domain != NULL) {
+		for (int i = 0; i < this->Arity; i++) {
+			delete[] this->Domain[i]->Entry;
+			delete this->Domain[i];
+		}
+		delete[] this->Domain;
+	}
+	this->Domain = NULL;
 
 	// Allocate the memory
-	this->Domain.resize(Arity);
+	this->vDomain.resize(Arity);
 
 	// Set the properties
 	this->PredicateIndex = PredicateIndex;
@@ -85,9 +103,26 @@ void hsfcRelationSchema::FromRelationSchema(hsfcRelationSchema* Source){
 	this->Initialise(Source->PredicateIndex, Source->Arity);
 
 	// Copy the domains
-	for (unsigned int i = 0; i < Source->Domain.size(); i++) {
-		for (unsigned int j = 0; j < Source->Domain[i].size(); j++) {
-			this->Domain[i].push_back(Source->Domain[i][j]);
+	for (unsigned int i = 0; i < Source->vDomain.size(); i++) {
+		for (unsigned int j = 0; j < Source->vDomain[i].size(); j++) {
+			this->vDomain[i].push_back(Source->vDomain[i][j]);
+		}
+	}
+
+	// Create the domain arrays
+	if (Source->Domain != NULL) {
+		this->Domain = new hsfcDomain*[Source->Arity];
+		for (int i = 0; i < Source->Arity; i++) {
+			this->Domain[i] = new hsfcDomain();
+			this->Domain[i]->Entry = new hsfcDomainEntry[Source->Domain[i]->Size];
+			this->Domain[i]->Size = Source->Domain[i]->Size;
+			this->Domain[i]->Count = Source->Domain[i]->Count;
+			for (int j = 0; j < Source->Domain[i]->Size; j++) {
+				this->Domain[i]->Entry[j].Tuple.ID = Source->Domain[i]->Entry[j].Tuple.ID;
+				this->Domain[i]->Entry[j].Tuple.RelationIndex = Source->Domain[i]->Entry[j].Tuple.RelationIndex;
+				this->Domain[i]->Entry[j].Count = Source->Domain[i]->Entry[j].Count;
+				this->Domain[i]->Entry[j].Index = Source->Domain[i]->Entry[j].Index;
+			}
 		}
 	}
 
@@ -103,29 +138,6 @@ void hsfcRelationSchema::FromRelationSchema(hsfcRelationSchema* Source){
 
 }
 
-////-----------------------------------------------------------------------------
-//// AddToDomain
-////-----------------------------------------------------------------------------
-//bool hsfcRelationSchema::ExpandDomainCapacity(int DomainIndex, unsigned int Increase) {
-//
-//	// Have we already got the capacity
-//	if (this->Domain[DomainIndex].capacity() >= this->Domain[DomainIndex].size() + Increase) {
-//		return true;
-//	}
-//
-//	// Can we take the additional units
-//	if (this->Domain[DomainIndex].size() + Increase >= this->Domain[DomainIndex].max_size()) {
-//		return false;
-//	}
-//
-//	// Increase the capacity
-//	this->Domain[DomainIndex].reserve(this->Domain[DomainIndex].size() + Increase);
-//
-//	return true;
-//
-//}
-//
-//
 //-----------------------------------------------------------------------------
 // AddToDomain
 //-----------------------------------------------------------------------------
@@ -143,20 +155,20 @@ void hsfcRelationSchema::AddToDomain(int DomainIndex, hsfcDomainEntry* Entry) {
 	Compare = -1;
 	
 	// Is the domain empty
-	if (this->Domain[DomainIndex].size() > 0) {
+	if (this->vDomain[DomainIndex].size() > 0) {
 
-		UpperBound = this->Domain[DomainIndex].size() - 1;
+		UpperBound = this->vDomain[DomainIndex].size() - 1;
 
 		// Look for the term according to its value
 		while (LowerBound <= UpperBound) {
 			// Find the target value
 			Target = (LowerBound + UpperBound) / 2;
-			Compare = Entry->Tuple.RelationIndex - this->Domain[DomainIndex][Target].Tuple.RelationIndex;
+			Compare = Entry->Tuple.RelationIndex - this->vDomain[DomainIndex][Target].Tuple.RelationIndex;
 			if (Compare == 0) {
-				if (this->Domain[DomainIndex][Target].Tuple.ID == -1) {
+				if (this->vDomain[DomainIndex][Target].Tuple.ID == -1) {
 					Compare = 0;
 				} else {
-					Compare = Entry->Tuple.ID - this->Domain[DomainIndex][Target].Tuple.ID;
+					Compare = Entry->Tuple.ID - this->vDomain[DomainIndex][Target].Tuple.ID;
 				}
 			}
 			// Compare the values
@@ -173,10 +185,10 @@ void hsfcRelationSchema::AddToDomain(int DomainIndex, hsfcDomainEntry* Entry) {
 	if (Compare > 0) Target++;
 
 	// Add the new value to the domain before the Target
-	if (Target == this->Domain[DomainIndex].size()) {
-		this->Domain[DomainIndex].push_back(*Entry);
+	if (Target == this->vDomain[DomainIndex].size()) {
+		this->vDomain[DomainIndex].push_back(*Entry);
 	} else {
-		this->Domain[DomainIndex].insert(this->Domain[DomainIndex].begin() + Target, *Entry);
+		this->vDomain[DomainIndex].insert(this->vDomain[DomainIndex].begin() + Target, *Entry);
 	}
 
 }
@@ -193,7 +205,7 @@ void hsfcRelationSchema::AddToFactDomain(vector<hsfcDomainEntry>& Entry) {
 
 	// TermIndex(0) = Predicate Index
 	// Is there anything to add
-	if (Entry.size() != this->Domain.size() + 1) return; 
+	if (Entry.size() != this->vDomain.size() + 1) return; 
 
     // Binary search of all domains; adding any unfound values in sort order
 	Target = 0;
@@ -202,9 +214,9 @@ void hsfcRelationSchema::AddToFactDomain(vector<hsfcDomainEntry>& Entry) {
 	Compare = -1;
 	
 	// Is the domain empty
-	if (this->Domain[0].size() > 0) {
+	if (this->vDomain[0].size() > 0) {
 
-		UpperBound = this->Domain[0].size() - 1;
+		UpperBound = this->vDomain[0].size() - 1;
 
 		// Look for the term according to its value
 		while (LowerBound <= UpperBound) {
@@ -212,9 +224,9 @@ void hsfcRelationSchema::AddToFactDomain(vector<hsfcDomainEntry>& Entry) {
 			Target = (LowerBound + UpperBound) / 2;
 
 			// Check all of the domains for a match
-			for (unsigned int j = 0; j < this->Domain.size(); j++) {
-				Compare = Entry[j+1].Tuple.RelationIndex - this->Domain[j][Target].Tuple.RelationIndex;
-				if (Compare == 0) Compare = Entry[j+1].Tuple.ID - this->Domain[j][Target].Tuple.ID;
+			for (unsigned int j = 0; j < this->vDomain.size(); j++) {
+				Compare = Entry[j+1].Tuple.RelationIndex - this->vDomain[j][Target].Tuple.RelationIndex;
+				if (Compare == 0) Compare = Entry[j+1].Tuple.ID - this->vDomain[j][Target].Tuple.ID;
 				if (Compare != 0) break;
 			}
 
@@ -232,56 +244,71 @@ void hsfcRelationSchema::AddToFactDomain(vector<hsfcDomainEntry>& Entry) {
 	if (Compare > 0) Target++;
 
 	// Add the new value to the domain before the Target
-	if (Target == this->Domain[0].size()) {
-		for (unsigned int j = 0; j < this->Domain.size(); j++) {
-			this->Domain[j].push_back(Entry[j+1]);
+	if (Target == this->vDomain[0].size()) {
+		for (unsigned int j = 0; j < this->vDomain.size(); j++) {
+			this->vDomain[j].push_back(Entry[j+1]);
 		}
 	} else {
-		for (unsigned int j = 0; j < this->Domain.size(); j++) {
-			this->Domain[j].insert(this->Domain[j].begin() + Target, Entry[j+1]);
+		for (unsigned int j = 0; j < this->vDomain.size(); j++) {
+			this->vDomain[j].insert(this->vDomain[j].begin() + Target, Entry[j+1]);
 		}
 	}
 
 }
 
 //-----------------------------------------------------------------------------
-// IntersectBufferDomain
+// IndexDomains
 //-----------------------------------------------------------------------------
 void hsfcRelationSchema::IndexDomains() {
 
 	int Index;
-	double Size;
+	double Count;
+
+	// Convert the vectors to arrays for faster access
+	this->Domain = new hsfcDomain*[this->Arity];
+	for (int i = 0; i < this->Arity; i++) {
+		this->Domain[i] = new hsfcDomain();
+		this->Domain[i]->Size = this->vDomain[i].size();
+		this->Domain[i]->Entry = new hsfcDomainEntry[this->Domain[i]->Size];
+		for (unsigned int j = 0; j < this->vDomain[i].size(); j++) {
+			this->Domain[i]->Entry[j].Tuple.ID = this->vDomain[i][j].Tuple.ID;
+			this->Domain[i]->Entry[j].Tuple.RelationIndex = this->vDomain[i][j].Tuple.RelationIndex;
+			this->Domain[i]->Entry[j].Count = this->vDomain[i][j].Count;
+			this->Domain[i]->Entry[j].Index = this->vDomain[i][j].Index;
+		}
+		this->vDomain[i].clear();
+	}
+	this->vDomain.clear();
 
 	// Index each domain
-	this->DomainSize.clear();
 	this->HasComplexEntries = false;
-	for (unsigned int i = 0; i < this->Domain.size(); i++) {
+	for (int i = 0; i < this->Arity; i++) {
 		Index = 0;
-		for (unsigned int j = 0; j < this->Domain[i].size(); j++) {
-			this->Domain[i][j].Index = Index;
-			Index += this->Domain[i][j].Count;
-			if (this->Domain[i][j].Tuple.ID == -1) this->HasComplexEntries = true;
+		for (int j = 0; j < this->Domain[i]->Size; j++) {
+			this->Domain[i]->Entry[j].Index = Index;
+			Index += this->Domain[i]->Entry[j].Count;
+			if (this->Domain[i]->Entry[j].Tuple.ID == -1) this->HasComplexEntries = true;
 		}
-		this->DomainSize.push_back(Index);
+		this->Domain[i]->Count = Index;
 	}
 
 	// Caclulate the size of the relation
-	Size = 1;
+	Count = 1;
 	if (this->Fact == hsfcFactPermanent) {
 		// Calculate the number of TupleIDs
 		if (this->Arity > 0) {
-			Size = (double)this->DomainSize[0];
+			Count = (double)this->Domain[0]->Count;
 		}
 	} else {
 		// Calculate the number of TupleIDs
-		for (unsigned int i = 0; i < this->Domain.size(); i++) {
-			Size = Size * (double)this->DomainSize[i];
+		for (int i = 0; i < this->Arity; i++) {
+			Count = Count * (double)this->Domain[i]->Count;
 		}
 	}
 
 	// Set the size of the relation
-	this->IDCountDbl = Size;
-	if (Size > (double)INT_MAX) {
+	this->IDCountDbl = Count;
+	if (Count > (double)INT_MAX) {
 		this->IDCount = INT_MAX;
 	} else {
 		this->IDCount = (int)this->IDCountDbl;
@@ -313,7 +340,7 @@ void hsfcRelationSchema::IntersectBufferDomain(vector<hsfcTuple>& BufferDomain, 
 	}
 
     // Go through each term in the domain (may be unsorted if its a permanent fact)
-	for (unsigned int i = 0; i < this->Domain[DomainIndex].size(); i++) {
+	for (int i = 0; i < this->Domain[DomainIndex]->Size; i++) {
 	
 		// Binary search buffer domain; adding any unfound values in sort order
 		Target = 0;
@@ -325,12 +352,12 @@ void hsfcRelationSchema::IntersectBufferDomain(vector<hsfcTuple>& BufferDomain, 
 		while (LowerBound <= UpperBound) {
 			// Find the target value
 			Target = (LowerBound + UpperBound) / 2;
-			Compare = this->Domain[DomainIndex][i].Tuple.RelationIndex - BufferDomain[Target].RelationIndex;
+			Compare = this->Domain[DomainIndex]->Entry[i].Tuple.RelationIndex - BufferDomain[Target].RelationIndex;
 			if (Compare == 0) {
-				if (this->Domain[DomainIndex][i].Tuple.ID == -1) {
+				if (this->Domain[DomainIndex]->Entry[i].Tuple.ID == -1) {
 					Compare = 0;
 				} else {
-					Compare = this->Domain[DomainIndex][i].Tuple.ID - BufferDomain[Target].ID;
+					Compare = this->Domain[DomainIndex]->Entry[i].Tuple.ID - BufferDomain[Target].ID;
 				}
 			}
 			// Compare the values
@@ -366,13 +393,13 @@ void hsfcRelationSchema::AddToBufferDomain(vector<hsfcTuple>& BufferDomain, unsi
 	// Load the domain into the buffer domain, sorted
 
     // Go through each term in the domain (may be unsorted if its a permanent fact)
-	for (unsigned int i = 0; i < this->Domain[DomainIndex].size(); i++) {
+	for (int i = 0; i < this->Domain[DomainIndex]->Size; i++) {
 
 		// Get the domain entry
-		DomainEntry.Tuple.RelationIndex = this->Domain[DomainIndex][i].Tuple.RelationIndex;
-		BaseID = this->Domain[DomainIndex][i].Tuple.ID;
+		DomainEntry.Tuple.RelationIndex = this->Domain[DomainIndex]->Entry[i].Tuple.RelationIndex;
+		BaseID = this->Domain[DomainIndex]->Entry[i].Tuple.ID;
 		if (BaseID == -1) BaseID = 0;
-		DomainEntry.Count = this->Domain[DomainIndex][i].Count;
+		DomainEntry.Count = this->Domain[DomainIndex]->Entry[i].Count;
 
 		// This may be a list of entries
 		for (int j = 0; j < DomainEntry.Count; j++) {
@@ -440,18 +467,18 @@ int hsfcRelationSchema::ID(vector<hsfcTuple>& Term) {
 	Result = -1;
 
 	// Are there some terms
-	if (Term.size() < this->Domain.size() + 1) return Result;
+	if (Term.size() < this->Arity + 1) return Result;
 	
 	// Is it a permanent fact
 	if (this->Fact == hsfcFactPermanent) {
 
 		// Check the domains
-		for (Index = 0; Index < (int)this->Domain[0].size(); Index++) {
+		for (Index = 0; Index < (int)this->Domain[0]->Size; Index++) {
 			// Check that all terms match
 			AllMatch = true;
-			for (unsigned int i = 0; i < this->Domain.size(); i++) {
+			for (int i = 0; i < this->Arity; i++) {
 				// Is it a match
-				if ((Term[i+1].ID != this->Domain[i][Index].Tuple.ID) || (Term[i+1].RelationIndex != this->Domain[i][Index].Tuple.RelationIndex)) {
+				if ((Term[i+1].ID != this->Domain[i]->Entry[Index].Tuple.ID) || (Term[i+1].RelationIndex != this->Domain[i]->Entry[Index].Tuple.RelationIndex)) {
 					AllMatch = false;
 					break;
 				}
@@ -470,18 +497,18 @@ int hsfcRelationSchema::ID(vector<hsfcTuple>& Term) {
 		// Calculate the Relation ID
 		Result = 0;
 		Factor = 1;
-		for (unsigned int i = 0; i < this->Domain.size(); i++) {
+		for (int i = 0; i < this->Arity; i++) {
 			Index = -1;
 			// Look for the tuple in the domain entries
-			for (unsigned int j = 0; j < this->Domain[i].size(); j++) {
-				if (this->Domain[i][j].Tuple.ID == -1) {
-					if (this->Domain[i][j].Tuple.RelationIndex == Term[i+1].RelationIndex) {
-						Index = this->Domain[i][j].Index + Term[i+1].ID;
+			for (int j = 0; j < this->Domain[i]->Size; j++) {
+				if (this->Domain[i]->Entry[j].Tuple.ID == -1) {
+					if (this->Domain[i]->Entry[j].Tuple.RelationIndex == Term[i+1].RelationIndex) {
+						Index = this->Domain[i]->Entry[j].Index + Term[i+1].ID;
 						break;
 					}
 				} else {
-					if ((this->Domain[i][j].Tuple.ID == Term[i+1].ID) && (this->Domain[i][j].Tuple.RelationIndex == Term[i+1].RelationIndex)){
-						Index = this->Domain[i][j].Index;
+					if ((this->Domain[i]->Entry[j].Tuple.ID == Term[i+1].ID) && (this->Domain[i]->Entry[j].Tuple.RelationIndex == Term[i+1].RelationIndex)){
+						Index = this->Domain[i]->Entry[j].Index;
 						break;
 					}
 				}
@@ -491,7 +518,7 @@ int hsfcRelationSchema::ID(vector<hsfcTuple>& Term) {
 
 			// Calculate the ID
 			Result = Result + Factor * Index;
-			Factor = Factor * this->Domain[i].size();
+			Factor = Factor * this->Domain[i]->Size;
 		}
 
 		return Result;
@@ -501,7 +528,6 @@ int hsfcRelationSchema::ID(vector<hsfcTuple>& Term) {
 }
 
 //--- overload ----------------------------------------------------------------
-
 int hsfcRelationSchema::ID(hsfcRuleCompactTerm Term[], int Offset, int NumTerms) {
 
 	int Index;
@@ -514,18 +540,18 @@ int hsfcRelationSchema::ID(hsfcRuleCompactTerm Term[], int Offset, int NumTerms)
 	Result = -1;
 
 	// Are there some terms
-	if (NumTerms + Offset < (int)this->Domain.size() + 1) return Result;
+	if (NumTerms + Offset < (int)this->Arity + 1) return Result;
 	
 	// Is it a permanent fact
 	if (this->Fact == hsfcFactPermanent) {
 
 		// Check the domains
-		for (Index = 0; Index < (int)this->Domain[0].size(); Index++) {
+		for (Index = 0; Index < (int)this->Domain[0]->Size; Index++) {
 			// Check that all terms match
 			AllMatch = true;
-			for (unsigned int i = 0; i < this->Domain.size(); i++) {
+			for (int i = 0; i < this->Arity; i++) {
 				// Is it a match
-				if ((Term[Offset+i+1].Tuple.ID != this->Domain[i][Index].Tuple.ID) || (Term[Offset+i+1].Tuple.RelationIndex != this->Domain[i][Index].Tuple.RelationIndex)) {
+				if ((Term[Offset+i+1].Tuple.ID != this->Domain[i]->Entry[Index].Tuple.ID) || (Term[Offset+i+1].Tuple.RelationIndex != this->Domain[i]->Entry[Index].Tuple.RelationIndex)) {
 					AllMatch = false;
 					break;
 				}
@@ -544,17 +570,17 @@ int hsfcRelationSchema::ID(hsfcRuleCompactTerm Term[], int Offset, int NumTerms)
 		// Calculate the Relation ID
 		Result = 0;
 		Factor = 1;
-		for (unsigned int i = 0; i < this->Domain.size(); i++) {
+		for (int i = 0; i < this->Arity; i++) {
 			Index = -1;
-			for (unsigned int j = 0; j < this->Domain[i].size(); j++) {
-				if (this->Domain[i][j].Tuple.ID == -1) {
-					if (this->Domain[i][j].Tuple.RelationIndex == Term[Offset+i+1].Tuple.RelationIndex) {
-						Index = this->Domain[i][j].Index + Term[Offset+i+1].Tuple.ID;
+			for (int j = 0; j < this->Domain[i]->Size; j++) {
+				if (this->Domain[i]->Entry[j].Tuple.ID == -1) {
+					if (this->Domain[i]->Entry[j].Tuple.RelationIndex == Term[Offset+i+1].Tuple.RelationIndex) {
+						Index = this->Domain[i]->Entry[j].Index + Term[Offset+i+1].Tuple.ID;
 						break;
 					}
 				} else {
-					if ((this->Domain[i][j].Tuple.ID == Term[Offset+i+1].Tuple.ID) && (this->Domain[i][j].Tuple.RelationIndex == Term[Offset+i+1].Tuple.RelationIndex)){
-						Index = this->Domain[i][j].Index;
+					if ((this->Domain[i]->Entry[j].Tuple.ID == Term[Offset+i+1].Tuple.ID) && (this->Domain[i]->Entry[j].Tuple.RelationIndex == Term[Offset+i+1].Tuple.RelationIndex)){
+						Index = this->Domain[i]->Entry[j].Index;
 						break;
 					}
 				}
@@ -563,7 +589,7 @@ int hsfcRelationSchema::ID(hsfcRuleCompactTerm Term[], int Offset, int NumTerms)
 			if (Index == -1) return -1;
 			// Calculate the ID
 			Result = Result + Factor * Index;
-			Factor = Factor * this->Domain[i].size();
+			Factor = Factor * this->Domain[i]->Size;
 		}
 
 		return Result;
@@ -572,38 +598,9 @@ int hsfcRelationSchema::ID(hsfcRuleCompactTerm Term[], int Offset, int NumTerms)
 
 }
 
-////-----------------------------------------------------------------------------
-//// IDCount
-////-----------------------------------------------------------------------------
-//int hsfcRelationSchema::IDCount {
-//
-//	int Result;
-//
-//	Result = 1;
-//
-//	if (this->Fact == hsfcFactPermanent) {
-//
-//		// Calculate the number of TupleIDs
-//		if (this->Arity > 0) {
-//			Result = (int)this->Domain[0].size();
-//		}
-//
-//		return Result;
-//
-//	} else {
-//
-//		// Calculate the number of TupleIDs
-//		for (unsigned int i = 0; i < this->Domain.size(); i++) {
-//			Result = Result * this->DomainSize[i];
-//		}
-//
-//		return Result;
-//
-//	}
-//	
-//}
-//
-////--- overload -----------------------------------------------------------
+//-----------------------------------------------------------------------------
+// RelationSize
+//-----------------------------------------------------------------------------
 double hsfcRelationSchema::RelationSize() {
 
 	int Index;
@@ -615,7 +612,11 @@ double hsfcRelationSchema::RelationSize() {
 
 		// Calculate the number of TupleIDs
 		if (this->Arity > 0) {
-			Result = (double)this->Domain[0].size();
+			if (this->Domain == NULL) {
+				Result = (double)this->vDomain[0].size();
+			} else {
+				Result = (double)this->Domain[0]->Size;
+			}
 		}
 
 		return Result;
@@ -623,11 +624,17 @@ double hsfcRelationSchema::RelationSize() {
 	} else {
 
 		// Calculate the number of TupleIDs
-		for (unsigned int i = 0; i < this->Domain.size(); i++) {
+		for (int i = 0; i < this->Arity; i++) {
 
 			Index = 0;
-			for (unsigned int j = 0; j < this->Domain[i].size(); j++) {
-				Index += this->Domain[i][j].Count;
+			if (this->Domain == NULL) {
+				for (unsigned int j = 0; j < this->vDomain[i].size(); j++) {
+					Index += this->vDomain[i][j].Count;
+				}
+			} else {
+				for (int j = 0; j < this->Domain[i]->Size; j++) {
+					Index += this->Domain[i]->Entry[j].Count;
+				}
 			}
 			Result = Result * (double)Index;
 		}
@@ -658,7 +665,7 @@ void hsfcRelationSchema::Terms(int ID, vector<hsfcTuple>& Term) {
 	if (this->Fact == hsfcFactPermanent) {
 
 		for (int i = 0; i < this->Arity; i++) {
-			Term.push_back(this->Domain[i][ID].Tuple);
+			Term.push_back(this->Domain[i]->Entry[ID].Tuple);
 		}
 
 	} else {
@@ -669,30 +676,30 @@ void hsfcRelationSchema::Terms(int ID, vector<hsfcTuple>& Term) {
 			// Calculate the Argument Index
 			NewTerm.ID = -1;
 			for (int i = 0; i < this->Arity; i++) {
-				DomainIndex = ID % this->DomainSize[i];
-				for (unsigned int j = 0; j < this->Domain[i].size(); j++) {
-					if (DomainIndex < this->Domain[i][j].Index + this->Domain[i][j].Count) {
-						NewTerm.RelationIndex = this->Domain[i][j].Tuple.RelationIndex;
-						if (this->Domain[i][j].Tuple.ID == -1) {
-							NewTerm.ID = DomainIndex - this->Domain[i][j].Index;
+				DomainIndex = ID % this->Domain[i]->Count;
+				for (int j = 0; j < this->Domain[i]->Size; j++) {
+					if (DomainIndex < this->Domain[i]->Entry[j].Index + this->Domain[i]->Entry[j].Count) {
+						NewTerm.RelationIndex = this->Domain[i]->Entry[j].Tuple.RelationIndex;
+						if (this->Domain[i]->Entry[j].Tuple.ID == -1) {
+							NewTerm.ID = DomainIndex - this->Domain[i]->Entry[j].Index;
 						} else {
-							NewTerm.ID = this->Domain[i][j].Tuple.ID;
+							NewTerm.ID = this->Domain[i]->Entry[j].Tuple.ID;
 						}
 						break;
 					}
 				}
 				Term.push_back(NewTerm);
-				ID = ID / this->DomainSize[i];
+				ID = ID / this->Domain[i]->Count;
 			}
 
 		} else {
 
 			// Calculate the Argument Index
 			for (int i = 0; i < this->Arity; i++) {
-				DomainIndex = ID % this->DomainSize[i];
-				NewTerm.ID = this->Domain[i][DomainIndex].Tuple.ID;
+				DomainIndex = ID % this->Domain[i]->Count;
+				NewTerm.ID = this->Domain[i]->Entry[DomainIndex].Tuple.ID;
 				Term.push_back(NewTerm);
-				ID = ID / this->DomainSize[i];
+				ID = ID / this->Domain[i]->Count;
 			}
 
 		}
@@ -720,8 +727,8 @@ void hsfcRelationSchema::Terms(int ID, vector<hsfcRuleTerm>& Term) {
 	if (this->Fact == hsfcFactPermanent) {
 
 		for (int i = 0; i < this->Arity; i++) {
-			NewTerm.Tuple.RelationIndex = this->Domain[i][ID].Tuple.RelationIndex;
-			NewTerm.Tuple.ID = this->Domain[i][ID].Tuple.ID;
+			NewTerm.Tuple.RelationIndex = this->Domain[i]->Entry[ID].Tuple.RelationIndex;
+			NewTerm.Tuple.ID = this->Domain[i]->Entry[ID].Tuple.ID;
 			Term.push_back(NewTerm);
 		}
 
@@ -733,33 +740,71 @@ void hsfcRelationSchema::Terms(int ID, vector<hsfcRuleTerm>& Term) {
 			// Calculate the Argument Index
 			NewTerm.Tuple.ID = -1;
 			for (int i = 0; i < this->Arity; i++) {
-				DomainIndex = ID % this->DomainSize[i];
-				for (unsigned int j = 0; j < this->Domain[i].size(); j++) {
-					if (DomainIndex < this->Domain[i][j].Index + this->Domain[i][j].Count) {
-						NewTerm.Tuple.RelationIndex = this->Domain[i][j].Tuple.RelationIndex;
-						if (this->Domain[i][j].Tuple.ID == -1) {
-							NewTerm.Tuple.ID = DomainIndex - this->Domain[i][j].Index;
+				DomainIndex = ID % this->Domain[i]->Count;
+				for (int j = 0; j < this->Domain[i]->Size; j++) {
+					if (DomainIndex < this->Domain[i]->Entry[j].Index + this->Domain[i]->Entry[j].Count) {
+						NewTerm.Tuple.RelationIndex = this->Domain[i]->Entry[j].Tuple.RelationIndex;
+						if (this->Domain[i]->Entry[j].Tuple.ID == -1) {
+							NewTerm.Tuple.ID = DomainIndex - this->Domain[i]->Entry[j].Index;
 						} else {
-							NewTerm.Tuple.ID = this->Domain[i][j].Tuple.ID;
+							NewTerm.Tuple.ID = this->Domain[i]->Entry[j].Tuple.ID;
 						}
 						break;
 					}
 				}
 				Term.push_back(NewTerm);
-				ID = ID / this->DomainSize[i];
+				ID = ID / this->Domain[i]->Count;
 			}
 
 		} else {
 
 			// Calculate the Argument Index
 			for (int i = 0; i < this->Arity; i++) {
-				DomainIndex = ID % this->DomainSize[i];
-				NewTerm.Tuple.ID = this->Domain[i][DomainIndex].Tuple.ID;
+				DomainIndex = ID % this->Domain[i]->Count;
+				NewTerm.Tuple.ID = this->Domain[i]->Entry[DomainIndex].Tuple.ID;
 				Term.push_back(NewTerm);
-				ID = ID / this->DomainSize[i];
+				ID = ID / this->Domain[i]->Count;
 			}
 
 		}
+	}
+
+}
+
+//-----------------------------------------------------------------------------
+// GetDomainCount
+//-----------------------------------------------------------------------------
+int hsfcRelationSchema::GetDomainCount(int Index) {
+
+	return this->Domain[Index]->Count;
+
+}
+
+//-----------------------------------------------------------------------------
+// ListDomain
+//-----------------------------------------------------------------------------
+void hsfcRelationSchema::ListDomain(vector<string>& List) {
+
+	// Clear the vector
+	List.clear();
+
+	// Add in the entries
+	if (this->Domain == NULL) {
+
+		for (int i = 0; i < this->vDomain[0].size(); i++) {
+			if (this->vDomain[0][i].Tuple.ID == -1) {
+				List.push_back(this->Lexicon->Text(this->vDomain[0][i].Tuple.ID));
+			}
+		}
+
+	} else {
+
+		for (int i = 0; i < this->Domain[0]->Size; i++) {
+			if (this->Domain[0]->Entry->Tuple.RelationIndex == -1) {
+				List.push_back(this->Lexicon->Text(this->Domain[0]->Entry[i].Tuple.ID));
+			}
+		}
+
 	}
 
 }
@@ -771,19 +816,40 @@ void hsfcRelationSchema::PrintDomains() {
 
 	bool AllDone;
 
-	// Print the domains up to a limit
-	for (unsigned int n = 0; n < 32; n++) {
-		AllDone = true;
-		for (unsigned int i = 0; i < this->Domain.size(); i++) {
-			if (n < this->Domain[i].size()) {
-				printf("%2d.%d\t", this->Domain[i][n].Tuple.RelationIndex, this->Domain[i][n].Tuple.ID);
-				AllDone = false;
-			} else {
-				printf("\t");
+	if (this->Domain == NULL) {
+
+		// Print the domains up to a limit
+		for (unsigned int n = 0; n < 32; n++) {
+			AllDone = true;
+			for (int i = 0; i < this->Arity; i++) {
+				if (n < this->vDomain[i].size()) {
+					printf("%2d.%d %d %d\t", this->vDomain[i][n].Tuple.RelationIndex, this->vDomain[i][n].Tuple.ID, this->vDomain[i][n].Count, this->vDomain[i][n].Index);
+					AllDone = false;
+				} else {
+					printf("\t");
+				}
 			}
+			printf("\n");
+			if (AllDone) break;
 		}
-		printf("\n");
-		if (AllDone) break;
+
+	} else {
+
+		// Print the domains up to a limit
+		for (int n = 0; n < 32; n++) {
+			AllDone = true;
+			for (int i = 0; i < this->Arity; i++) {
+				if (n < this->Domain[i]->Size) {
+					printf("%2d.%d %d %d\t", this->Domain[i]->Entry[n].Tuple.RelationIndex, this->Domain[i]->Entry[n].Tuple.ID, this->Domain[i]->Entry[n].Count, this->Domain[i]->Entry[n].Index);
+					AllDone = false;
+				} else {
+					printf("\t");
+				}
+			}
+			printf("\n");
+			if (AllDone) break;
+		}
+
 	}
 
 }
@@ -907,6 +973,7 @@ void hsfcRuleRelationSchema::Create(vector<hsfcGDLTerm>& GDLTerm, vector<hsfcBuf
 		NewTemplate.Tuple.ID = GDLTerm[i].Tuple.ID;
 		NewTemplate.BufferIndex = -1;
 		NewTemplate.ArgumentIndex = -1;
+		NewTemplate.DomainSize = 1;
 		NewTemplate.Fixed = !this->Lexicon->IsVariable(GDLTerm[i].Tuple.ID);
 
 		// Add the new term
@@ -1449,8 +1516,8 @@ int hsfcRuleSchema::Optimise(bool OrderInputs) {
 	vector<int> Permutation;
 	vector<int> OrigInputNo;
 	vector<int> InputIndex;
-	double Score;
-	double BestScore;
+	double Cost;
+	double BestCost;
 	vector<int> BestInputIndex;
 	int Count;
 	int NextIndex;
@@ -1479,9 +1546,9 @@ int hsfcRuleSchema::Optimise(bool OrderInputs) {
 		}
 	}
 
-	// Find the best score and order the inputs accordingly
+	// Find the best Cost and order the inputs accordingly
 	Index = 0;
-	BestScore = 1e99;
+	BestCost = 1e99;
 	InputIndex.clear();
 	OrigInputNo.clear();
 	BestInputIndex.clear();
@@ -1515,18 +1582,18 @@ int hsfcRuleSchema::Optimise(bool OrderInputs) {
 		// There is a special type of rule that self references
 		if (this->SelfReferencing) {
 			if (this->Relation[InputIndex[0]]->PredicateIndex != this->Relation[0]->PredicateIndex) {
-				Score = 1e99;
+				Cost = 1e99;
 			} else {
-				Score = this->Score(InputIndex);
+				Cost = this->Cost(InputIndex);
 			}
 		} else {
-			Score = this->Score(InputIndex);
+			Cost = this->Cost(InputIndex);
 		}
 		Count++;
 
-		// Is this the best score so far
-		if (Score < BestScore) {
-			BestScore = Score;
+		// Is this the best Cost so far
+		if (Cost < BestCost) {
+			BestCost = Cost;
 			for (unsigned int i = 0; i < InputIndex.size(); i++) {
 				BestInputIndex[i] = InputIndex[i];
 			}
@@ -1576,8 +1643,8 @@ int hsfcRuleSchema::Optimise(bool OrderInputs) {
 	// OK; so now we know the best sequence, now sort the inputs accordingly
 	//printf("Best Sort Order\n");
 	//printf("\n");
-	printf("    %.0f\n", BestScore);
-	this->Score(BestInputIndex);
+	if (DEBUG) printf("    %.0f\n", BestCost);
+	this->Cost(BestInputIndex);
 	this->Sort();
 	//printf("\n");
 
@@ -1618,9 +1685,19 @@ void hsfcRuleSchema::Stratify() {
 		// Check the template for variables
 		NewVariable = false;
 		for (unsigned int j = 0; j < this->Relation[i]->Template.size(); j++) {
+
+			// Set up the size of the domain in the rule relation
+			// Fixed terms are size = 1
+			this->Relation[i]->Template[j].DomainSize = 1;
 			
 			// Only check the variables
 			if (!this->Relation[i]->Template[j].Fixed) {
+
+				// Get the size of the domain for this variable
+				RelationSchema = this->Relation[i]->Template[j].RelationSchema;
+				if (RelationSchema != NULL) {
+					this->Relation[i]->Template[j].DomainSize = RelationSchema->GetDomainCount(this->Relation[i]->Template[j].ArgumentIndex - 1);
+				}
 
 				// Is it a function (not (...)) or (distinct ... ...) with variables
 				if (((this->Relation[i]->Function & hsfcFunctionNot) == hsfcFunctionNot) || ((this->Relation[i]->Function & hsfcFunctionDistinct) == hsfcFunctionDistinct)) {
@@ -1635,7 +1712,6 @@ void hsfcRuleSchema::Stratify() {
 					this->Buffer[this->Relation[i]->Template[j].BufferIndex].ID = 1;
 					NewVariable = true;
 					// Construct the Buffer domain for this variable 
-					RelationSchema = this->Relation[i]->Template[j].RelationSchema;
 					if (RelationSchema != NULL) {
 						if (this->Relation[i]->Template[j].ArgumentIndex <= 0) {
 							printf("Error: Relation Argument Index wrong\n");
@@ -1645,7 +1721,6 @@ void hsfcRuleSchema::Stratify() {
 					}
 				} else {
 					// Construct the Buffer domain for this variable from the intersection
-					RelationSchema = this->Relation[i]->Template[j].RelationSchema;
 					if (RelationSchema != NULL) {
 						if (this->Relation[i]->Template[j].ArgumentIndex <= 0) {
 							printf("Error: Relation Argument Index wrong\n");
@@ -1713,38 +1788,51 @@ void hsfcRuleSchema::Print(){
 }
 
 //-----------------------------------------------------------------------------
-// Score
+// Cost
 //-----------------------------------------------------------------------------
-double hsfcRuleSchema::Score(vector<int>& InputIndex) {
+double hsfcRuleSchema::Cost(vector<int>& InputIndex) {
 
 	int BufferIndex;
 	double AveListLength;
-	unsigned int MaxListLength;
-	unsigned int VariableCount;
-	unsigned int NoUniqueIDs;
+	int MaxListLength;
+	int VariableCount;
+	int NoUniqueIDs;
+	int NoInputsRelations;
 	double ReferenceSize;
-	unsigned int NewDataSize;
-	double NoTransactions;
+	int NewDataSize;
+	int InputDataSize;
+	double NoIterations;
 	double NoInputCycles;
 	double Probability;
-	double Score;
+	double TotalCost;
 	bool NewVariableFound;
 	bool PartiallyGround;
 
 	// Calculate the size of each of the reference tables
-	// Calculate the number of cycles
+	// Calculate the number of iterations
+	// Calculate the total cost of executing this rule
+	/* Costs
+		Advance database cursor: Cost = 1
+		Read input relations: Cost = 1
+		Test condition relation exists: Cost = 1
+		Test condition relation in sorted list: Cost = log(n)
+		Subsumed rigid as a condition: Cost = 0
+		Subsumed distinct: Cost = 0
+		Preconditions: Cost = 0
+	*/
+
 	NoUniqueIDs = 1;
 	NoInputCycles = 1;
 	ReferenceSize = 0;
-	NoTransactions = 0;
+	NoIterations = 0;
 
-	// Consider the preconditions
+	// --- Preconditions ------------------------------------------------------
 	for (unsigned int i = 0; i < this->Relation.size(); i++) {
 		// Is it a precondition
 		if (this->Relation[i]->Type == hsfcRulePreCondition) {
 
 			// Calculate the database transactions
-			NoTransactions += NoInputCycles;
+			NoIterations += NoInputCycles;
 
 			if ((this->Relation[i]->Function & hsfcFunctionDistinct) == hsfcFunctionDistinct) {
 				Probability = 0.5;
@@ -1763,11 +1851,10 @@ double hsfcRuleSchema::Score(vector<int>& InputIndex) {
 
 			// Use the probability for sorting and cycle calculations
 			if ((Probability < 0) || (Probability > 1)) {
-				printf("Error: Bad probability %f\n", Probability);
+				printf("Error: Bad precondition probability %f\n", Probability);
 				abort();
 			}
 			this->Relation[i]->SortOrder = Probability;
-			NoInputCycles *= Probability;
 
 			// Calculate the reference size
 			this->Relation[i]->ReferenceSize = 1;
@@ -1775,25 +1862,36 @@ double hsfcRuleSchema::Score(vector<int>& InputIndex) {
 		}
 	}
 
-	// Make sure we don't have a silly estimate
-	if (NoInputCycles < 0.25) NoInputCycles = 0.25;
-		
+	// Ignore the cost and probaility of preconditions as it is fixed
+	NoUniqueIDs = 1;
+	NoInputCycles = 1;
+	ReferenceSize = 0;
+	NoIterations = 0;
+	NoInputsRelations = 0;
+	AveListLength = 1;
+	MaxListLength = 1;
+	TotalCost = 0;
+
 	// Reset the variable buffer
 	VariableCount = 0;
 	for (unsigned int i = 0; i < this->Buffer.size(); i++) {
 		this->Buffer[i].ID = 0;
 	}
 
-	// Process the inputs in the order for this permutation
+	// --- Inputs ------------------------------------------------------------
 	for (unsigned int i = 0; i < InputIndex.size(); i++) {
 		
 		// Calculate the size of the new data introduced by this input
 		NewDataSize = 1;
+		InputDataSize = 1;
 		NewVariableFound = false;
 		PartiallyGround = false;
+
+		// Inspect term in the input relation
 		for (unsigned int j = 0; j < this->Relation[InputIndex[i]]->Template.size(); j++) {
 			// Was this term a variable
 			if (!this->Relation[InputIndex[i]]->Template[j].Fixed) {
+				InputDataSize *= this->Relation[InputIndex[i]]->Template[j].DomainSize;
 				// Is it already in the buffer
 				BufferIndex = this->Relation[InputIndex[i]]->Template[j].BufferIndex; 
 				if (this->Buffer[BufferIndex].ID == 0) {
@@ -1801,20 +1899,11 @@ double hsfcRuleSchema::Score(vector<int>& InputIndex) {
 					this->Buffer[BufferIndex].ID = 1;
 					NewVariableFound = true;
 					// Find the size of the domain of the new variable
-					if (this->Relation[InputIndex[i]]->Template[0].RelationSchema->Fact == hsfcFactPermanent) {
-						if (this->Buffer[BufferIndex].Domain.size() > NewDataSize) {
-							NewDataSize = this->Buffer[BufferIndex].Domain.size();
-						}
-					} else {
-						NewDataSize *= this->Buffer[BufferIndex].Domain.size();
-					}
+					NewDataSize *= this->Buffer[BufferIndex].Domain.size();
 				} else {
 					PartiallyGround = true;
 				}
 			}
-		}
-		if (PartiallyGround && (this->Relation[InputIndex[i]]->Template[0].RelationSchema->Fact == hsfcFactPermanent)) {
-			NewDataSize = 1;
 		}
 
 		// Were all of the variables already present in the buffer
@@ -1829,39 +1918,49 @@ double hsfcRuleSchema::Score(vector<int>& InputIndex) {
 			this->Relation[InputIndex[i]]->SortOrder = 2.0 + i;
 
 			// Get the list information
+			NoInputsRelations++;
 			AveListLength = this->Relation[InputIndex[i]]->Template[0].RelationSchema->AveListLength;
 			MaxListLength = this->Relation[InputIndex[i]]->Template[0].RelationSchema->IDCount;
 
-			// Calculate the number of transactions
-			NoTransactions += NoInputCycles * AveListLength;
-
-			// Calculate the size of the reference table
+			// Calculate the size of the reference table from the previous number of unique IDs
 			this->Relation[InputIndex[i]]->ReferenceSize = NoUniqueIDs * MaxListLength;
 			ReferenceSize += (double)this->Relation[InputIndex[i]]->ReferenceSize;
 
 			// Calculate the number of unique combinations of variables
-			if (this->Relation[InputIndex[i]]->Template[0].RelationSchema->Fact == hsfcFactPermanent) {
-				// This is only an approximation
-				// Generally facts are of the form (succ 1 2) and so the multiplier is close to 1.0
-			} else {
-				NoUniqueIDs *= NewDataSize;
-			}
+			NoUniqueIDs *= NewDataSize;
 
 			// Calculate the probability of a pass
-			Probability = (double)NewDataSize / (double)MaxListLength;
+			Probability = (double)NewDataSize / (double)InputDataSize;
+			if (Probability > 1.0) Probability = 1.0;
+
+			// Keep a running total of the cost from reading the input
+			// Count the failed cycles
+			TotalCost += NoInputCycles * AveListLength * (1.0 - Probability) * NoInputsRelations; 
+			NoIterations += NoInputCycles * AveListLength;		
 
 			// Remember the pass rate for the next round
 			NoInputCycles *= Probability * AveListLength;
+
+			// At this point look for permanent facts or distinct that can be subsumed by this input
+
+
+
 		}
 	}
 
-	// Now consider the transactions resulting from the checking of conditions
+	// Keep a running total of the cost from reading the input
+	// Count the passed cycles
+	TotalCost += NoInputCycles * NoInputsRelations; 
+	// Tally the cost for managing the relation cursors
+	TotalCost += NoIterations;
+
+	// --- Conditions ---------------------------------------------------------
 	for (unsigned int i = 0; i < this->Relation.size(); i++) {
 		// Is it a condition
 		if (this->Relation[i]->Type == hsfcRuleCondition) {
 
-			// Calculate the database transactions
-			NoTransactions += NoInputCycles;
+			// Calculate the cost of checking this condition
+			TotalCost += NoInputCycles;
 			
 			if ((this->Relation[i]->Function & hsfcFunctionDistinct) == hsfcFunctionDistinct) {
 				Probability = 0.5;
@@ -1894,17 +1993,20 @@ double hsfcRuleSchema::Score(vector<int>& InputIndex) {
 
 	}
 
-	// Add in the reference used for the result
-	//printf("Result");
+	// --- Result ------------------------------------------------------------
 	this->Relation[0]->ReferenceSize = NoUniqueIDs;
 	ReferenceSize += (double)this->Relation[0]->ReferenceSize;
-	NoTransactions += NoInputCycles;
+	TotalCost += NoInputCycles;
 
-	// Score the results of the calculations
-	Score = NoTransactions + ReferenceSize / 100000; 
-	//printf("    %.0f\n", Score);
+	// Cost the results of the calculations
+	// 1 unit of Cost = 10 -> 100 clock cycles
+	// If the reference table stays in L3 cache there is no cost
+	if (ReferenceSize > 10000.0) {
+		TotalCost += (ReferenceSize - 10000.0) / 1000.0; 
+	}
+	//printf("    %.0f\n", Cost);
 
-	return Score;
+	return TotalCost;
 
 }
 
@@ -1919,7 +2021,7 @@ void hsfcRuleSchema::Sort() {
 	// Reorder the relations in the body
 	// Result
 	// Preconditions - ordered by probability (lowest first)
-	// Input - ordered by best score index
+	// Input - ordered by lowest cost index
 	// Condition - ordered by probability (lowest first)
 
 	// Process until the order no longer changes
@@ -2045,12 +2147,11 @@ bool hsfcSchema::Create(const char* FileName){
 	this->SetPermanentFacts();
 
 	// Index the domains
+	if (DEBUG) this->PrintRelations();
 	for (unsigned int i = 0; i < this->Relation.size(); i++) {
 		this->Relation[i]->IndexDomains();
 	}
-
-	// Create the (does ... ()) relation from the legal relation
-	//this->CreateDoes();
+	if (DEBUG) this->PrintRelations();
 
 	// Sort the rules to a just in time order
 	this->Stratify();
@@ -2060,6 +2161,19 @@ bool hsfcSchema::Create(const char* FileName){
 	this->SetNextRelations();
 
 	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// GetRoles
+//-----------------------------------------------------------------------------
+void hsfcSchema::GetRoles(vector<string>& Role) {
+
+	hsfcRelationSchema* RelationSchema;
+
+	// Get the role relation
+	RelationSchema = this->RelationSchema(this->Lexicon->Index("role|1"), 1);
+	RelationSchema->ListDomain(Role);
 
 }
 
@@ -2338,9 +2452,9 @@ bool hsfcSchema::ReadRules(char* RuleScript){
 	this->CreateSCL();
 
 	// Print
-	this->Lexicon->Print();
+	if (DEBUG) this->Lexicon->Print();
 	//this->GDL->Print("GDL");
-	this->SCL->Print("SCL");
+	if (DEBUG) this->SCL->Print("SCL");
 
 	//-------------------------------------------------------------------------
 	// Create the Schema
@@ -2390,26 +2504,6 @@ bool hsfcSchema::ReadRules(char* RuleScript){
 		}
 	}
 
-	//// We must be able to read any embedded relations before reading the parent fact
-	//// eg. (fact 1 (embeddedfact 2) 3) ==> (fact 1 (embeddedfact 2) 3) & (embeddedfact 2)
-	//for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
-	//	// Is it a permanent fact
-	//	RelationSchema = this->RelationSchema(this->SCL->Relation[i]->PredicateIndex());
-	//	if (RelationSchema->Fact == hsfcFactPermanent) {
-	//		// Look for embedded relations
-	//		for (unsigned int j = 1; j < this->SCL->Relation[i]->Atom.size(); j++) {
-	//			if (this->SCL->Relation[i]->Atom[j]->Relation != NULL) {
-	//				NewRelation = new hsfcGDLRelation(this->Lexicon);
-	//				NewRelation->FromGDLRelation(this->SCL->Relation[i]->Atom[j]->Relation);
-	//				// Add the new relation to the end
-	//				// Important:	if it has embedded relations they will be found when it is processed
-	//				//				this makes this process recursive
-	//				this->SCL->Relation.push_back(NewRelation);
-	//			}
-	//		}
-	//	}
-	//}
-
 	return true;
 
 }
@@ -2449,7 +2543,7 @@ bool hsfcSchema::ReadDomains(char* PathScript){
 	// (arg true 0 predicate index value)) ==> (predicate index value)
 	// (arg next 0 predicate index value)) ==> (next>predicate predicate index value)
 
-	printf("\n--- Domains -------------------------------------------------\n");
+	if (DEBUG) printf("\n--- Domains -------------------------------------------------\n");
 
 	// We do this in two passes
 	// 1st pass - Identify all of the relations by predicate / arity
@@ -2721,7 +2815,7 @@ NextEntry:
 
 	// Make sure we have all of the relations in the Schema
 	for (unsigned int i = 0; i < RelationDetail.size(); i++) {
-		printf("Found %s / %d\n", this->Lexicon->Text(RelationDetail[i].PredicateIndex), RelationDetail[i].Arity);
+		if (DEBUG) printf("Found %s / %d\n", this->Lexicon->Text(RelationDetail[i].PredicateIndex), RelationDetail[i].Arity);
 		this->RelationSchema(RelationDetail[i].PredicateIndex, RelationDetail[i].Arity);
 	}
 
@@ -2818,7 +2912,7 @@ NextEntry:
 			if (RelationSchema != NULL) {
 				if (RelationSchema->Fact == hsfcFactPermanent) {
 					
-					printf("Processing %s    Permanent Fact\n", DomainEntryList[i]);
+					if (DEBUG) printf("Processing %s    Permanent Fact\n", DomainEntryList[i]);
 					// Clear the entry
 					DomainEntryList.erase(DomainEntryList.begin() + i);
 					i--;
@@ -2830,13 +2924,13 @@ NextEntry:
 					NestedRelation = this->RelationSchemaByName(this->Lexicon->Index(&Colon[1]));
 					if (NestedRelation == NULL) {
 						// Clear the entry
-						printf("Processing %s *** not found\n", DomainEntryList[i]);
+						if (DEBUG) printf("Processing %s *** not found\n", DomainEntryList[i]);
 						DomainEntryList.erase(DomainEntryList.begin() + i);
 						i--;
 					} else {
 						if (NestedRelation->DomainIsComplete) {
 							// Add the entry
-							printf("Processing %s = %d items\n", DomainEntryList[i], (int)NestedRelation->RelationSize());
+							if (DEBUG) printf("Processing %s = %d items\n", DomainEntryList[i], (int)NestedRelation->RelationSize());
 							Reference.Tuple.RelationIndex = NestedRelation->Index;
 							Reference.Tuple.ID = -1;
 							Reference.Count = (int)NestedRelation->RelationSize();
@@ -2852,42 +2946,9 @@ NextEntry:
 		}
 	}
 
-	//// Process the next rules using the PassThrough feature
-	//for (unsigned int i = 0; i < this->Relation.size(); i++) {
-	//	if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, "next>")) {
-	//		NestedRelation = this->RelationSchema(this->Lexicon->Index(&(this->Lexicon->Text(this->Relation[i]->PredicateIndex)[5])));
-	//		this->Relation[i]->PassThroughDomain = NestedRelation;
-	//		printf("Passthrough %s ==> %s\n", this->Lexicon->Text(this->Relation[i]->PredicateIndex), this->Lexicon->Text(NestedRelation->PredicateIndex));
-	//	}
-	//}
-
 	return true;
 
 }
-
-////-----------------------------------------------------------------------------
-//// CreateDoes
-////-----------------------------------------------------------------------------
-//void hsfcSchema::CreateDoes(){
-//
-//	hsfcRelationSchema* Legal;
-//	hsfcRelationSchema* Does;
-//	hsfcTuple Term;
-//
-//	//  Create the relation for (does ... ())
-//	Does = this->RelationSchema(this->Lexicon->Index("does|2"), 2);
-//
-//	// Copy all of the domain values from (legal ... ())
-//	Legal = this->RelationSchema(this->Lexicon->Index("legal|2"));
-//	for (unsigned int i = 0; i < Legal->Domain.size(); i++) {
-//		for (unsigned int j = 0; j < Legal->Domain[i].size(); j++) {
-//			Term.RelationIndex = Legal->Domain[i][j].RelationIndex;
-//			Term.ID = Legal->Domain[i][j].ID;
-//			Does->AddToDomain(i, &Term);
-//		}
-//	}
-//
-//}
 
 //-----------------------------------------------------------------------------
 // CreateSCL
@@ -3218,7 +3279,7 @@ void hsfcSchema::SetInitialRelations() {
 	// Now create the reference lists for initialising the state
 	// Read each of the relations in the SCL
 
-	printf("\n--- Initial Relations ---------------------------------------------\n");
+	if (DEBUG) printf("\n--- Initial Relations ---------------------------------------------\n");
 
 	this->Fact.clear();
 	this->Initial.clear();
@@ -3250,8 +3311,8 @@ void hsfcSchema::SetInitialRelations() {
 			NewReference.RelationIndex = Reference[1].RelationIndex;
 			NewReference.ID = Reference[1].ID;
 			this->Initial.push_back(NewReference);
-			printf("%6d.%d   Initial   ", NewReference.RelationIndex, NewReference.ID);
-			this->PrintRelation(&NewReference, true);
+			if (DEBUG) printf("%6d.%d   Initial   ", NewReference.RelationIndex, NewReference.ID);
+			if (DEBUG) this->PrintRelation(&NewReference, true);
 
 		} else {
 
@@ -3265,8 +3326,8 @@ void hsfcSchema::SetInitialRelations() {
 					abort();
 				}
 				this->Fact.push_back(NewReference);
-				printf("%6d.%d   Fact      ", NewReference.RelationIndex, NewReference.ID);
-				this->PrintRelation(&NewReference, true);
+				if (DEBUG) printf("%6d.%d   Fact      ", NewReference.RelationIndex, NewReference.ID);
+				if (DEBUG) this->PrintRelation(&NewReference, true);
 			}
 		}
 	}
@@ -3327,7 +3388,7 @@ void hsfcSchema::SetNextRelations() {
 
 			// Get the index of the state relation; eg (next>cell ... ...) we want (cell ... ...)
 			strcpy(Predicate, this->Lexicon->Text(this->Relation[i]->PredicateIndex));
-			for (int j = 0; j < strlen(Predicate); j++) {
+			for (unsigned int j = 0; j < strlen(Predicate); j++) {
 				if (Predicate[j] == '|') Predicate[j] = 0;
 			}
 			PredicateIndex = this->Lexicon->Index(&Predicate[5]);
@@ -3579,7 +3640,7 @@ void hsfcSchema::NestTerms(vector<hsfcGDLTerm>& Term, int RelationOffset, int Pr
 	Relation = this->RelationSchema(Term[RelationOffset].PredicateIndex);
 
 	// Are there enough terms
-	if (RelationOffset + Relation->Arity > Term.size()) {
+	if ((RelationOffset + Relation->Arity) > (int)Term.size()) {
 		printf("Error: Too few terms\n");
 		return;
 	}
@@ -3592,7 +3653,7 @@ void hsfcSchema::NestTerms(vector<hsfcGDLTerm>& Term, int RelationOffset, int Pr
 			NestedRelation = this->RelationSchema(Term[i].PredicateIndex);
 			this->NestTerms(Term, i, Term[RelationOffset].PredicateIndex);
 			// The size of the array has changed; are there enough terms
-			if (RelationOffset + Relation->Arity > Term.size()) {
+			if ((RelationOffset + Relation->Arity) > (int)Term.size()) {
 				printf("Error: Too few terms\n");
 				return;
 			}

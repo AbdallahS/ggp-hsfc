@@ -26,11 +26,13 @@ int main(int argc, char* argv[]) {
 	string* GDLFileName;
 	hsfcState* PlayOutGame;
 	hsfcState* SearchNode;
+	hsfcState* GameFromText;
 	vector<hsfcLegalMove> LegalMove;
 	vector<hsfcLegalMove> DoesMove;
 	vector<int> GoalValue;
 	vector<int> SumGoalValue;
 	int ReturnCode;
+	vector<string> Role;
 
 	// Create the GDLManager
 	GDLManager = new hsfcGDLManager();
@@ -62,6 +64,12 @@ int main(int argc, char* argv[]) {
 		cout << "GDLManager initialisation failed: Code = " << ReturnCode << endl;
 		delete GDLManager;
 		return 0;
+	}
+
+	// Print a list of roles and their endecies
+	GDLManager->GetRoles(Role);
+	for (unsigned int i = 0; i < Role.size(); i++) {
+		cout << i << "\t" << Role[i].c_str() << endl;
 	}
 
 	// In this example we have two game states
@@ -106,10 +114,14 @@ int main(int argc, char* argv[]) {
 	DoesMove.clear();
 
 	// Choose the first legal move for each role
+	cout << endl << "Selected Moves" << endl;
 	for (int RoleIndex = 0; RoleIndex < GDLManager->NumRoles; RoleIndex++) {
 		for (unsigned int i = 0; i < LegalMove.size(); i++) {
 			if (LegalMove[i].RoleIndex == RoleIndex) {
+				// Load the move
 				DoesMove.push_back(LegalMove[i]);
+				// Print the move in KIF
+				printf("%s\n", GDLManager->RelationAsKIF(LegalMove[i].Tuple));
 				break;
 			}
 		}
@@ -117,6 +129,28 @@ int main(int argc, char* argv[]) {
 
 	// Do the moves and advance the search node to the next round
 	GDLManager->DoMove(SearchNode, DoesMove);
+
+	// Convert the game state to text in the form of relations "#.#"
+	char* Text = GDLManager->GameStateAsText(SearchNode);
+	cout << endl << "State as Text" << endl;
+	cout << Text << endl;
+
+	// Create an empty database to receive the text
+	ReturnCode = GDLManager->CreateGameState(&GameFromText);
+	if (ReturnCode > 0) {
+		cout << "GDLManager failed to create an empty game state: Code = " << ReturnCode << endl;
+		delete GDLManager;
+		return 0;
+	}
+
+	// Copy the text into the empty game
+	cout << endl << "State from Text" << endl;
+	if (GDLManager->GameStateFromText(GameFromText, Text)) {
+		cout << "Success" << endl;
+	} else {
+		cout << "Failure" << endl;
+	}
+	GDLManager->PrintState(GameFromText);
 
 	// Check to see if the game is terminal at this point
 	if (GDLManager->IsTerminal(SearchNode)) {
@@ -140,6 +174,7 @@ int main(int argc, char* argv[]) {
 	for (int i = 0; i < GDLManager->NumRoles; i++) cout << "Role" << i << ": " << SumGoalValue[i] / 10 << endl;
 
 	// Clean up the objects
+	GDLManager->FreeGameState(GameFromText);
 	GDLManager->FreeGameState(PlayOutGame);
 	GDLManager->FreeGameState(SearchNode);
 	delete GDLFileName;

@@ -88,7 +88,7 @@ bool hsfcEngine::Create(const char* FileName, hsfcGDLParamaters& Paramaters) {
 	this->TimeReadGDL = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
 	if (!CreatedGDL) return false;
 
-	this->Grinder->Print();
+	if (DEBUG) this->Grinder->Print();
 
 	// Calculate the state size
 	if (!this->StateManager->CalculateStateSize()) Paramaters.ReadGDLOnly = true;

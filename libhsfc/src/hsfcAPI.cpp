@@ -198,7 +198,7 @@ void hsfcGDLManager::GetLegalMoves(hsfcState* GameState, vector<hsfcLegalMove>& 
 //-----------------------------------------------------------------------------
 // DoMove
 //-----------------------------------------------------------------------------
-void hsfcGDLManager::DoMove(hsfcState* GameState, vector<hsfcLegalMove>& LegalMove) {
+void hsfcGDLManager::DoMove(hsfcState* GameState, vector<hsfcLegalMove>& DoesMove) {
 
 	try {
 
@@ -206,8 +206,8 @@ void hsfcGDLManager::DoMove(hsfcState* GameState, vector<hsfcLegalMove>& LegalMo
 		if (GameState->CurrentStep != 2) return;
 
 		// Place the legal move tuples in the database
-		for (unsigned int i = 0; i < LegalMove.size(); i++) {
-			this->StateManager->AddRelation(GameState, &(LegalMove[i].Tuple));
+		for (unsigned int i = 0; i < DoesMove.size(); i++) {
+			this->StateManager->AddRelation(GameState, &(DoesMove[i].Tuple));
 		}
 
 		// Advance the state to calculate the next tuples
@@ -321,6 +321,107 @@ void hsfcGDLManager::PlayOut(hsfcState* GameState, vector<int>& GoalValue) {
 	catch (int e) {
 
 		cout << "PlayOut::Exception: " << e << endl;
+
+	}
+
+}
+
+//-----------------------------------------------------------------------------
+// GetRoles
+//-----------------------------------------------------------------------------
+void hsfcGDLManager::GetRoles(vector<string>& Role) {
+
+	try {
+
+		// Add in each of the roles 
+		this->StateManager->Schema->GetRoles(Role);
+
+	}
+	catch (int e) {
+
+		cout << "GetRoles::Exception: " << e << endl;
+
+	}
+
+}
+
+//-----------------------------------------------------------------------------
+// RelationAsKIF
+//-----------------------------------------------------------------------------
+char* hsfcGDLManager::RelationAsKIF(hsfcTuple& Tuple) {
+
+	kpWFT KIF;
+	char Text[256];
+	char* Empty;
+
+	try {
+
+		// Create an empty string
+		Empty = new char[1];
+		Empty[0] = 0;
+
+		// Convert relation to text
+		// This call has a max string length of 250
+		this->StateManager->Schema->RelationAsText(&Tuple, Text);
+
+		// Initialise the KIF 
+		KIF.Initialise("");
+		KIF.LoadFlat(Text);
+
+		// Return the KIF
+		return KIF.AsText();
+
+	}
+	catch (int e) {
+
+		cout << "RelationAsKIF::Exception: " << e << endl;
+		return Empty;
+
+	}
+
+}
+
+//-----------------------------------------------------------------------------
+// GameStateAsText
+//-----------------------------------------------------------------------------
+char* hsfcGDLManager::GameStateAsText(hsfcState* GameState) {
+
+	char* Empty;
+
+	try {
+
+		// Create an empty string
+		Empty = new char[1];
+		Empty[0] = 0;
+
+		// Convert the state to text
+		return this->StateManager->StateAsText(GameState);
+
+	}
+	catch (int e) {
+
+		cout << "GameStateAsText::Exception: " << e << endl;
+		return Empty;
+
+	}
+
+}
+
+//-----------------------------------------------------------------------------
+// GameStateFromText
+//-----------------------------------------------------------------------------
+bool hsfcGDLManager::GameStateFromText(hsfcState* GameState, char* Text) {
+
+	try {
+
+		// Convert the text to a state
+		return this->StateManager->StateFromText(GameState, Text);
+
+	}
+	catch (int e) {
+
+		cout << "GameStateFromText::Exception: " << e << endl;
+		return false;
 
 	}
 

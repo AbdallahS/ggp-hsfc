@@ -504,7 +504,7 @@ void hsfcRule::Grind() {
 			this->PreConditionLookup[PreConditionIndex][0] = ID;
 			//printf("    %5d: %5d\n", 0, ID);
 
-			printf("    PreCondition %d   Size = 1   Unique = 1\n", PreConditionIndex);
+			if (DEBUG) printf("    PreCondition %d   Size = 1   Unique = 1\n", PreConditionIndex);
 			PreConditionIndex++;
 
 		}
@@ -523,7 +523,7 @@ void hsfcRule::Grind() {
 		// Get the result
 		this->ResultLookup[0] = this->CheckResult();
 		//printf("    %5d: %5d\n", 0, this->ResultLookup[0]);
-		printf("    Result   Size = %d   Count = %d\n", this->ResultRelation->ReferenceSize, 1);
+		if (DEBUG) printf("    Result   Size = %d   Count = %d\n", this->ResultRelation->ReferenceSize, 1);
 
 		return;
 
@@ -612,7 +612,7 @@ void hsfcRule::Grind() {
 		// Print the reference table
 		//for (int i = 0; i < this->InputRelation[InputIndex]->ReferenceSize; i++) 
 			//printf("    %5d: %5d\n", i, this->InputLookup[InputIndex][i]);
-		printf("    Input %d   Size = %d   Unique = %d\n", InputIndex, this->InputRelation[InputIndex]->ReferenceSize, this->MaxInputLookup[InputIndex] + 1);
+		if (DEBUG) printf("    Input %d   Size = %d   Unique = %d\n", InputIndex, this->InputRelation[InputIndex]->ReferenceSize, this->MaxInputLookup[InputIndex] + 1);
 
 	}
 
@@ -733,14 +733,14 @@ void hsfcRule::Grind() {
 			if (this->ConditionLookup[i][j] >= 0) Count++;
 			//printf("    %5d: %5d\n", j, this->ConditionLookup[i][j]);
 		}
-		printf("    Condition %d   Size = %d   Count = %d\n", i, this->ConditionRelation[i]->ReferenceSize, Count);
+		if (DEBUG) printf("    Condition %d   Size = %d   Count = %d\n", i, this->ConditionRelation[i]->ReferenceSize, Count);
 	}
 	Count = 0;
 	for (int j = 0; j < this->ResultRelation->ReferenceSize; j++) {
 		if (this->ResultLookup[j] >= 0) Count++;
 		//printf("    %5d: %5d\n", j, this->ResultLookup[j]);
 	}
-	printf("    Result   Size = %d   Count = %d\n", this->ResultRelation->ReferenceSize, Count);
+	if (DEBUG) printf("    Result   Size = %d   Count = %d\n", this->ResultRelation->ReferenceSize, Count);
 
 	// Cleanup
 	delete[] NextLookupValue;
@@ -1788,12 +1788,12 @@ void hsfcGrinderEngine::OptimiseRules(bool OrderRules) {
 	// This must be done in the Schema as there is a direct correlation 
 	// between the Schema and the Engine in terms of rule relation ordering
 
-	printf("\n--- Ordering Inputs ---------------------------------------\n");
+	if (DEBUG) printf("\n--- Ordering Inputs ---------------------------------------\n");
 
 	// Optimise each rule in the Schema
 	this->RulePermutations = 0;
 	for (unsigned int i = 0; i < this->Schema->Rule.size(); i++) {
-		printf("Rule %d\n", i);
+		if (DEBUG) printf("Rule %d\n", i);
 		this->RulePermutations += this->Schema->Rule[i]->Optimise(OrderRules);
 	}
 
@@ -1809,19 +1809,19 @@ void hsfcGrinderEngine::OptimiseRules(bool OrderRules) {
 		}
 	}
 
-	printf("\n--- Recreating Engine -------------------------------------\n");
+	if (DEBUG) printf("\n--- Recreating Engine -------------------------------------\n");
 
-	this->Schema->Print();
+	if (DEBUG) this->Schema->Print();
 
-	printf("\n--- Rules -------------------------------------\n");
+	if (DEBUG) printf("\n--- Rules -------------------------------------\n");
 	// Copy the optimised rules
 	for (unsigned int i = 0; i < this->Rule.size(); i++) {
 		
 		// Reset the rule from the Schema and add it to the collection
 		this->Rule[i]->FromSchema(this->Schema->Rule[i], false);
 		this->Rule[i]->SetSpeed(this->MaxRefernceSize, this->StateManager->MaxRelationSize);
-		printf("Rule %d", i);
-		this->Rule[i]->Print();
+		if (DEBUG) printf("Rule %d", i);
+		if (DEBUG) this->Rule[i]->Print();
 
 	}
 
@@ -1832,13 +1832,13 @@ void hsfcGrinderEngine::OptimiseRules(bool OrderRules) {
 //-----------------------------------------------------------------------------
 void hsfcGrinderEngine::GrindRules() {
 
-	printf("\n--- Grinding ----------------------------------------------\n");
+	if (DEBUG) printf("\n--- Grinding ----------------------------------------------\n");
 
 	// Grind each rule
 	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-		printf("Rule %d\n", i);
+		if (DEBUG) printf("Rule %d\n", i);
 		if (this->Rule[i]->LowSpeed) {
-			printf("    LowSpeedExecution = NoReferenceTables\n");
+			if (DEBUG) printf("    LowSpeedExecution = NoReferenceTables\n");
 		} else {
 			this->Rule[i]->Grind();
 		}
@@ -1987,40 +1987,38 @@ void hsfcGrinderEngine::ChooseRandomMoves(hsfcState* State) {
 
 }
 
-//-----------------------------------------------------------------------------
-// GoalValue
-//-----------------------------------------------------------------------------
-int hsfcGrinderEngine::GoalValue(hsfcState* State, int RoleIndex){
-
-	int Result;
-	int TermIndex;
-	int DomainIndex;
-	int Value;
-	int RelationID;
-	int RelationRoleIndex;
-
-	Result = 0;
-
-	// Assumes the states is at Step 1 or greater
-	// Execute the goal rules
-	this->ProcessRules(State, 5);
-
-	// Go through the Goal relations
-	for (int i = 0; i < State->NumRelations[this->StateManager->GoalRelationIndex]; i++) {
-		RelationID = State->RelationID[this->StateManager->GoalRelationIndex][i];
-		RelationRoleIndex = RelationID % State->NumRelations[this->StateManager->RoleRelationIndex];
-		// Is this the right role
-		if (RelationRoleIndex == RoleIndex) {
-			DomainIndex = RelationID / State->NumRelations[this->StateManager->RoleRelationIndex];
-			TermIndex = this->Schema->Relation[this->StateManager->GoalRelationIndex]->Domain[1][DomainIndex].Tuple.ID;
-			Value = atoi(this->Lexicon->Text(TermIndex));
-			if (Value > Result) Result = Value;
-		}
-	}
-
-	return Result;
-
-}
+////-----------------------------------------------------------------------------
+//// GoalValue
+////-----------------------------------------------------------------------------
+//int hsfcGrinderEngine::GoalValue(hsfcState* State, int RoleIndex){
+//
+//	int Result;
+//	int Value;
+//	int RelationID;
+//	int RelationRoleIndex;
+//	vector<hsfcTuple> Term;
+//
+//	Result = 0;
+//
+//	// Assumes the states is at Step 1 or greater
+//	// Execute the goal rules
+//	this->ProcessRules(State, 5);
+//
+//	// Go through the Goal relations
+//	for (int i = 0; i < State->NumRelations[this->StateManager->GoalRelationIndex]; i++) {
+//		RelationID = State->RelationID[this->StateManager->GoalRelationIndex][i];
+//		RelationRoleIndex = RelationID % State->NumRelations[this->StateManager->RoleRelationIndex];
+//		// Is this the right role
+//		if (RelationRoleIndex == RoleIndex) {
+//			this->Schema->Relation[this->StateManager->GoalRelationIndex]->Terms(RelationID, Term);
+//			Value = atoi(this->Lexicon->Text(Term[1].ID));
+//			if (Value > Result) Result = Value;
+//		}
+//	}
+//
+//	return Result;
+//
+//}
 
 //-----------------------------------------------------------------------------
 // ResetStatistics
@@ -2151,7 +2149,7 @@ void hsfcGrinder::Optimise() {
 	hsfcState* State;
 	clock_t Start;
 
-	printf("\n--- Optimising --------------------------------------------\n");
+	if (DEBUG) printf("\n--- Optimising --------------------------------------------\n");
 
 	// Create a State to use for optimisation
 	State = this->StateManager->CreateState();
@@ -2166,23 +2164,28 @@ void hsfcGrinder::Optimise() {
 	Start = clock();
 	for (int i = 0; i < 1000; i++) {
 
-		printf(".");
+		if (DEBUG) printf(".");
 
 		// Set the initial state
 		this->StateManager->SetInitialState(State);
+//this->StateManager->PrintRelations(State, true);
 
 		// Advance to get legal movea and check terminal
 		this->Engine->AdvanceState(State, 2);
+//this->StateManager->PrintRelations(State, true);
 
 		// Play the game
 		while (true) {
 
 			// Choose moves randomly
 			this->Engine->ChooseRandomMoves(State);
+//this->StateManager->PrintRelations(State, true);
 
 			// Advance to the end of the rules processing everything
 			this->Engine->AdvanceState(State, 4);
+//this->StateManager->PrintRelations(State, true);
 			this->Engine->ProcessRules(State, 5);
+//this->StateManager->PrintRelations(State, true);
 
 			// Collect the statistics
 			this->Engine->CollectStatistics(State);
@@ -2213,8 +2216,8 @@ void hsfcGrinder::Optimise() {
 
 	}
 
-	printf("\n");
-	this->Engine->PrintStatistics();
+	if (DEBUG) printf("\n");
+	if (DEBUG) this->Engine->PrintStatistics();
 
 }
 

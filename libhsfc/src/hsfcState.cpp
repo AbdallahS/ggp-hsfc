@@ -612,6 +612,86 @@ void hsfcStateManager::CompareStates(hsfcState* State1, hsfcState* State2) {
 }
 
 //-----------------------------------------------------------------------------
+// StateAsText
+//-----------------------------------------------------------------------------
+char* hsfcStateManager::StateAsText(hsfcState* State) {
+
+	char* Text;
+	int Length;
+	char TupleText[24];
+
+	// Start with the round and the step
+	Length = sprintf(TupleText, "%d %d ", State->Round, State->CurrentStep);
+
+	// Go through all of the relations and convert to tuples; except the facts
+	// Calculate the size of the sting first
+	for (int i = 0; i < this->NumRelationLists; i++) {
+		if (this->Schema->Relation[i]->Fact != hsfcFactPermanent) {
+			for (int j = 0; j < State->NumRelations[i]; j++) {
+				Length += sprintf(TupleText, "%d.%d ", i, State->RelationID[i][j]);
+			}
+		}
+	}
+
+	// Allocate the memory
+	Text = new char[Length];
+
+	// Do it for real
+	Length = sprintf(Text, "%d %d ", State->Round, State->CurrentStep);
+
+	// Convert to text
+	for (int i = 0; i < this->NumRelationLists; i++) {
+		if (this->Schema->Relation[i]->Fact != hsfcFactPermanent) {
+			for (int j = 0; j < State->NumRelations[i]; j++) {
+				Length += sprintf(&Text[Length], "%d.%d ", i, State->RelationID[i][j]);
+			}
+		}
+	}
+	Text[Length - 1] = 0;
+
+	return Text;
+
+}
+
+//-----------------------------------------------------------------------------
+// StateFromText
+//-----------------------------------------------------------------------------
+bool hsfcStateManager::StateFromText(hsfcState* State, char* Text) {
+
+	hsfcTuple Tuple;
+	char* TupleText;
+
+	// Text format
+	// "# # #.# #.# #.# #.#" == "round step list.id list.id ... "
+
+	// Reset the state
+	this->ResetState(State);
+
+	// Start with the round 
+	TupleText = Text;
+	if (sscanf(TupleText, "%d", &State->Round) != 1) return false;
+	TupleText = strchr(TupleText, ' ');
+	if (TupleText == NULL) return false;
+
+	// Next the current step
+	TupleText++;
+	if (sscanf(TupleText, "%d", &State->CurrentStep) != 1) return false;
+	TupleText = strchr(TupleText, ' ');
+	if (TupleText == NULL) return true;
+
+	// Go through all of the relations and convert text to relations
+	while(TupleText != NULL) {
+		TupleText++;
+		if (sscanf(TupleText, "%d.%d", &Tuple.RelationIndex, &Tuple.ID) != 2) return false;
+		this->AddRelation(State, &Tuple);
+		TupleText = strchr(TupleText, ' ');
+	}
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
 // PrintRelations
 //-----------------------------------------------------------------------------
 void hsfcStateManager::PrintRelations(hsfcState* State, bool PermanentFacts) {

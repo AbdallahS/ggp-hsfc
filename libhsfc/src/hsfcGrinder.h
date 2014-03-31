@@ -16,7 +16,6 @@
 
 using namespace std;
 
-#define DEBUG false
 #define MAX_NUM_ROLES 8
 #define MAX_NO_OF_INPUTS 32
 
@@ -125,7 +124,7 @@ public:
 	bool IsTerminal(hsfcState* State);
 	void GetLegalMoves(hsfcState* State, vector<hsfcTuple>& Move);
 	void ChooseRandomMoves(hsfcState* State);
-	int GoalValue(hsfcState* State, int RoleIndex);
+	//int GoalValue(hsfcState* State, int RoleIndex);
 
 	void ResetStatistics();
 	void CollectStatistics(hsfcState* State);
