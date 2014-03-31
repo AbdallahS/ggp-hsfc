@@ -10,12 +10,18 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <memory>
 #include <boost/unordered_set.hpp>
 #include <boost/foreach.hpp>
 #include <boost/assert.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/utility.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/shared_ptr.hpp>
+#include <boost/serialization/access.hpp>
 
 #include <hsfc/hsfcexception.h>
 #include <hsfc/impl/hsfcwrapper.h>
@@ -74,7 +80,7 @@ std::ostream& operator<<(std::ostream& os, const Move& move);
 
 
 /*****************************************************************************************
- *
+ * A game object - only one per loaded GDL game.
  *****************************************************************************************/
 
 class State;
@@ -117,11 +123,14 @@ public:
 
 
 /*****************************************************************************************
- *
+ * A Game State
  *****************************************************************************************/
+
 
 typedef std::pair<Player,Move> PlayerMove;
 typedef std::pair<Player,unsigned int> PlayerGoal;
+
+class PortableState;
 
 class State
 {
@@ -231,10 +240,41 @@ public:
 		BOOST_ASSERT_MSG(ok.size() == manager_->NumPlayers(), "Must be exactly one move per player");
 		manager_->DoMove(*state_, lms);	   		
 	}  
+
+	/*
+	 * Convert to and from a PortableState object
+	 */
+	boost::shared_ptr<PortableState> CreatePortableState() const;
+	void LoadPortableState(const PortableState& ps);
 	
 };
 
+
+/*****************************************************************************************
+ * The PortableState is a semi-portable representation of a state that can be serialised
+ * and loaded between any HSFC instances loaded with the same GDL (we hope!!!).
+ *****************************************************************************************/
+
+class PortableState
+{
+	friend class State;
+	friend class boost::serialization::access;
+
+	int round_;
+	int currentstep_;
+	std::vector<std::pair<int,int> > relationlist_;
+
+	template<typename Archive>
+	void serialize(Archive& ar, const unsigned int version)
+	{
+		ar & round_;
+		ar & currentstep_;
+		ar & relationlist_;
+	}
+	PortableState();   
 };
+
+}; /* namespace HSFC */
 
 
 #endif // HSFC_H

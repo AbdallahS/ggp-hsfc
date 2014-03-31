@@ -17,10 +17,18 @@ using namespace std;
 #include "hsfcEngine.h"
 #include "kpWFT.h"
 
+// DPR20140401 Adding HSFCManager as a friend class because I need to
+// access the StateManager and want to minimise the amount of
+// Michael's code that I change.
+namespace HSFC { class HSFCManager; };
+
 //=============================================================================
 // CLASS: hsfcGDLManager
 //=============================================================================
 class hsfcGDLManager {
+	
+	friend class HSFC::HSFCManager;
+	
 
 public:
 	hsfcGDLManager(void);

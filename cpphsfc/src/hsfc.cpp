@@ -218,4 +218,28 @@ void State::play(const std::vector<PlayerMove>& moves)
 	this->play(moves.begin(), moves.end());
 }
 
-};
+boost::shared_ptr<PortableState> State::CreatePortableState() const
+{
+	boost::shared_ptr<PortableState> ps(new PortableState());
+	ps->relationlist_.clear();
+	manager_->GetStateData(*state_, ps->relationlist_, ps->round_, ps->currentstep_);
+	return ps;
+}
+
+void State::LoadPortableState(const PortableState& ps)
+{
+	manager_->SetStateData(ps.relationlist_, ps.round_, ps.currentstep_, *state_);
+}
+
+
+/*****************************************************************************************
+ * PortableState
+ *****************************************************************************************/
+
+PortableState::PortableState() : round_(0), currentstep_(0)
+{ }
+
+
+
+}; /* namespace HSFC */
+

@@ -14,5 +14,7 @@ install:
 test:
 	cd build; ctest
 
+#	cd build; ctest -V
+
 clean: 
 	rm -r build include lib

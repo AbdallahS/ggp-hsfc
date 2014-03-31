@@ -175,5 +175,48 @@ std::ostream& HSFCManager::PrintMove(std::ostream& os, const hsfcLegalMove& lega
 	return os;
 }
 
+void HSFCManager::GetStateData(const hsfcState& state, 
+							   std::vector<std::pair<int,int> >& relationlist,
+							   int& round, int& currentstep) const
+{	
+	hsfcStateManager* sm = const_cast<hsfcStateManager*>(internal_->StateManager);	
+	hsfcState& ts = const_cast<hsfcState&>(state);
+	round = ts.Round;
+	currentstep = ts.CurrentStep;
+	for (int i=0; i < sm->NumRelationLists; ++i)
+	{
+		if (sm->Schema->Relation[i]->Fact != hsfcFactPermanent)
+		{
+			for (int j=0; j < ts.NumRelations[i]; ++j)
+			{
+				relationlist.push_back(std::make_pair(i, ts.RelationID[i][j]));
+			}
+		}
+	}	
+}
 
-};
+/*
+ * NOTE: the following looks brittle. Is there any check that we can do to determine
+ * if the set data is bad????
+ */
+
+void HSFCManager::SetStateData(const std::vector<std::pair<int,int> >& relationlist, 
+							   int round, int currentstep,
+							   hsfcState& state) 
+{	
+	hsfcStateManager* sm = internal_->StateManager;	
+   	sm->ResetState(&state);
+	state.Round = round;
+	state.CurrentStep = currentstep;
+	typedef std::pair<int,int> ipair_t;
+	BOOST_FOREACH(const ipair_t& pr, relationlist)
+	{
+		hsfcTuple tuple;
+		tuple.RelationIndex = pr.first;
+		tuple.ID = pr.second;
+		sm->AddRelation(&state, &tuple);
+	}
+}
+
+
+}; /* namespace HSFC */

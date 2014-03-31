@@ -5,7 +5,10 @@
 #include <boost/test/unit_test.hpp>
 
 #include <iostream>
+#include <sstream>
 #include <boost/foreach.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 #include <hsfc/hsfc.h>
 
 using namespace HSFC;
@@ -49,7 +52,7 @@ void tictactoe_playout_check(const State &state)
 	}	
 }
 
-BOOST_AUTO_TEST_CASE(state_create_functions)
+BOOST_AUTO_TEST_CASE(state_functions)
 {
 	Game game("./tictactoe.gdl");
 	State state1 = game.initState();
@@ -61,6 +64,53 @@ BOOST_AUTO_TEST_CASE(state_create_functions)
 	std::vector<PlayerMove> legs;
 	state1.legals(legs);	   
 	BOOST_CHECK_EQUAL(legs.size(), 10);
+
+	// To test the PortableState we make a single move from the
+	// initial state, then save this as a portable state. Run a
+	// playout, reload the portable state and check that this is takes
+	// us back to the correct state.
+
+	// NOTE: There is no function to compare that two states are equal!
+	// Best we can do is test that it is no-longer terminal. Need to
+	// ask Michael to add some functions.
+
+	std::vector<PlayerMove> does;
+	does.push_back(pick_first(legs, "xplayer"));
+	does.push_back(pick_first(legs, "oplayer"));
+	BOOST_CHECK_EQUAL(does.size(), 2);
+	state1.play(does);
+	state2.play(does);
+	BOOST_CHECK(!state1.isTerminal());
+	BOOST_CHECK(!state2.isTerminal());
+	boost::shared_ptr<PortableState> pstate = state2.CreatePortableState();
+	BOOST_CHECK(pstate.get() != NULL);
+
+	std::vector<PlayerGoal> result;
+	state2.playout(result);
+	BOOST_CHECK(state2.isTerminal());
+
+	state2.LoadPortableState(*pstate);
+	BOOST_CHECK(!state2.isTerminal());
+	
+	// Now test the serialisation of Portable state. Do the same test
+	// as before but by taking the further step of (de-)serializing.
+	std::ostringstream oserialstream;
+	boost::archive::text_oarchive oa(oserialstream);
+	oa << pstate;
+	std::string serialised(oserialstream.str());
+	BOOST_TEST_MESSAGE(serialised);
+	
+	std::istringstream iserialstream(serialised);
+	boost::archive::text_iarchive ia(iserialstream);
+	boost::shared_ptr<PortableState> pstate2;
+	ia >> pstate2;
+
+	state2.playout(result);
+	BOOST_CHECK(state2.isTerminal());
+
+	state2.LoadPortableState(*pstate);
+	BOOST_CHECK(!state2.isTerminal());
+
 }
 
 BOOST_AUTO_TEST_CASE(text_check)

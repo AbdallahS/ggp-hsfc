@@ -16,6 +16,7 @@
 namespace HSFC
 {
 
+
 class HSFCManager
 {
 private:
@@ -49,6 +50,21 @@ public:
 	unsigned int NumPlayers() const;  
 	std::ostream& PrintPlayer(std::ostream& os, unsigned int roleid) const;
 	std::ostream& PrintMove(std::ostream& os, const hsfcLegalMove& legalmove) const;	
+
+
+    /*******************************************************************************
+	 * A semi-portable representation of a game state. Should be portable across any
+	 * HSFC instance that is loaded with the exact same GDL file.
+	 *******************************************************************************/	
+
+void GetStateData(const hsfcState& state, 
+				  std::vector<std::pair<int,int> >& relationlist,
+				  int& round, int& currentstep) const;
+	
+void SetStateData(const std::vector<std::pair<int,int> >& relationlist, 
+				  int round, int currentstep,
+				  hsfcState& state);
+
 };
 
 };
