@@ -1,7 +1,7 @@
 all: HSFC
 
-HSFC: hsfcAPI.o Example.cpp
-	g++ hsfcAPI.o hsfcEngine.o hsfcGrinder.o hsfcState.o hsfcSchema.o hsfcGDL.o hsfcLexicon.o Example.cpp -o Example.exe
+HSFC: hsfcAPI.o kpWFT.o Example.cpp
+	g++ hsfcAPI.o hsfcEngine.o hsfcGrinder.o hsfcState.o hsfcSchema.o hsfcGDL.o hsfcLexicon.o kpWFT.o Example.cpp -o Example.exe
 
 hsfcAPI.o: hsfcEngine.o hsfcAPI.cpp  
 	g++ -c hsfcAPI.cpp 
@@ -23,6 +23,9 @@ hsfcGDL.o: hsfcLexicon.o hsfcGDL.cpp
 
 hsfcLexicon.o: hsfcLexicon.cpp  
 	g++ -c hsfcLexicon.cpp 
+
+kpWFT.o: kpWFT.cpp  
+	g++ -c kpWFT.cpp 
 
 
 

@@ -16,6 +16,8 @@
 
 #include "hsfcGDL.h"
 
+#define DEBUG false
+
 using namespace std;
 
 class hsfcRelationSchema;
@@ -52,15 +54,6 @@ enum hsfcRuleRelationType {
 	hsfcRuleCondition
 };
 
-////=============================================================================
-//// STRUCT: hsfcRelationSchemaChoice
-////=============================================================================
-//typedef struct hsfcRelationChoice {
-//	int RelationIndex;
-//	int RelationIndex;
-//	int TupleID;
-//} hsfcRelationChoice;
-//
 //=============================================================================
 // STRUCT: hsfcDomainEntry
 //=============================================================================
@@ -69,6 +62,15 @@ typedef struct hsfcDomainEntry {
 	int Index;
 	int Count;
 } hsfcDomainEntry;
+
+//=============================================================================
+// STRUCT: hsfcDomain
+//=============================================================================
+typedef struct hsfcDomain {
+	hsfcDomainEntry* Entry;
+	int Count;
+	int Size;
+} hsfcDomain;
 
 //=============================================================================
 // STRUCT: hsfcRelationLink
@@ -88,6 +90,7 @@ typedef struct hsfcRuleTemplate {
 	hsfcTuple Tuple;
 	int BufferIndex;
 	int ArgumentIndex;
+	int DomainSize;
 } hsfcRuleTemplate;
 
 //=============================================================================
@@ -137,6 +140,8 @@ public:
 	int ID(hsfcRuleCompactTerm Term[], int Offset, int NumTerms);
 	void Terms(int ID, vector<hsfcTuple>& Term);
 	void Terms(int ID, vector<hsfcRuleTerm>& Term);
+	int GetDomainCount(int Index);
+	void ListDomain(vector<string>& List);
 	void PrintDomains();
 	void Print();
 
@@ -146,8 +151,6 @@ public:
 	int Arity;
 	hsfcFact Fact;
 	int Index;
-	vector<vector<hsfcDomainEntry> > Domain;	
-	vector<int> DomainSize;	
 	double AveListLength;
 	double Samples;
 	bool DomainIsComplete;
@@ -158,6 +161,8 @@ protected:
 
 private:
 	hsfcLexicon* Lexicon;
+	vector<vector<hsfcDomainEntry> > vDomain;	
+	hsfcDomain** Domain;
 
 };
 
@@ -218,7 +223,7 @@ public:
 protected:
 
 private:
-	double Score(vector<int>& InputIndex);
+	double Cost(vector<int>& InputIndex);
 	void Sort();
 
 	hsfcLexicon* Lexicon;
@@ -236,6 +241,7 @@ public:
 
 	void Initialise();
 	bool Create(const char* FileName);
+	void GetRoles(vector<string>& Role);
 	void PrintRelation(hsfcTuple* Tuple, bool CRLF);
 	void RelationAsText(hsfcTuple* Tuple, char* Text);
 	void Print();

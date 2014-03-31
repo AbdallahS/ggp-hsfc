@@ -15,6 +15,7 @@
 using namespace std;
 
 #include "hsfcEngine.h"
+#include "kpWFT.h"
 
 //=============================================================================
 // CLASS: hsfcGDLManager
@@ -31,10 +32,14 @@ public:
 	void CopyGameState(hsfcState* Destination, hsfcState* Source);
 	void SetInitialGameState(hsfcState* GameState);
 	void GetLegalMoves(hsfcState* GameState, vector<hsfcLegalMove>& LegalMove);
-	void DoMove(hsfcState* GameState, vector<hsfcLegalMove>& LegalMove);
+	void DoMove(hsfcState* GameState, vector<hsfcLegalMove>& DoesMove);
 	bool IsTerminal(hsfcState* GameState);
 	void GetGoalValues(hsfcState* GameState, vector<int>& GoalValue);
 	void PlayOut(hsfcState* GameState, vector<int>& GoalValue);
+	void GetRoles(vector<string>& Role);
+	char* RelationAsKIF(hsfcTuple& Tuple);
+	char* GameStateAsText(hsfcState* GameState);
+	bool GameStateFromText(hsfcState* GameState, char* Text);
 	void PrintState(hsfcState* GameState);
 
 	int NumRoles;

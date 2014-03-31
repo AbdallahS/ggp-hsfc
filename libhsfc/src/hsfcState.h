@@ -57,6 +57,8 @@ public:
 	bool CalculateStateSize();
 
 	void CompareStates(hsfcState* State1, hsfcState* State2);
+	char* StateAsText(hsfcState* State);
+	bool StateFromText(hsfcState* State, char* Text);
 	void PrintRelations(hsfcState* State, bool PermanentFacts);
 
 	hsfcSchema* Schema;
