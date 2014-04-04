@@ -112,6 +112,25 @@ Move& Move::operator=(const Move& other)
 	return *this;
 }
 
+std::size_t Move::hash_value() const
+{
+	// Note: 1) since there is only 1 manager per game we can use the manager_ 
+    //          pointer as a hash value. 
+    //       2) I think the move_.Text can be generated from the other data so
+    //          we don't need to hash it. Maybe need to confirm this with Michael.
+	size_t seed = 0;
+	boost::hash_combine(seed, manager_);
+	boost::hash_combine(seed, move_.RoleIndex);
+	boost::hash_combine(seed, move_.Tuple.RelationIndex);
+	boost::hash_combine(seed, move_.Tuple.ID);
+	return seed;
+}
+
+std::size_t hash_value(const Move& move)
+{
+	return move.hash_value();
+}
+
 std::ostream& operator<<(std::ostream& os, const Move& move)
 {
 	return move.manager_->PrintMove(os, move.move_);
@@ -135,7 +154,8 @@ Game::Game(const std::string& gdlfilename)
 	params.OrderRules = true;			// Optimise the rule execution cost
 
 	manager_.Initialise(gdlfilename, params);
-	initstate_.reset(new State(&manager_));
+//	initstate_.reset(new State(&manager_));
+	initstate_.reset(new State(*this));
 }
 
 const State& Game::initState() const
@@ -166,11 +186,19 @@ bool Game::operator==(const Game& other) const
  * Implementation of State
  *****************************************************************************************/
 
-State::State(HSFCManager* manager): manager_(manager), state_(NULL)
+State::State(Game& game): manager_(&game.manager_), state_(NULL)
 {  
 	state_ = manager_->CreateGameState();
 	manager_->SetInitialGameState(*state_);
 }
+
+State::State(Game& game, const PortableState& ps): manager_(&game.manager_), state_(NULL)
+{  
+	state_ = manager_->CreateGameState();
+	manager_->SetStateData(ps.relationlist_, ps.round_, ps.currentstep_, *state_);
+//	manager_->SetInitialGameState(*state_);
+}
+
 
 State::State(const State& other) : manager_(other.manager_), state_(NULL)
 {
@@ -239,6 +267,73 @@ void State::LoadPortableState(const PortableState& ps)
 PortableState::PortableState() : round_(0), currentstep_(0)
 { }
 
+
+template<>
+PortableState::PortableState<const State>(const State& state)
+{
+    state.manager_->GetStateData(*state.state_, relationlist_, round_, currentstep_);
+}
+
+template<>
+PortableState::PortableState<State>(State& state)
+{
+    state.manager_->GetStateData(*state.state_, relationlist_, round_, currentstep_);
+}
+
+template<>
+PortableState::PortableState<const PortableState>(const PortableState& other) :
+round_(other.round_), currentstep_(other.currentstep_), 
+relationlist_(other.relationlist_)
+{ }
+
+template<>
+PortableState::PortableState<PortableState>(PortableState& other) : 
+round_(other.round_), currentstep_(other.currentstep_), 
+relationlist_(other.relationlist_)
+{ }
+
+// Actually have to instantiate the objects.
+template PortableState::PortableState<const State>(const State&);
+template PortableState::PortableState<State>(State&);
+template PortableState::PortableState<const PortableState>(const PortableState&);
+template PortableState::PortableState<PortableState>(PortableState&);
+
+
+
+PortableState& PortableState::operator=(const PortableState& other)
+{
+    round_ = other.round_;
+    currentstep_ = other.currentstep_;
+    relationlist_ = other.relationlist_;
+}
+
+
+bool PortableState::operator==(const PortableState& other) const
+{
+    return (round_ == other.round_ && currentstep_ == other.currentstep_ &&
+            relationlist_ == other.relationlist_);
+}
+
+bool PortableState::operator!=(const PortableState& other) const
+{
+    return (round_ != other.round_ || currentstep_ != other.currentstep_ ||
+            relationlist_ != other.relationlist_);
+}
+
+
+std::size_t PortableState::hash_value() const
+{
+	size_t seed = 0;
+	boost::hash_combine(seed, round_);
+	boost::hash_combine(seed, currentstep_);
+    boost::hash_combine(seed, relationlist_);
+    return seed;
+}
+
+std::size_t hash_value(const PortableState& state)
+{
+	return state.hash_value();
+}
 
 
 }; /* namespace HSFC */

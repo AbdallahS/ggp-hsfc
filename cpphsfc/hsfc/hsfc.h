@@ -74,7 +74,10 @@ public:
 	bool operator==(const Move& other) const;
 	bool operator!=(const Move& other) const;
 	Move& operator=(const Move& other);
+
+	std::size_t hash_value() const;
 };
+std::size_t hash_value(const Move& move);
 
 std::ostream& operator<<(std::ostream& os, const Move& move);
 
@@ -87,6 +90,8 @@ class State;
 
 class Game
 {
+	friend class State;
+
 	HSFCManager manager_;
 	boost::scoped_ptr<State> initstate_; // Useful to maintain an init state
 
@@ -118,7 +123,7 @@ public:
 			*dest++=Player(&manager_, i); 
 		}
 	}
-   	
+    
 };
 
 
@@ -134,13 +139,14 @@ class PortableState;
 
 class State
 {
-	friend class Game;
+    friend class PortableState;
 
 	hsfcState* state_;
 	HSFCManager* manager_;
 
-	State(HSFCManager* manager);
 public:
+    State(Game& game);
+    State(Game& game, const PortableState& ps);
 	State(const State& other);
 	State& operator=(const State& other);
 	~State();
@@ -271,8 +277,31 @@ class PortableState
 		ar & currentstep_;
 		ar & relationlist_;
 	}
-	PortableState();   
+	PortableState();
+public:
+    template<typename Archive>
+    explicit PortableState(Archive& ar)
+    {
+        ar >> *this;
+    }
+
+    PortableState& operator=(const PortableState& other);
+	bool operator==(const PortableState& other) const;
+	bool operator!=(const PortableState& other) const;
+
+	std::size_t hash_value() const;
 };
+
+// Explicit specialisations of the constructor so that it is
+// not captured by the constructor intended for archive objects.
+template<> PortableState::PortableState<State>(State& state);
+template<> PortableState::PortableState<const State>(const State& state);
+template<> PortableState::PortableState<PortableState>(PortableState& other);
+template<> PortableState::PortableState<const PortableState>(const PortableState& other);
+
+
+std::size_t hash_value(const PortableState& move);
+
 
 }; /* namespace HSFC */
 

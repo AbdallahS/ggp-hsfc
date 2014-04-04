@@ -153,6 +153,32 @@ BOOST_AUTO_TEST_CASE(send_state_across_games)
 	BOOST_CHECK(state2.isTerminal());
 }
 
+BOOST_AUTO_TEST_CASE(send_state_across_games2)
+{
+	Game game1("./tictactoe.gdl");
+	Game game2("./tictactoe.gdl");
+	State state1(game1);
+	BOOST_CHECK(!state1.isTerminal());
+
+	std::vector<PlayerGoal> result;
+	state1.playout(result);
+	BOOST_CHECK(state1.isTerminal());
+
+    PortableState pstate1(state1);
+
+	std::ostringstream oserialstream;
+	boost::archive::text_oarchive oa(oserialstream);
+	oa << pstate1;
+	std::string serialised(oserialstream.str());
+	std::istringstream iserialstream(serialised);
+	boost::archive::text_iarchive ia(iserialstream);
+    PortableState pstate2(ia);
+	State state2(game2, pstate2);
+
+	BOOST_CHECK(state2.isTerminal());
+}
+
+
 /****************************************************************
  * Test that the move and player text generated for tictactoe 
  * are correct.
