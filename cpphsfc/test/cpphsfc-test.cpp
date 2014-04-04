@@ -58,7 +58,7 @@ void tictactoe_playout_check(const State &state)
 
 BOOST_AUTO_TEST_CASE(state_functions)
 {
-	Game game("./tictactoe.gdl");
+	Game game(boost::filesystem::path("./tictactoe.gdl"));
 	State state1 = game.initState();
 	BOOST_CHECK(!state1.isTerminal());
 
@@ -126,8 +126,8 @@ BOOST_AUTO_TEST_CASE(state_functions)
 
 BOOST_AUTO_TEST_CASE(send_state_across_games)
 {
-	Game game1("./tictactoe.gdl");
-	Game game2("./tictactoe.gdl");
+	Game game1(boost::filesystem::path("./tictactoe.gdl"));
+	Game game2(boost::filesystem::path("./tictactoe.gdl"));
 	State state1 = game1.initState();
 	State state2 = game2.initState();
 	BOOST_CHECK(!state1.isTerminal());
@@ -155,8 +155,8 @@ BOOST_AUTO_TEST_CASE(send_state_across_games)
 
 BOOST_AUTO_TEST_CASE(send_state_across_games2)
 {
-	Game game1("./tictactoe.gdl");
-	Game game2("./tictactoe.gdl");
+	Game game1(boost::filesystem::path("./tictactoe.gdl"));
+	Game game2(boost::filesystem::path("./tictactoe.gdl"));
 	State state1(game1);
 	BOOST_CHECK(!state1.isTerminal());
 
@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE(send_state_across_games2)
 
 BOOST_AUTO_TEST_CASE(text_check)
 {
-	Game game("./tictactoe.gdl");
+	Game game(boost::filesystem::path("./tictactoe.gdl"));
 	State state1 = game.initState();
 	BOOST_CHECK(!state1.isTerminal());
 
@@ -218,7 +218,7 @@ BOOST_AUTO_TEST_CASE(tictactoe)
 //	BOOST_TEST_MESSAGE("Testing HSFC with tictactoe");
 //	BOOST_CHECK_THROW(Game game1("./nonexistentfile"), HSFCException);
 
-	Game game("./tictactoe.gdl");
+	Game game(boost::filesystem::path("./tictactoe.gdl"));
 	BOOST_CHECK_EQUAL(game.numPlayers(), 2);
 	State state = game.initState();
 	BOOST_CHECK(!state.isTerminal());

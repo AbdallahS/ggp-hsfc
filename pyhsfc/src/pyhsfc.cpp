@@ -114,6 +114,9 @@ Use the str(object) function to return a GDL formatted string of the action.",
 					 py::no_init)
 		.def(py::self_ns::str(py::self_ns::self))
 		.def("__repr__", &Move::tostring)
+		.def("__hash__", &Move::hash_value)
+		.def("__eq__", &Move::operator==)
+		.def("__ne__", &Move::operator!=)
 		;
 
 	py::class_<PlayerMove>("PlayerMove", 

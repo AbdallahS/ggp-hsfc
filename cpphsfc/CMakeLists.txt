@@ -5,7 +5,7 @@ project(cpphsfc)
 # Building
 #---------------------------------------------------
 
-find_package(Boost 1.4 COMPONENTS serialization REQUIRED )
+find_package(Boost 1.4 COMPONENTS serialization filesystem system REQUIRED )
 include_directories("${Boost_INCLUDE_DIRS}")
 
 include_directories("${PROJECT_SOURCE_DIR}")

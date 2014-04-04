@@ -22,6 +22,7 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/access.hpp>
+#include <boost/filesystem.hpp>
 
 #include <hsfc/hsfcexception.h>
 #include <hsfc/impl/hsfcwrapper.h>
@@ -95,13 +96,19 @@ class Game
 	HSFCManager manager_;
 	boost::scoped_ptr<State> initstate_; // Useful to maintain an init state
 
+	// FIXUP: Get Michael to fix: spelling mistake in the type name
+    void hsfcGDLParamsInit(hsfcGDLParamaters& params);
+
 	Game(const Game& other);  // make sure we can't copy this object
 
 public:
-	// Note: might look at changing this to either have an extra 
-	// constructor that works from strings or an istream that will
-    // work for both files and strings.
-	Game(const std::string& gdlfilename);
+    // Game constructor that takes a string containing a GDL description
+    // (note: this is not a filename!).
+	explicit Game(const std::string& gdldescription, bool usegadelac = false);
+	explicit Game(const char* gdldescription, bool usegadelac = false);
+
+    // Game constructor that takes a file.
+	explicit Game(const boost::filesystem::path& gdlfile, bool usegadelac = false);
 
 	unsigned int numPlayers() const;
 	// Return the initial state
@@ -278,6 +285,10 @@ class PortableState
 		ar & relationlist_;
 	}
 	PortableState();
+
+    // Because we want this to be immutable (from the users perspective)
+    // we ensure that you cannot assign to it
+    PortableState& operator=(const PortableState& other);
 public:
     template<typename Archive>
     explicit PortableState(Archive& ar)
@@ -285,7 +296,6 @@ public:
         ar >> *this;
     }
 
-    PortableState& operator=(const PortableState& other);
 	bool operator==(const PortableState& other) const;
 	bool operator!=(const PortableState& other) const;
 

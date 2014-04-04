@@ -5,7 +5,7 @@ project(pyhsfc)
 # Building python HSFC
 #----------------------------------------------------
 
-find_package(Boost 1.45 COMPONENTS python)
+find_package(Boost 1.45 COMPONENTS python system filesystem)
 if(NOT Boost_FOUND)
   message(FATAL_ERROR "Unable to find correct Boost version. Did you set BOOST_ROOT?")
 endif()

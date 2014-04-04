@@ -142,20 +142,51 @@ std::ostream& operator<<(std::ostream& os, const Move& move)
  *****************************************************************************************/
 Game::Game(const Game& other) { }
 
-Game::Game(const std::string& gdlfilename)
+Game::Game(const std::string& gdldescription, bool usegadelac) 
+{
+
+    if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
+//    throw HSFCException() << ErrorMsgInfo("Reading string GDL not yet supported");
+        
+	hsfcGDLParamaters params;
+    hsfcGDLParamsInit(params);
+
+	manager_.Initialise(gdldescription, params);
+	initstate_.reset(new State(*this));
+}
+
+Game::Game(const char* gdldescription, bool usegadelac) 
+{
+
+    if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
+//    throw HSFCException() << ErrorMsgInfo("Reading string GDL not yet supported");
+
+	hsfcGDLParamaters params;
+    hsfcGDLParamsInit(params);
+
+	manager_.Initialise(gdldescription, params);
+	initstate_.reset(new State(*this));
+}
+
+Game::Game(const boost::filesystem::path& gdlfile, bool usegadelac)
+{
+    if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
+	hsfcGDLParamaters params;
+    hsfcGDLParamsInit(params);
+
+	manager_.Initialise(gdlfile.native(), params);
+	initstate_.reset(new State(*this));
+}
+
+void Game::hsfcGDLParamsInit(hsfcGDLParamaters& params)
 {
 	// Note: not really sure what are sane options here so copying
 	// from Michael's example code.
-	hsfcGDLParamaters params; // FIXUP: Get Michael to fix: spelling mistake in the type name
 	params.ReadGDLOnly = false;			// Validate the GDL without creating the schema
 	params.SchemaOnly = false;			// Validate the GDL & Schema without grounding the rules
 	params.MaxRelationSize = 1000000;	// Max bytes per relation for high speed storage
 	params.MaxReferenceSize = 1000000;	// Max bytes per lookup table for grounding
-	params.OrderRules = true;			// Optimise the rule execution cost
-
-	manager_.Initialise(gdlfilename, params);
-//	initstate_.reset(new State(&manager_));
-	initstate_.reset(new State(*this));
+	params.OrderRules = true;			// Optimise the rule execution cost   
 }
 
 const State& Game::initState() const
