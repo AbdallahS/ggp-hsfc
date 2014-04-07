@@ -91,6 +91,7 @@ class State;
 
 class Game
 {
+protected:
 	friend class State;
 
 	HSFCManager manager_;
@@ -100,10 +101,12 @@ class Game
     void hsfcGDLParamsInit(hsfcGDLParamaters& params);
 
 	Game(const Game& other);  // make sure we can't copy this object
-
+    Game(){};
 public:
     // Game constructor that takes a string containing a GDL description
-    // (note: this is not a filename!).
+    // NOTE: 1) this is not a filename!.
+    //       2) I provide a char* version to make sure a char* can't
+    //          accidentally be converted to a boost::filesystem::path.
 	explicit Game(const std::string& gdldescription, bool usegadelac = false);
 	explicit Game(const char* gdldescription, bool usegadelac = false);
 
@@ -150,7 +153,6 @@ class State
 
 	hsfcState* state_;
 	HSFCManager* manager_;
-
 public:
     State(Game& game);
     State(Game& game, const PortableState& ps);
@@ -254,6 +256,9 @@ public:
 		manager_->DoMove(*state_, lms);	   		
 	}  
 
+
+
+    /* FIXUP: Deprecated - to be removed */
 	/*
 	 * Convert to and from a PortableState object
 	 */
@@ -284,12 +289,12 @@ class PortableState
 		ar & currentstep_;
 		ar & relationlist_;
 	}
-	PortableState();
 
-    // Because we want this to be immutable (from the users perspective)
-    // we ensure that you cannot assign to it
-    PortableState& operator=(const PortableState& other);
 public:
+	PortableState();
+    PortableState& operator=(const PortableState& other);
+
+/* FIXUP: Deprecated constructor - to be removed */
     template<typename Archive>
     explicit PortableState(Archive& ar)
     {

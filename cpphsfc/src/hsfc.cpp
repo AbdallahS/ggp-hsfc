@@ -144,7 +144,6 @@ Game::Game(const Game& other) { }
 
 Game::Game(const std::string& gdldescription, bool usegadelac) 
 {
-
     if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
 //    throw HSFCException() << ErrorMsgInfo("Reading string GDL not yet supported");
         
@@ -157,14 +156,13 @@ Game::Game(const std::string& gdldescription, bool usegadelac)
 
 Game::Game(const char* gdldescription, bool usegadelac) 
 {
-
     if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
 //    throw HSFCException() << ErrorMsgInfo("Reading string GDL not yet supported");
 
 	hsfcGDLParamaters params;
     hsfcGDLParamsInit(params);
 
-	manager_.Initialise(gdldescription, params);
+	manager_.Initialise(std::string(gdldescription), params);
 	initstate_.reset(new State(*this));
 }
 
@@ -174,7 +172,7 @@ Game::Game(const boost::filesystem::path& gdlfile, bool usegadelac)
 	hsfcGDLParamaters params;
     hsfcGDLParamsInit(params);
 
-	manager_.Initialise(gdlfile.native(), params);
+	manager_.Initialise(gdlfile, params);
 	initstate_.reset(new State(*this));
 }
 

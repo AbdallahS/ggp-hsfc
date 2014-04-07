@@ -4,6 +4,8 @@
 #include <boost/foreach.hpp>
 #include <boost/variant/get.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/filesystem/fstream.hpp>
+
 #include <hsfc/impl/hsfcwrapper.h>
 #include <hsfc/hsfcexception.h>
 #include "sexprtoflat.h"
@@ -60,23 +62,6 @@ void HSFCManager::populatePlayerNamesFromLegalMoves()
  * Functions that match the hsfcGDLManager
  *****************************************************************************************/
 
-void HSFCManager::Initialise(const std::string& GDLFileName, const hsfcGDLParamaters& Parameters)
-{
-
-	std::string tmpstr(GDLFileName); // needed to avoid non-const in hsfcGDLManager::Initialise
-	hsfcGDLParamaters params(Parameters);
-	int result = internal_->Initialise(&tmpstr, params);
-	if (result != 0)
-	{
-		std::ostringstream ss;
-		ss << "Failed to initialise the HSFC engine. Error code: " << result;
-		throw HSFCException() << ErrorMsgInfo(ss.str());
-	}	
-
-	// Now jump through hoops to workout the names of the players.
-	populatePlayerNamesFromLegalMoves();
-}
-
 hsfcState* HSFCManager::CreateGameState()
 {
 	hsfcState* state;	
@@ -132,6 +117,52 @@ void HSFCManager::PrintState(const hsfcState& GameState) const
 {
 	internal_->PrintState(const_cast<hsfcState*>(&GameState));
 }
+
+
+/*****************************************************************************************
+ * Initialise function behaviour has been modified. Added a version to load a GDL 
+ * description from a string. Because the underlying libhsfc doesn't provide a function
+ * to do this I hack it by writing to a temporary file.
+ *****************************************************************************************/
+
+void HSFCManager::Initialise(const boost::filesystem::path& gdlfilename, const hsfcGDLParamaters& Parameters)
+{
+	std::string tmpstr(gdlfilename.native()); // needed to avoid non-const in hsfcGDLManager::Initialise
+	hsfcGDLParamaters params(Parameters);
+
+	int result = internal_->Initialise(&tmpstr, params);
+	if (result != 0)
+	{
+		std::ostringstream ss;
+		ss << "Failed to initialise the HSFC engine. Error code: " << result;
+		throw HSFCException() << ErrorMsgInfo(ss.str());
+	}	
+
+	// Now jump through hoops to workout the names of the players.
+	populatePlayerNamesFromLegalMoves();
+}
+
+void HSFCManager::Initialise(const std::string& gdldescription, const hsfcGDLParamaters& Parameters)
+{
+    namespace bfs=boost::filesystem;
+    bfs::path tmppath = bfs::unique_path();
+    try {        
+        bfs::ofstream gdlfile(tmppath);
+        if (gdlfile.fail()) throw HSFCException() << ErrorMsgInfo("Failed to create temporary file");
+        
+        gdlfile << gdldescription;
+        gdlfile.close();
+        Initialise(tmppath, Parameters);
+        bfs::remove(tmppath);    
+    } catch (...)
+    {
+        if (bfs::is_regular_file(tmppath)) bfs::remove(tmppath);    
+        throw;
+    }
+}
+
+
+
 
 /*****************************************************************************************
  * Extra functions

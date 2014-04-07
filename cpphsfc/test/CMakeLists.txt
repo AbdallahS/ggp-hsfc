@@ -11,7 +11,6 @@ include_directories("${PROJECT_SOURCE_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/src")
 include_directories("${libhsfc_SOURCE_DIR}/src")
 
-
 enable_testing()
 
 add_executable(sexprtoflat-test sexprtoflat-test.cpp)

@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 #include <boost/scoped_ptr.hpp>
+#include <boost/filesystem.hpp>
+
 #include <hsfc/impl/hsfcAPI.h>
 
 namespace HSFC
@@ -19,6 +21,8 @@ namespace HSFC
 
 class HSFCManager
 {
+
+
 private:
 	boost::scoped_ptr<hsfcGDLManager> internal_;
 
@@ -34,7 +38,6 @@ public:
 	HSFCManager();
 
 	/* Functions from hsfcGDLManager with const fixes */
-	void Initialise(const std::string& GDLFileName, const hsfcGDLParamaters& Paramaters);
 	hsfcState* CreateGameState();
 	void FreeGameState(hsfcState* GameState);
 	void CopyGameState(hsfcState& Destination, const hsfcState& Source);
@@ -50,6 +53,12 @@ public:
 	unsigned int NumPlayers() const;  
 	std::ostream& PrintPlayer(std::ostream& os, unsigned int roleid) const;
 	std::ostream& PrintMove(std::ostream& os, const hsfcLegalMove& legalmove) const;	
+
+    // NOTE: the change of behaviour of the Initialise function compared to the underlying
+    // HSFC. Passing a string is now assumed to be a GDL description. To pass a filename 
+    // use boost::filesystem::path.
+	void Initialise(const std::string& gdldescription, const hsfcGDLParamaters& Paramaters);
+	void Initialise(const boost::filesystem::path& gdlfilename, const hsfcGDLParamaters& Paramaters);
 
 
     /*******************************************************************************

@@ -61,11 +61,11 @@ def choose_joint_moves(state, player):
 # run the game to termination
 #-----------------------------------------------------
 def run(gdlfilename, player):
-    game = Game(gdlfilename)
+    game = Game(file=gdlfilename)
     if not valid_player(game, player):
         raise ValueError("Player {0} is not a valid player".format(player))
         
-    state = game.InitState()
+    state = State(game)
     while not state.IsTerminal():
         (jmv,score) = choose_joint_moves(state, player)
         print "Player {0} score {1} => {2}".format(player, score, jmv)

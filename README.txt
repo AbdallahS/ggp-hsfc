@@ -56,12 +56,12 @@ library is in lib/libcpphsfc.a. The main classes:
 For an example of using the API see examples/example1.c++. Note:
 important limitations of the current HSFC:
 
-    - Currently we only support loading a the GDL from a file. In
-      future this will be extended to a reading in a GDL string.  
+    - Now supports loading a GDL from either a file or a string. To load
+      from a file need to use the type boost::filesystem::path.
     - The current HSFC doesn't work with "normal" GDL files. Rather it
       takes a preprocessed GDL with special annotations as produced by
-      the Gadelac tool. At some point this functional should be
-      integrated into the HSFC.
+      the Gadelac tool. There is currently an optional flag to first 
+      process the file with GaDeLac but nothing is currently implemented.
 
 USING THE PYTHON API
 --------------------
@@ -73,10 +73,15 @@ The basics to load a tictactoe gdl and print the moves from the
 initial game state are:
 
       from pyhsfc import *
-      game = Game("./tictactoe.gdl")
+      game = Game(file="./tictactoe.gdl")
       initstate = State(game)
       for lpm in initstate.Legals():
              print lpm
+
+Important note: the game constructor uses Python keyword arguments. If the
+keyword is "file" then the value is assumed to be a file. If the keyword
+is "gdl" then it is assumed that the value is a gdl string. The optional
+keyword "gadelac" is currently not implemented.
 
 There is some very basic python docstring documentation which you can
 query from python with:

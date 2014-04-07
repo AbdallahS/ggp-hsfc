@@ -169,10 +169,11 @@ unsigned int choose_joint_move(State& state, const Player& player,vector<PlayerM
 
 void run(const string& gdlfilename, const string& playername)
 {
-	Game game(gdlfilename);
+	Game game(boost::filesystem::path(gdlfilename.c_str()));
+
 	Player player = get_player(game, playername);
 
-    State state = game.initState();
+    State state(game);
     while (!state.isTerminal())
 	{
 		vector<PlayerMove> jmv;

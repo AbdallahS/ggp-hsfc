@@ -5,7 +5,8 @@ project(cpphsfc)
 # Building
 #---------------------------------------------------
 
-find_package(Boost 1.4 COMPONENTS serialization filesystem system REQUIRED )
+find_package(Boost 1.49 COMPONENTS system serialization filesystem  REQUIRED )
+
 include_directories("${Boost_INCLUDE_DIRS}")
 
 include_directories("${PROJECT_SOURCE_DIR}")
@@ -47,18 +48,8 @@ install(TARGETS cpphsfc_static ARCHIVE DESTINATION lib)
 #install(TARGETS cpphsfc_shared LIBRARY DESTINATION lib)
 
 #---------------------------------------------------
-# Testing
+# Import the unit tests
 #---------------------------------------------------
-
 enable_testing()
 add_subdirectory(test)
 
-
-#add_executable(cpphsfc-test test/cpphsfc-test.cpp)
-#target_link_libraries(cpphsfc-test cpphsfc_static ${Boost_LIBRARIES})
-
-#add_test(
-#  NAME CppHSFCTest 
-#  WORKING_DIRECTORY "${hsfc_SOURCE_DIR}/testing"
-#  COMMAND cpphsfc-test "--log_level=test_suite"
-#)
