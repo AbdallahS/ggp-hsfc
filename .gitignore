@@ -1,0 +1,7 @@
+build/*
+lib/*
+include/*
+examples/Makefile
+examples/build/*
+examples/tools.pyc
+*~
