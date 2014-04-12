@@ -14,6 +14,7 @@ include_directories("${libhsfc_BINARY_DIR}/patched_headers")
 
 set(CPPHSFC_SRC
   src/hsfc.cpp
+  src/portable.cpp
   src/hsfcwrapper.cpp
   src/sexprtoflat.cpp
 )

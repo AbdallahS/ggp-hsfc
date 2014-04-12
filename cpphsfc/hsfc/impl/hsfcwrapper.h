@@ -24,51 +24,51 @@ class HSFCManager
 
 
 private:
-  boost::scoped_ptr<hsfcGDLManager> internal_;
+    boost::scoped_ptr<hsfcGDLManager> internal_;
 
-  // Because the hsfcGDLManager doesn't provide an easy way to get
-  // the role names we need to jump through some hoops. Running
-  // populatePlayerNamesFromLegalMoves() is also important because 
-  // the internals are not properly initialised until a state
-  // has been created.
-  std::vector<std::string> playernames_;
-  void populatePlayerNamesFromLegalMoves();
+    // Because the hsfcGDLManager doesn't provide an easy way to get
+    // the role names we need to jump through some hoops. Running
+    // populatePlayerNamesFromLegalMoves() is also important because 
+    // the internals are not properly initialised until a state
+    // has been created.
+    std::vector<std::string> playernames_;
+    void populatePlayerNamesFromLegalMoves();
 
 public:
-  HSFCManager();
+    HSFCManager();
 
-  /* Functions from hsfcGDLManager with const fixes */
-  hsfcState* CreateGameState();
-  void FreeGameState(hsfcState* GameState);
-  void CopyGameState(hsfcState& Destination, const hsfcState& Source);
-  void SetInitialGameState(hsfcState& GameState);
-  void GetLegalMoves(const hsfcState& GameState, std::vector<hsfcLegalMove>& LegalMove) const;
-  void DoMove(hsfcState& GameState, const std::vector<hsfcLegalMove>& LegalMove);
-  bool IsTerminal(const hsfcState& GameState) const;
-  void GetGoalValues(const hsfcState& GameState, std::vector<int>& GoalValue) const;
-  void PlayOut(hsfcState& GameState, std::vector<int>& GoalValue);
-  void PrintState(const hsfcState& GameState) const;
+    /* Functions from hsfcGDLManager with const fixes */
+    hsfcState* CreateGameState();
+    void FreeGameState(hsfcState* GameState);
+    void CopyGameState(hsfcState& Destination, const hsfcState& Source);
+    void SetInitialGameState(hsfcState& GameState);
+    void GetLegalMoves(const hsfcState& GameState, std::vector<hsfcLegalMove>& LegalMove) const;
+    void DoMove(hsfcState& GameState, const std::vector<hsfcLegalMove>& LegalMove);
+    bool IsTerminal(const hsfcState& GameState) const;
+    void GetGoalValues(const hsfcState& GameState, std::vector<int>& GoalValue) const;
+    void PlayOut(hsfcState& GameState, std::vector<int>& GoalValue);
+    void PrintState(const hsfcState& GameState) const;
 
-  /* Additional functions - note: capitalised first letters for class consistency. */
-  unsigned int NumPlayers() const;  
-  std::ostream& PrintPlayer(std::ostream& os, unsigned int roleid) const;
-  std::ostream& PrintMove(std::ostream& os, const hsfcLegalMove& legalmove) const;  
+    /* Additional functions - note: capitalised first letters for class consistency. */
+    unsigned int NumPlayers() const;  
+    std::ostream& PrintPlayer(std::ostream& os, unsigned int roleid) const;
+    std::ostream& PrintMove(std::ostream& os, const hsfcLegalMove& legalmove) const;  
 
     // NOTE: the change of behaviour of the Initialise function compared to the underlying
     // HSFC. Passing a string is now assumed to be a GDL description. To pass a filename 
     // use boost::filesystem::path.
-  void Initialise(const std::string& gdldescription, const hsfcGDLParamaters& Paramaters);
-  void Initialise(const boost::filesystem::path& gdlfilename, const hsfcGDLParamaters& Paramaters);
+    void Initialise(const std::string& gdldescription, const hsfcGDLParamaters& Paramaters);
+    void Initialise(const boost::filesystem::path& gdlfilename, const hsfcGDLParamaters& Paramaters);
 
 
     /*******************************************************************************
-   * A semi-portable representation of a game state. Should be portable across any
-   * HSFC instance that is loaded with the exact same GDL file.
-   *******************************************************************************/  
+     * A semi-portable representation of a game state. Should be portable across any
+     * HSFC instance that is loaded with the exact same GDL file.
+     *******************************************************************************/  
 
-void GetStateData(const hsfcState& state, std::vector<std::pair<int,int> >& relationlist, int& round, int& currentstep) const;
+    void GetStateData(const hsfcState& state, std::vector<std::pair<int,int> >& relationlist, int& round, int& currentstep) const;
   
-void SetStateData(const std::vector<std::pair<int,int> >& relationlist, int round, int currentstep, hsfcState& state);
+    void SetStateData(const std::vector<std::pair<int,int> >& relationlist, int round, int currentstep, hsfcState& state);
 
 };
 

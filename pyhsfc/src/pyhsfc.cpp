@@ -13,6 +13,7 @@
 #include <boost/python/stl_iterator.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <hsfc/hsfc.h>
+#include <hsfc/portable.h>
 
 using namespace HSFC;
 namespace py = boost::python;
@@ -143,13 +144,8 @@ const char* PyGame::ds_InitState = "Returns the initial state";
 
 PyGame::PyGame(const std::string& gdldescription, 
                const std::string& gdlfilename, 
-               bool use_gadelac)
+               bool usegadelac)
 {
-    if (use_gadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
-
-	hsfcGDLParamaters params;
-    hsfcGDLParamsInit(params);
-
     if (gdldescription.empty() && gdlfilename.empty())
         throw HSFCException() 
             << ErrorMsgInfo("No GDL file or description specified"); 
@@ -157,10 +153,9 @@ PyGame::PyGame(const std::string& gdldescription,
         throw HSFCException() 
             << ErrorMsgInfo("Cannot speficy both a GDL file and description");
     if (!gdldescription.empty())        
-        manager_.Initialise(gdldescription, params);
+        Game::initialise(gdldescription, usegadelac);
     else
-        manager_.Initialise(boost::filesystem::path(gdlfilename), params);
-	initstate_.reset(new State(*this));
+        Game::initialise(boost::filesystem::path(gdlfilename), usegadelac);
 }
 
 std::vector<Player> PyGame::players()

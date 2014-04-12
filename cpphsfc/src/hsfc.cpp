@@ -4,6 +4,7 @@
 #include <boost/variant/get.hpp>
 #include <boost/functional/hash.hpp>
 #include <hsfc/hsfc.h>
+#include <hsfc/portable.h>
 #include "sexprtoflat.h"
 
 namespace HSFC
@@ -20,48 +21,48 @@ Player::Player(const Player& other): manager_(other.manager_), roleid_(other.rol
 
 std::string Player::tostring() const
 {
-  std::ostringstream ss;
-  ss << *this;
-  return ss.str();
+    std::ostringstream ss;
+    ss << *this;
+    return ss.str();
 }
 
 bool Player::operator==(const Player& other) const
 {
-  return roleid_ == other.roleid_;
+    return roleid_ == other.roleid_;
 }
 
 bool Player::operator!=(const Player& other) const
 {
-  return roleid_ != other.roleid_;
+    return roleid_ != other.roleid_;
 }
 
 Player& Player::operator=(const Player& other)
 {
-  this->manager_ = other.manager_;
-  this->roleid_ = other.roleid_;
-  return *this;
+    this->manager_ = other.manager_;
+    this->roleid_ = other.roleid_;
+    return *this;
 }
 
 std::size_t Player::hash_value() const
 {
-  // Note: since there is only 1 manager per game
-  // we can use the pointer as a hash value.
-  size_t seed = 0;
-  boost::hash_combine(seed, roleid_);
-  boost::hash_combine(seed, manager_);
-  return seed;
+    // Note: since there is only 1 manager per game
+    // we can use the pointer as a hash value.
+    size_t seed = 0;
+    boost::hash_combine(seed, roleid_);
+    boost::hash_combine(seed, manager_);
+    return seed;
 }
 
 
 std::size_t hash_value(const Player& player)
 {
-  return player.hash_value();
+    return player.hash_value();
 }
 
 
 std::ostream& operator<<(std::ostream& os, const Player& player)
 {
-  return player.manager_->PrintPlayer(os, player.roleid_);
+    return player.manager_->PrintPlayer(os, player.roleid_);
 }
 
 
@@ -77,292 +78,227 @@ Move::Move(const Move& other): manager_(other.manager_), move_(other.move_)
 
 std::string Move::tostring() const
 {
-  std::ostringstream ss;
-  ss << *this;
-  return ss.str();  
+    std::ostringstream ss;
+    ss << *this;
+    return ss.str();
 }
 
 bool operator==(const hsfcLegalMove& a, const hsfcLegalMove& b)
 {
-  return (a.RoleIndex == b.RoleIndex && 
-      strcmp(a.Text, b.Text) == 0 &&
-      a.Tuple.RelationIndex == b.Tuple.RelationIndex &&
-      a.Tuple.ID == b.Tuple.ID);
+    return (a.RoleIndex == b.RoleIndex &&
+            strcmp(a.Text, b.Text) == 0 &&
+            a.Tuple.RelationIndex == b.Tuple.RelationIndex &&
+            a.Tuple.ID == b.Tuple.ID);
 }
 
 bool operator!=(const hsfcLegalMove& a, const hsfcLegalMove& b)
 {
-  return !(a == b);
+    return !(a == b);
 }
 
-bool Move::operator==(const Move& other) const 
+bool Move::operator==(const Move& other) const
 {
-  return (manager_ == other.manager_) && (move_ == other.move_);
+    return (manager_ == other.manager_) && (move_ == other.move_);
 }
 
 bool Move::operator!=(const Move& other) const
 {
-  return (manager_ != other.manager_) || (move_ != other.move_);
+    return (manager_ != other.manager_) || (move_ != other.move_);
 }
 
 Move& Move::operator=(const Move& other)
 {
-  manager_ = other.manager_;
-  move_ = other.move_;
-  return *this;
+    manager_ = other.manager_;
+    move_ = other.move_;
+    return *this;
 }
 
 std::size_t Move::hash_value() const
 {
-  // Note: 1) since there is only 1 manager per game we can use the manager_ 
-    //          pointer as a hash value. 
+    // Note: 1) since there is only 1 manager per game we can use the manager_
+    //          pointer as a hash value.
     //       2) I think the move_.Text can be generated from the other data so
     //          we don't need to hash it. Maybe need to confirm this with Michael.
-  size_t seed = 0;
-  boost::hash_combine(seed, manager_);
-  boost::hash_combine(seed, move_.RoleIndex);
-  boost::hash_combine(seed, move_.Tuple.RelationIndex);
-  boost::hash_combine(seed, move_.Tuple.ID);
-  return seed;
+    size_t seed = 0;
+    boost::hash_combine(seed, manager_);
+    boost::hash_combine(seed, move_.RoleIndex);
+    boost::hash_combine(seed, move_.Tuple.RelationIndex);
+    boost::hash_combine(seed, move_.Tuple.ID);
+    return seed;
 }
 
 std::size_t hash_value(const Move& move)
 {
-  return move.hash_value();
+    return move.hash_value();
 }
 
 std::ostream& operator<<(std::ostream& os, const Move& move)
 {
-  return move.manager_->PrintMove(os, move.move_);
+    return move.manager_->PrintMove(os, move.move_);
 }
 
 
 /*****************************************************************************************
  * Implementation of Game
  *****************************************************************************************/
+Game::Game() { }
+
 Game::Game(const Game& other) { }
 
-Game::Game(const std::string& gdldescription, bool usegadelac) 
+Game::Game(const std::string& gdldescription, bool usegadelac)
 {
-    if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
-//    throw HSFCException() << ErrorMsgInfo("Reading string GDL not yet supported");
-        
-  hsfcGDLParamaters params;
-    hsfcGDLParamsInit(params);
-
-  manager_.Initialise(gdldescription, params);
-  initstate_.reset(new State(*this));
+    initialise(gdldescription, usegadelac);
 }
 
-Game::Game(const char* gdldescription, bool usegadelac) 
+Game::Game(const char* gdldescription, bool usegadelac)
 {
-    if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
-//    throw HSFCException() << ErrorMsgInfo("Reading string GDL not yet supported");
-
-  hsfcGDLParamaters params;
-    hsfcGDLParamsInit(params);
-
-  manager_.Initialise(std::string(gdldescription), params);
-  initstate_.reset(new State(*this));
+    initialise(std::string(gdldescription), usegadelac);
 }
 
 Game::Game(const boost::filesystem::path& gdlfile, bool usegadelac)
 {
-    if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
-  hsfcGDLParamaters params;
-    hsfcGDLParamsInit(params);
-
-  manager_.Initialise(gdlfile, params);
-  initstate_.reset(new State(*this));
+    initialise(gdlfile, usegadelac);
 }
 
-void Game::hsfcGDLParamsInit(hsfcGDLParamaters& params)
+void Game::initialise(const std::string& gdldescription, bool usegadelac)
 {
-  // Note: not really sure what are sane options here so copying
-  // from Michael's example code.
-  params.ReadGDLOnly = false;      // Validate the GDL without creating the schema
-  params.SchemaOnly = false;      // Validate the GDL & Schema without grounding the rules
-  params.MaxRelationSize = 1000000;  // Max bytes per relation for high speed storage
-  params.MaxReferenceSize = 1000000;  // Max bytes per lookup table for grounding
-  params.OrderRules = true;      // Optimise the rule execution cost   
+    if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
+    hsfcGDLParamaters params;
+    initInternals(params);
+
+    manager_.Initialise(gdldescription, params);
+    initstate_.reset(new State(*this));
+}
+
+void Game::initialise(const boost::filesystem::path& gdlfile, bool usegadelac)
+{
+    if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
+    hsfcGDLParamaters params;
+    initInternals(params);
+
+    manager_.Initialise(gdlfile, params);
+    initstate_.reset(new State(*this));
+}
+
+
+void Game::initInternals(hsfcGDLParamaters& params)
+{
+    // Note: not really sure what are sane options here so copying
+    // from Michael's example code.
+    params.ReadGDLOnly = false;      // Validate the GDL without creating the schema
+    params.SchemaOnly = false;      // Validate the GDL & Schema without grounding the rules
+    params.MaxRelationSize = 1000000;  // Max bytes per relation for high speed storage
+    params.MaxReferenceSize = 1000000;  // Max bytes per lookup table for grounding
+    params.OrderRules = true;      // Optimise the rule execution cost
 }
 
 const State& Game::initState() const
 {
-  return *initstate_;
+    return *initstate_;
 }
 
 
 unsigned int Game::numPlayers() const
 {
-  return manager_.NumPlayers();
+    return manager_.NumPlayers();
 }
 
 
 void Game::players(std::vector<Player>& plyrs) const
 {
-  this->players(std::back_inserter(plyrs));
+    this->players(std::back_inserter(plyrs));
 }
 
 bool Game::operator==(const Game& other) const
 {
-  // Note: because I disable the Game copy constructor I
-  // use a pointer check. Maybe this is a bit dodgy.
-  return this == &other;
+    // Note: because I disable the Game copy constructor I check
+    // equality by checking the pointer. Maybe this is a bit dodgy.
+    return this == &other;
 }
+
+bool Game::operator!=(const Game& other) const
+{
+    return this != &other;
+}
+
 
 /*****************************************************************************************
  * Implementation of State
  *****************************************************************************************/
 
 State::State(Game& game): manager_(&game.manager_), state_(NULL)
-{  
-  state_ = manager_->CreateGameState();
-  manager_->SetInitialGameState(*state_);
+{
+    state_ = manager_->CreateGameState();
+    manager_->SetInitialGameState(*state_);
 }
 
 State::State(Game& game, const PortableState& ps): manager_(&game.manager_), state_(NULL)
-{  
-  state_ = manager_->CreateGameState();
-  manager_->SetStateData(ps.relationlist_, ps.round_, ps.currentstep_, *state_);
+{
+    state_ = manager_->CreateGameState();
+    manager_->SetStateData(ps.relationlist_, ps.round_, ps.currentstep_, *state_);
 //  manager_->SetInitialGameState(*state_);
 }
 
 
 State::State(const State& other) : manager_(other.manager_), state_(NULL)
 {
-  state_ = manager_->CreateGameState();
-  manager_->CopyGameState(*state_, *(other.state_));
+    state_ = manager_->CreateGameState();
+    manager_->CopyGameState(*state_, *(other.state_));
 }
 
 State& State::operator=(const State& other)
 {
-  BOOST_ASSERT_MSG(manager_ == other.manager_, "Cannot assign to States from different games");
-  if (state_ != NULL)
-    manager_->FreeGameState(state_);
-  manager_->CopyGameState(*state_, *(other.state_));
-  return *this;
+    BOOST_ASSERT_MSG(manager_ == other.manager_, "Cannot assign to States from different games");
+    if (state_ != NULL)
+        manager_->FreeGameState(state_);
+    manager_->CopyGameState(*state_, *(other.state_));
+    return *this;
 }
 
 State::~State()
 {
-  if (state_ != NULL)
-  manager_->FreeGameState(state_);
+    if (state_ != NULL)
+        manager_->FreeGameState(state_);
 }
 
 bool State::isTerminal() const
 {
-  return manager_->IsTerminal(*state_);
+    return manager_->IsTerminal(*state_);
 }
 
 void State::legals(std::vector<PlayerMove>& moves) const
 {
-  this->legals(std::back_inserter(moves));
+    this->legals(std::back_inserter(moves));
 }
 
 void State::goals(std::vector<PlayerGoal>& results) const
 {
-  this->goals(std::back_inserter(results));
+    this->goals(std::back_inserter(results));
 }
 
-void State::playout(std::vector<PlayerGoal>& results) 
+void State::playout(std::vector<PlayerGoal>& results)
 {
-  this->playout(std::back_inserter(results));
+    this->playout(std::back_inserter(results));
 }
 
 void State::play(const std::vector<PlayerMove>& moves)
 {
-  this->play(moves.begin(), moves.end());
+    this->play(moves.begin(), moves.end());
 }
 
 boost::shared_ptr<PortableState> State::CreatePortableState() const
 {
-  boost::shared_ptr<PortableState> ps(new PortableState());
-  ps->relationlist_.clear();
-  manager_->GetStateData(*state_, ps->relationlist_, ps->round_, ps->currentstep_);
-  return ps;
+    boost::shared_ptr<PortableState> ps(new PortableState());
+    ps->relationlist_.clear();
+    manager_->GetStateData(*state_, ps->relationlist_, ps->round_, ps->currentstep_);
+    return ps;
 }
 
 void State::LoadPortableState(const PortableState& ps)
 {
-  manager_->SetStateData(ps.relationlist_, ps.round_, ps.currentstep_, *state_);
+    manager_->SetStateData(ps.relationlist_, ps.round_, ps.currentstep_, *state_);
 }
 
-
-/*****************************************************************************************
- * PortableState
- *****************************************************************************************/
-
-PortableState::PortableState() : round_(0), currentstep_(0)
-{ }
-
-
-template<>
-PortableState::PortableState<const State>(const State& state)
-{
-    state.manager_->GetStateData(*state.state_, relationlist_, round_, currentstep_);
-}
-
-template<>
-PortableState::PortableState<State>(State& state)
-{
-    state.manager_->GetStateData(*state.state_, relationlist_, round_, currentstep_);
-}
-
-template<>
-PortableState::PortableState<const PortableState>(const PortableState& other) :
-round_(other.round_), currentstep_(other.currentstep_), 
-relationlist_(other.relationlist_)
-{ }
-
-template<>
-PortableState::PortableState<PortableState>(PortableState& other) : 
-round_(other.round_), currentstep_(other.currentstep_), 
-relationlist_(other.relationlist_)
-{ }
-
-// Actually have to instantiate the objects.
-template PortableState::PortableState<const State>(const State&);
-template PortableState::PortableState<State>(State&);
-template PortableState::PortableState<const PortableState>(const PortableState&);
-template PortableState::PortableState<PortableState>(PortableState&);
-
-
-
-PortableState& PortableState::operator=(const PortableState& other)
-{
-    round_ = other.round_;
-    currentstep_ = other.currentstep_;
-    relationlist_ = other.relationlist_;
-}
-
-
-bool PortableState::operator==(const PortableState& other) const
-{
-    return (round_ == other.round_ && currentstep_ == other.currentstep_ &&
-            relationlist_ == other.relationlist_);
-}
-
-bool PortableState::operator!=(const PortableState& other) const
-{
-    return (round_ != other.round_ || currentstep_ != other.currentstep_ ||
-            relationlist_ != other.relationlist_);
-}
-
-
-std::size_t PortableState::hash_value() const
-{
-  size_t seed = 0;
-  boost::hash_combine(seed, round_);
-  boost::hash_combine(seed, currentstep_);
-    boost::hash_combine(seed, relationlist_);
-    return seed;
-}
-
-std::size_t hash_value(const PortableState& state)
-{
-  return state.hash_value();
-}
 
 
 }; /* namespace HSFC */

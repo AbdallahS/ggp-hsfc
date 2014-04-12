@@ -9,7 +9,9 @@
 #include <boost/foreach.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
+#include <boost/unordered_map.hpp>
 #include <hsfc/hsfc.h>
+#include <hsfc/portable.h>
 
 using namespace HSFC;
 
@@ -50,6 +52,18 @@ void tictactoe_playout_check(const State &state)
 		BOOST_CHECK(results[0].second == 50);
 		BOOST_CHECK(results[1].second == 50);
 	}	
+}
+
+// Return the player 
+Player get_player(const Game& game, const std::string& playername)
+{
+    std::vector<Player> players;
+    game.players(players);
+    BOOST_FOREACH(const Player& p, players)
+    {
+        if (p.tostring() == playername) return p;
+	}
+    BOOST_CHECK(false);
 }
 
 /****************************************************************
@@ -226,6 +240,30 @@ const char* g_gdl = " \
 (domain_s x ) \
 (domain_s xplayer ) \
 ";
+
+/****************************************************************
+ * Test functions of the State class
+ ****************************************************************/
+
+
+BOOST_AUTO_TEST_CASE(unordered_map_test)
+{
+	Game game(boost::filesystem::path("./tictactoe.gdl"));
+
+    boost::unordered_map<Player, std::string> playermap;
+    std::vector<Player> players;
+    game.players(players);
+    BOOST_FOREACH(const Player& p, players)
+    {
+        playermap[p] = p.tostring();
+    }
+    typedef std::pair<Player,std::string> pp_t;
+    BOOST_FOREACH(const pp_t& pp, playermap)
+    {
+        BOOST_CHECK_EQUAL(pp.first.tostring(), pp.second);
+    }
+}
+
 
 
 /****************************************************************
