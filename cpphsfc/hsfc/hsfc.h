@@ -30,7 +30,6 @@ namespace HSFC
  * Player represents a GDL role.
  *****************************************************************************************/
 
-
 class Player
 {
 public:
@@ -116,6 +115,7 @@ public:
      * Returns the players 
      */
     void players(std::vector<Player>& plyrs) const;
+    boost::shared_ptr<std::vector<Player> > players() const;
 
     template<typename OutputIterator>
     void players(OutputIterator dest) const;
@@ -176,6 +176,7 @@ public:
 
      */
     void legals(std::vector<PlayerMove>& moves) const;
+    boost::shared_ptr<std::vector<PlayerMove> > legals() const;
 
     template<typename OutputIterator>
     void legals(OutputIterator dest) const;
@@ -183,9 +184,9 @@ public:
     /* 
      * Return the goals. Must be called only in terminal states.
      *
-     * Will throw an exception if there is not exactly one goal per player.
      */
     void goals(std::vector<PlayerGoal>& results) const;
+    boost::shared_ptr<std::vector<PlayerGoal> > goals() const;
 
     template<typename OutputIterator>
     void goals(OutputIterator dest) const;

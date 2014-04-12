@@ -209,6 +209,14 @@ void Game::players(std::vector<Player>& plyrs) const
     this->players(std::back_inserter(plyrs));
 }
 
+boost::shared_ptr<std::vector<Player> > Game::players() const
+{
+    boost::shared_ptr<std::vector<Player> >tmp(new std::vector<Player>());
+    players(*tmp);
+    return tmp;
+}
+
+
 bool Game::operator==(const Game& other) const
 {
     // Note: because I disable the Game copy constructor I check
@@ -271,9 +279,23 @@ void State::legals(std::vector<PlayerMove>& moves) const
     this->legals(std::back_inserter(moves));
 }
 
+boost::shared_ptr<std::vector<PlayerMove> > State::legals() const
+{
+    boost::shared_ptr<std::vector<PlayerMove> >tmp(new std::vector<PlayerMove>());
+    legals(*tmp);
+    return tmp;
+}
+
 void State::goals(std::vector<PlayerGoal>& results) const
 {
     this->goals(std::back_inserter(results));
+}
+
+boost::shared_ptr<std::vector<PlayerGoal> > State::goals() const
+{
+    boost::shared_ptr<std::vector<PlayerGoal> >tmp(new std::vector<PlayerGoal>());
+    goals(*tmp);
+    return tmp;
 }
 
 void State::playout(std::vector<PlayerGoal>& results)
