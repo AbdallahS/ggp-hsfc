@@ -253,14 +253,25 @@ const char* g_gdl = " \
 ";
 
 
-// Load a unordered_set of Player or Move names (using tostring())
-template<typename T>
-struct tostring_loader
+// Load a unordered_set of playernames (using tostring())
+struct playername_loader
 {
-    tostring_loader(boost::unordered_set<std::string>& m) : m_(m){};
-    void operator()(const T& o) { m_.insert(o.tostring()); }
+    playername_loader(boost::unordered_set<std::string>& m) : m_(m){};
+    void operator()(const Player& o) { m_.insert(o.tostring()); }
     boost::unordered_set<std::string>& m_;
 };
+
+// Load a unordered_set of move texts (using tostring())
+struct playermovename_loader
+{
+    playermovename_loader(boost::unordered_set<std::string>& m) : m_(m){};
+    void operator()(const PlayerMove& o) const
+    { 
+        m_.insert(o.first.tostring() + o.second.tostring()); 
+    }
+    boost::unordered_set<std::string>& m_;
+};
+
 
 
 /****************************************************************
@@ -277,25 +288,28 @@ BOOST_AUTO_TEST_CASE(game_construction)
     BOOST_CHECK(game1 != game2);
     BOOST_CHECK(!(game1 == game2));   
 
+    boost::unordered_set<std::string> tmpset1;
+    boost::unordered_set<std::string> tmpset2;
+
     // Check that the players for the two games are the same
+    // (ie. have the same text strings)
+    BOOST_CHECK(game1.numPlayers() > 0);
     BOOST_CHECK_EQUAL(game1.numPlayers(), game2.numPlayers());
+    
+    game1.players(boost::make_function_output_iterator(playername_loader(tmpset1)));
+    game2.players(boost::make_function_output_iterator(playername_loader(tmpset2)));   
+    BOOST_CHECK(tmpset1 == tmpset2);
 
-/*    
-    boost::unordered_set<std::string> players1;
-    boost::unordered_set<std::string> players2;
-    
-    tostring_loader<Player> loader1(players1);
-    tostring_loader<Player> loader2(players2);
-    
-    game1.players(boost::make_function_output_iterator(loader1));
-    game2.players(boost::make_function_output_iterator(loader2));   
-    BOOST_CHECK_EQUAL(players1, players2);
-    
-
+    // Now check the moves from the initial game states.
+    tmpset1.clear(); 
+    tmpset2.clear(); 
     State state1(game1);
     State state2(game2);
 
-*/
+    state1.legals(boost::make_function_output_iterator(playermovename_loader(tmpset1)));
+    state2.legals(boost::make_function_output_iterator(playermovename_loader(tmpset2)));
+    BOOST_CHECK(tmpset1.size() > 0);
+    BOOST_CHECK(tmpset1 == tmpset2);
 }
 
 BOOST_AUTO_TEST_CASE(basic_game_tests)

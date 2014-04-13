@@ -228,7 +228,7 @@ void State::legals(OutputIterator dest) const
     manager_->GetLegalMoves(*state_, lms);
     BOOST_FOREACH( hsfcLegalMove& lm, lms)
     {
-        dest++=PlayerMove(Player(manager_, lm.RoleIndex), Move(manager_, lm));
+        *dest++=PlayerMove(Player(manager_, lm.RoleIndex), Move(manager_, lm));
         ok.insert(lm.RoleIndex);
     }
     if (ok.size() != manager_->NumPlayers())
@@ -250,7 +250,7 @@ void State::goals(OutputIterator dest) const
     
     for (unsigned int i = 0; i < vals.size(); ++i)
     {
-        dest++=PlayerGoal(Player(manager_, i), (unsigned int)vals[i]);
+        *dest++=PlayerGoal(Player(manager_, i), (unsigned int)vals[i]);
     }    
 }
 
@@ -267,7 +267,7 @@ void State::playout(OutputIterator dest)
     
     for (unsigned int i = 0; i < vals.size(); ++i)
     {
-        dest++= PlayerGoal(Player(manager_,i), (unsigned int)vals[i]);
+        *dest++= PlayerGoal(Player(manager_,i), (unsigned int)vals[i]);
     }
 }
 
