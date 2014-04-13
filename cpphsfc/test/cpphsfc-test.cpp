@@ -10,13 +10,15 @@
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
+#include <boost/function_output_iterator.hpp>
 #include <hsfc/hsfc.h>
 #include <hsfc/portable.h>
 
 using namespace HSFC;
 
 /****************************************************************
- * Suport functions
+ * General support functions
  ****************************************************************/
 
 // Count the number of moves that are legal for the given player
@@ -40,6 +42,22 @@ PlayerMove pick_first(const std::vector<PlayerMove> moves, const std::string& pl
     BOOST_CHECK(false);
 }
 
+// Return the player 
+Player get_player(const Game& game, const std::string& playername)
+{
+    std::vector<Player> players;
+    game.players(players);
+    BOOST_FOREACH(const Player& p, players)
+    {
+        if (p.tostring() == playername) return p;
+    }
+    BOOST_CHECK(false);
+}
+
+/****************************************************************
+ * Tictactoe specific functions.
+ ****************************************************************/
+
 // Run a playout from any (non-terminal) tictactoe game state. 
 // Someone either wins or it is a draw.
 void tictactoe_playout_check(const State &state)
@@ -58,17 +76,6 @@ void tictactoe_playout_check(const State &state)
     }   
 }
 
-// Return the player 
-Player get_player(const Game& game, const std::string& playername)
-{
-    std::vector<Player> players;
-    game.players(players);
-    BOOST_FOREACH(const Player& p, players)
-    {
-        if (p.tostring() == playername) return p;
-    }
-    BOOST_CHECK(false);
-}
 
 /****************************************************************
  * Test of loading GDL from a string
@@ -245,9 +252,51 @@ const char* g_gdl = " \
 (domain_s xplayer ) \
 ";
 
+
+// Load a unordered_set of Player or Move names (using tostring())
+template<typename T>
+struct tostring_loader
+{
+    tostring_loader(boost::unordered_set<std::string>& m) : m_(m){};
+    void operator()(const T& o) { m_.insert(o.tostring()); }
+    boost::unordered_set<std::string>& m_;
+};
+
+
 /****************************************************************
- * 
+ * Test the Game constructor
  ****************************************************************/
+
+BOOST_AUTO_TEST_CASE(game_construction)
+{
+    // Load tictactoe from text and from file
+    Game game1(g_gdl);
+    Game game2(boost::filesystem::path("./tictactoe.gdl"));
+
+    // Basic test that the games are different
+    BOOST_CHECK(game1 != game2);
+    BOOST_CHECK(!(game1 == game2));   
+
+    // Check that the players for the two games are the same
+    BOOST_CHECK_EQUAL(game1.numPlayers(), game2.numPlayers());
+
+/*    
+    boost::unordered_set<std::string> players1;
+    boost::unordered_set<std::string> players2;
+    
+    tostring_loader<Player> loader1(players1);
+    tostring_loader<Player> loader2(players2);
+    
+    game1.players(boost::make_function_output_iterator(loader1));
+    game2.players(boost::make_function_output_iterator(loader2));   
+    BOOST_CHECK_EQUAL(players1, players2);
+    
+
+    State state1(game1);
+    State state2(game2);
+
+*/
+}
 
 BOOST_AUTO_TEST_CASE(basic_game_tests)
 {
@@ -280,8 +329,6 @@ BOOST_AUTO_TEST_CASE(basic_game_tests)
         BOOST_CHECK_EQUAL(playermap2[pp.first], pp.second);
     }
 }
-
-
 
 /****************************************************************
  * Test functions of the State class
@@ -354,69 +401,6 @@ BOOST_AUTO_TEST_CASE(state_functions)
     BOOST_CHECK(!state2.isTerminal());
 
 }
-
-/****************************************************************
- * Testing that PortableState works across games. Load 2 games.
- * For a state in game 1 playout (so it is in a terminal state).
- * Then serialise and deserialise this into a state in game 2
- * and check that it is in a terminal state.
- ****************************************************************/
-
-BOOST_AUTO_TEST_CASE(send_state_across_games)
-{
-    Game game1(g_gdl);
-    Game game2(boost::filesystem::path("./tictactoe.gdl"));
-    State state1 = game1.initState();
-    State state2 = game2.initState();
-    BOOST_CHECK(!state1.isTerminal());
-    BOOST_CHECK(!state2.isTerminal());
-
-    std::vector<PlayerGoal> result;
-    state1.playout(result);
-    BOOST_CHECK(state1.isTerminal());
-
-    boost::shared_ptr<PortableState> pstate1 = state1.CreatePortableState();
-    boost::shared_ptr<PortableState> pstate2;
-
-    std::ostringstream oserialstream;
-    boost::archive::text_oarchive oa(oserialstream);
-    oa << pstate1;
-    std::string serialised(oserialstream.str());
-    
-    std::istringstream iserialstream(serialised);
-    boost::archive::text_iarchive ia(iserialstream);
-    ia >> pstate2;
-
-    state2.LoadPortableState(*pstate2);
-    BOOST_CHECK(state2.isTerminal());
-}
-
-BOOST_AUTO_TEST_CASE(send_state_across_games2)
-{
-    Game game1(g_gdl);
-    Game game2(boost::filesystem::path("./tictactoe.gdl"));
-    State state1(game1);
-    BOOST_CHECK(!state1.isTerminal());
-
-    std::vector<PlayerGoal> result;
-    state1.playout(result);
-    BOOST_CHECK(state1.isTerminal());
-
-    PortableState pstate1(state1);
-
-    std::ostringstream oserialstream;
-    boost::archive::text_oarchive oa(oserialstream);
-    oa << pstate1;
-    std::string serialised(oserialstream.str());
-    std::istringstream iserialstream(serialised);
-    boost::archive::text_iarchive ia(iserialstream);
-    PortableState pstate2;
-    ia >> pstate2;
-    State state2(game2, pstate2);
-
-    BOOST_CHECK(state2.isTerminal());
-}
-
 
 /****************************************************************
  * Test that the move and player text generated for tictactoe 

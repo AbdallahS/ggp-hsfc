@@ -303,6 +303,14 @@ void State::playout(std::vector<PlayerGoal>& results)
     this->playout(std::back_inserter(results));
 }
 
+boost::shared_ptr<std::vector<PlayerGoal> > State::playout()
+{
+    boost::shared_ptr<std::vector<PlayerGoal> >tmp(new std::vector<PlayerGoal>());
+    playout(*tmp);
+    return tmp;
+}
+
+
 void State::play(const std::vector<PlayerMove>& moves)
 {
     this->play(moves.begin(), moves.end());

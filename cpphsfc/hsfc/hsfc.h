@@ -41,11 +41,11 @@ public:
 
     std::size_t hash_value() const;
 
+private:
     friend class State;
     friend class Game;
     friend std::ostream& operator<<(std::ostream& os, const Player& player);
 
-private:
     const HSFCManager* manager_;
     unsigned int roleid_;
     Player(const HSFCManager* manager_, unsigned int roleid);  
@@ -72,7 +72,6 @@ public:
     std::size_t hash_value() const;
 
 private:
-
     friend class State;
     friend std::ostream& operator<<(std::ostream& os, const Move& move);
   
@@ -111,9 +110,7 @@ public:
     bool operator!=(const Game& other) const;
 
 
-    /*
-     * Returns the players 
-     */
+    /* Get the players for the game */
     void players(std::vector<Player>& plyrs) const;
     boost::shared_ptr<std::vector<Player> > players() const;
 
@@ -172,8 +169,6 @@ public:
      * Return the legal moves. Must be called only in non-terminal states.
      *
      * Will throw an exception if there is not at least one move per player.
-     * TODO: boost::shared_ptr<PlayerMove> legals() and same for goal()
-
      */
     void legals(std::vector<PlayerMove>& moves) const;
     boost::shared_ptr<std::vector<PlayerMove> > legals() const;
@@ -195,6 +190,7 @@ public:
      * Return the goals after a playout. There must be exactly one move per player.
      */
     void playout(std::vector<PlayerGoal>& dest);
+    boost::shared_ptr<std::vector<PlayerGoal> > playout();
 
     template<typename OutputIterator>
     void playout(OutputIterator dest);

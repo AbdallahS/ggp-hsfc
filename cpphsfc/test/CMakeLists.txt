@@ -19,10 +19,20 @@ target_link_libraries(sexprtoflat-test cpphsfc_static ${Boost_LIBRARIES})
 add_executable(cpphsfc-test cpphsfc-test.cpp)
 target_link_libraries(cpphsfc-test cpphsfc_static ${Boost_LIBRARIES})
 
+add_executable(portable-test portable-test.cpp)
+target_link_libraries(portable-test cpphsfc_static ${Boost_LIBRARIES})
+
+
 add_test(
   NAME CppHSFCTest 
   WORKING_DIRECTORY "${hsfc_SOURCE_DIR}/testing"
   COMMAND cpphsfc-test "--log_level=test_suite"
+)
+
+add_test(
+  NAME CppHSFCPortable 
+  WORKING_DIRECTORY "${hsfc_SOURCE_DIR}/testing"
+  COMMAND portable-test "--log_level=test_suite"
 )
 
 add_test(
