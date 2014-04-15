@@ -19,6 +19,12 @@ Player::Player(const HSFCManager* manager, unsigned int roleid): manager_(manage
 Player::Player(const Player& other): manager_(other.manager_), roleid_(other.roleid_)
 { }
 
+Player::Player(Game& game, const PortablePlayer& pp) : 
+    manager_(&game.manager_), roleid_(pp.roleid_)
+{
+    // Note: should probably check that the roleid is valid for this game.
+}
+
 std::string Player::tostring() const
 {
     std::ostringstream ss;
@@ -75,6 +81,15 @@ Move::Move(HSFCManager* manager, const hsfcLegalMove& move): manager_(manager), 
 
 Move::Move(const Move& other): manager_(other.manager_), move_(other.move_)
 { }
+
+Move::Move(Game& game, const PortableMove& pm) : manager_(&game.manager_)
+{
+    move_.RoleIndex = pm.RoleIndex_;
+    strcpy(move_.Text, pm.Text_.c_str());
+    move_.Tuple.RelationIndex = pm.RelationIndex_;
+    move_.Tuple.ID = pm.ID_;
+    // Note: should probably check that all the values are legit.
+}
 
 std::string Move::tostring() const
 {
@@ -228,6 +243,38 @@ bool Game::operator!=(const Game& other) const
 {
     return this != &other;
 }
+
+/*****************************************************************************************
+ * Implementation of PlayerMove and PlayerGoal
+ *****************************************************************************************/
+
+PlayerMove::PlayerMove(const Player& p, const Move& m) : std::pair<Player,Move>(p,m)
+{ }
+
+PlayerMove::PlayerMove(const std::pair<Player, Move>& pm) : std::pair<Player,Move>(pm)
+{ }
+
+PlayerMove::PlayerMove(Game& game, const std::pair<PortablePlayer, PortableMove>& ppm) :
+    std::pair<Player,Move>(Player(game, ppm.first), Move(game, ppm.second))
+{ }
+
+PlayerMove::operator std::pair<Player,Move>&()
+{ return *this; }
+
+
+PlayerGoal::PlayerGoal(const Player& p, unsigned int g) : std::pair<Player,unsigned int>(p,g)
+{ }
+
+PlayerGoal::PlayerGoal(const std::pair<Player, unsigned int>& pg) : std::pair<Player,unsigned int>(pg)
+{ }
+
+PlayerGoal::PlayerGoal(Game& game, const std::pair<PortablePlayer, unsigned int>& ppg) :
+    std::pair<Player,unsigned int>(Player(game, ppg.first), ppg.second)
+{ }
+
+PlayerGoal::operator std::pair<Player,unsigned int>&()
+{ return *this; }
+
 
 
 /*****************************************************************************************

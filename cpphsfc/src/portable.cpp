@@ -52,6 +52,7 @@ PortableState& PortableState::operator=(const PortableState& other)
     round_ = other.round_;
     currentstep_ = other.currentstep_;
     relationlist_ = other.relationlist_;
+    return *this;
 }
 
 
@@ -77,10 +78,148 @@ std::size_t PortableState::hash_value() const
     return seed;
 }
 
-std::size_t hash_value(const PortableState& state)
+std::size_t hash_value(const PortableState& ps)
 {
-    return state.hash_value();
+    return ps.hash_value();
 }
+
+/*****************************************************************************************
+ * PortablePlayer
+ *****************************************************************************************/
+PortablePlayer::PortablePlayer() : roleid_(0)
+{ }
+
+PortablePlayer::PortablePlayer(const Player& player) : roleid_(player.roleid_)
+{ }
+
+PortablePlayer::PortablePlayer(const PortablePlayer& other) : roleid_(other.roleid_)
+{ }
+
+PortablePlayer& PortablePlayer::operator=(const PortablePlayer& other)
+{
+    roleid_ == other.roleid_;
+    return *this;
+}
+
+bool PortablePlayer::operator==(const PortablePlayer& other) const
+{
+    return (roleid_ == other.roleid_);
+}
+
+bool PortablePlayer::operator!=(const PortablePlayer& other) const
+{
+    return (roleid_ != other.roleid_);
+}
+
+std::size_t PortablePlayer::hash_value() const
+{
+    size_t seed = 0;
+    boost::hash_combine(seed, roleid_);
+    return seed;
+}
+
+std::size_t hash_value(const PortablePlayer& pp)
+{
+    return pp.hash_value();
+}
+
+/*****************************************************************************************
+ * PortableMove
+ *****************************************************************************************/
+PortableMove::PortableMove() : RoleIndex_(0), RelationIndex_(0), ID_(0)
+{ }
+
+PortableMove::PortableMove(const Move& move) : 
+    RoleIndex_(move.move_.RoleIndex), Text_(move.move_.Text), 
+    RelationIndex_(move.move_.Tuple.RelationIndex), ID_(move.move_.Tuple.ID)
+{ }
+
+PortableMove::PortableMove(const PortableMove& other) : 
+    RoleIndex_(other.RoleIndex_), Text_(other.Text_),
+    RelationIndex_(other.RelationIndex_), ID_(other.ID_)
+{ }
+
+PortableMove& PortableMove::operator=(const PortableMove& other)
+{
+    RoleIndex_ = other.RoleIndex_;
+    RelationIndex_ = other.RelationIndex_;
+    ID_ = other.ID_;
+    Text_ = other.Text_;
+    return *this;
+}
+
+bool PortableMove::operator==(const PortableMove& other) const
+{
+    return (RoleIndex_ == other.RoleIndex_ && RelationIndex_ == other.RelationIndex_ &&
+            ID_ == other.ID_ && Text_ == other.Text_);
+}
+
+bool PortableMove::operator!=(const PortableMove& other) const
+{
+    return (RoleIndex_ != other.RoleIndex_ || RelationIndex_ != other.RelationIndex_ ||
+            ID_ != other.ID_ || Text_ != other.Text_);
+}
+
+std::size_t PortableMove::hash_value() const
+{
+    size_t seed = 0;
+    boost::hash_combine(seed, RoleIndex_);
+    boost::hash_combine(seed, RelationIndex_);
+    boost::hash_combine(seed, ID_);
+    boost::hash_combine(seed, Text_);   
+    return seed;
+}
+
+std::size_t hash_value(const PortableMove& pm)
+{
+    return pm.hash_value();
+}
+
+/*****************************************************************************************
+ * Implementation of PortablePlayerMove 
+ *****************************************************************************************/
+
+PortablePlayerMove::PortablePlayerMove() : 
+    std::pair<PortablePlayer,PortableMove>(PortablePlayer(), PortableMove())
+{ }
+
+PortablePlayerMove::PortablePlayerMove(const PortablePlayer& p, const PortableMove& m) : 
+    std::pair<PortablePlayer, PortableMove>(p,m)
+{ }
+
+PortablePlayerMove::PortablePlayerMove(const std::pair<PortablePlayer, PortableMove>& ppm) :
+    std::pair<PortablePlayer,PortableMove>(ppm.first, ppm.second)
+{ }
+
+PortablePlayerMove::PortablePlayerMove(const PlayerMove& pm) :
+    std::pair<PortablePlayer,PortableMove>(PortablePlayer(pm.first), PortableMove(pm.second))
+{ }
+
+PortablePlayerMove::operator std::pair<PortablePlayer,PortableMove>&()
+{ return *this; }
+
+/*****************************************************************************************
+ * Implementation of PortablePlayerGoal
+ *****************************************************************************************/
+
+PortablePlayerGoal::PortablePlayerGoal() : 
+    std::pair<PortablePlayer,unsigned int>(PortablePlayer(), 0)
+{ }
+
+PortablePlayerGoal::PortablePlayerGoal(const PortablePlayer& p, unsigned int g) : 
+    std::pair<PortablePlayer, unsigned int>(p,g)
+{ }
+
+PortablePlayerGoal::PortablePlayerGoal(const std::pair<PortablePlayer, unsigned int>& ppg) :
+    std::pair<PortablePlayer,unsigned int>(ppg.first, ppg.second)
+{ }
+
+PortablePlayerGoal::PortablePlayerGoal(const PlayerGoal& pg) :
+    std::pair<PortablePlayer,unsigned int>(PortablePlayer(pg.first), pg.second)
+{ }
+
+PortablePlayerGoal::operator std::pair<PortablePlayer,unsigned int>&()
+{ return *this; }
 
 
 }; /* namespace HSFC */

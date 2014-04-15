@@ -9,13 +9,18 @@ namespace HSFC
 {
 
 class Game;
+
+class State;
 class Move;
 class Player;
-class State;
+class PlayerMove;
+class PlayerGoal;
 
 class PortableState;
 class PortablePlayer;
 class PortableMove;
+class PortablePlayerMove;
+class PortablePlayerGoal;
 
 };
 

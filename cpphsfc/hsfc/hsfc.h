@@ -34,16 +34,19 @@ class Player
 {
 public:
     Player(const Player& other);  
-    std::string tostring() const;
-    bool operator==(const Player& other) const;
-    bool operator!=(const Player& other) const;
+    Player(Game& game, const PortablePlayer& pp);
     Player& operator=(const Player& other);
 
+    bool operator==(const Player& other) const;
+    bool operator!=(const Player& other) const;
+
+    std::string tostring() const;
     std::size_t hash_value() const;
 
 private:
     friend class State;
     friend class Game;
+    friend class PortablePlayer;
     friend std::ostream& operator<<(std::ostream& os, const Player& player);
 
     const HSFCManager* manager_;
@@ -64,15 +67,18 @@ class Move
 {
 public:
     Move(const Move& other);
-    std::string tostring() const;
-    bool operator==(const Move& other) const;
-    bool operator!=(const Move& other) const;
+    Move(Game& game, const PortableMove& pm);
     Move& operator=(const Move& other);
 
+    bool operator==(const Move& other) const;
+    bool operator!=(const Move& other) const;
+
+    std::string tostring() const;
     std::size_t hash_value() const;
 
 private:
     friend class State;
+    friend class PortableMove;
     friend std::ostream& operator<<(std::ostream& os, const Move& move);
   
     HSFCManager* manager_;
@@ -127,6 +133,8 @@ protected:
     
 private:
     friend class State;
+    friend class Player;
+    friend class Move;
 
     HSFCManager manager_;
     boost::scoped_ptr<State> initstate_; // Useful to maintain an init state
@@ -147,12 +155,34 @@ void Game::players(OutputIterator dest) const
 
 
 /*****************************************************************************************
- * A Game State
+ * PlayerMove and PlayerGoal - are now inherited from std::pair<> rather than being 
+ * typedefs. This allows us to overload the constructors to make it easy to convert
+ * to/from the Portable versions of these data structures.
  *****************************************************************************************/
 
+//typedef std::pair<Player,Move> PlayerMove;
+//typedef std::pair<Player,unsigned int> PlayerGoal;
 
-typedef std::pair<Player,Move> PlayerMove;
-typedef std::pair<Player,unsigned int> PlayerGoal;
+struct PlayerMove : public std::pair<Player,Move>
+{
+    PlayerMove(const Player& p, const Move& m);
+    PlayerMove(const std::pair<Player, Move>& pm);
+    PlayerMove(Game& game, const std::pair<PortablePlayer, PortableMove>& ppm);
+    operator std::pair<Player,Move>&();
+};
+
+struct PlayerGoal : public std::pair<Player,unsigned int>
+{
+    PlayerGoal(const Player& p, unsigned int g);
+    PlayerGoal(const std::pair<Player, unsigned int>& pg);
+    PlayerGoal(Game& game, const std::pair<PortablePlayer, unsigned int>& ppg);
+    operator std::pair<Player,unsigned int>&();
+};
+
+
+/*****************************************************************************************
+ * A Game State
+ *****************************************************************************************/
 
 class State
 {
