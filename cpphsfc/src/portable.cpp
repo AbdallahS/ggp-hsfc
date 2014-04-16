@@ -175,52 +175,5 @@ std::size_t hash_value(const PortableMove& pm)
     return pm.hash_value();
 }
 
-/*****************************************************************************************
- * Implementation of PortablePlayerMove 
- *****************************************************************************************/
-
-PortablePlayerMove::PortablePlayerMove() : 
-    std::pair<PortablePlayer,PortableMove>(PortablePlayer(), PortableMove())
-{ }
-
-PortablePlayerMove::PortablePlayerMove(const PortablePlayer& p, const PortableMove& m) : 
-    std::pair<PortablePlayer, PortableMove>(p,m)
-{ }
-
-PortablePlayerMove::PortablePlayerMove(const std::pair<PortablePlayer, PortableMove>& ppm) :
-    std::pair<PortablePlayer,PortableMove>(ppm.first, ppm.second)
-{ }
-
-PortablePlayerMove::PortablePlayerMove(const PlayerMove& pm) :
-    std::pair<PortablePlayer,PortableMove>(PortablePlayer(pm.first), PortableMove(pm.second))
-{ }
-
-PortablePlayerMove::operator std::pair<PortablePlayer,PortableMove>&()
-{ return *this; }
-
-/*****************************************************************************************
- * Implementation of PortablePlayerGoal
- *****************************************************************************************/
-
-PortablePlayerGoal::PortablePlayerGoal() : 
-    std::pair<PortablePlayer,unsigned int>(PortablePlayer(), 0)
-{ }
-
-PortablePlayerGoal::PortablePlayerGoal(const PortablePlayer& p, unsigned int g) : 
-    std::pair<PortablePlayer, unsigned int>(p,g)
-{ }
-
-PortablePlayerGoal::PortablePlayerGoal(const std::pair<PortablePlayer, unsigned int>& ppg) :
-    std::pair<PortablePlayer,unsigned int>(ppg.first, ppg.second)
-{ }
-
-PortablePlayerGoal::PortablePlayerGoal(const PlayerGoal& pg) :
-    std::pair<PortablePlayer,unsigned int>(PortablePlayer(pg.first), pg.second)
-{ }
-
-PortablePlayerGoal::operator std::pair<PortablePlayer,unsigned int>&()
-{ return *this; }
-
-
 }; /* namespace HSFC */
 

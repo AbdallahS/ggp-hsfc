@@ -13,14 +13,16 @@ class Game;
 class State;
 class Move;
 class Player;
-class PlayerMove;
-class PlayerGoal;
+
+typedef std::pair<Player,Move> PlayerMove;
+typedef std::pair<Player,unsigned int> PlayerGoal;
 
 class PortableState;
 class PortablePlayer;
 class PortableMove;
-class PortablePlayerMove;
-class PortablePlayerGoal;
+
+typedef std::pair<PortablePlayer, PortableMove> PortablePlayerMove;
+typedef std::pair<PortablePlayer, unsigned int> PortablePlayerGoal;
 
 };
 

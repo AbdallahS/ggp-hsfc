@@ -108,9 +108,15 @@ public:
 
 private:
     friend class Player;
-    friend class PortablePlayerMove;
-    friend class PortablePlayerGoal;
     friend class boost::serialization::access;
+    
+    // NOTE: 1) Need to make PortablePlayerMove and PortablePlayerGoal friends
+    //          to allow the deserialization of these objects to work.
+    //          This is ugly and does in theory allow empty Portable objects to 
+    //          be created by a user (by way of the friend pair).
+    //       2) cannot be a friend of a typedef. I think this has changed in C++11.
+    friend class std::pair<PortablePlayer,unsigned int>;
+    friend class std::pair<PortablePlayer,PortableMove>;
 
     PortablePlayer();
     template<typename Archive>
@@ -145,8 +151,13 @@ public:
 
 private:
     friend class Move;
-    friend class PortablePlayerMove;
     friend class boost::serialization::access;
+
+    // NOTE: 1) Need to make PortablePlayerMove a friend to allow the deserialization 
+    //          of these objects to work. This is ugly and does in theory allow empty
+    //          Portable objects to be created by a user (by way of the friend pair).
+    //       2) cannot be a friend of a typedef. I think this has changed in C++11.
+    friend class std::pair<PortablePlayer,PortableMove>;
 
     PortableMove();
     template<typename Archive>
@@ -168,99 +179,6 @@ void PortableMove::serialize(Archive& ar, const unsigned int version)
 }
 
 std::size_t hash_value(const PortableMove& pm); /* Can be used as a key in boost::unordered_* */
-
-
-/*****************************************************************************************
- * PortablePlayerMove
- *****************************************************************************************/
-
-//typedef std::pair<PortablePlayer, PortableMove> PortablePlayerMove;
-
-
-class PortablePlayerMove : public std::pair<PortablePlayer, PortableMove>
-{
-public:
-    PortablePlayerMove(const PortablePlayer& pp, const PortableMove& pm);
-    PortablePlayerMove(const std::pair<PortablePlayer, PortableMove>& other);
-    PortablePlayerMove(const PlayerMove& pm);
-    operator std::pair<PortablePlayer, PortableMove>&();
-
-private:
-    friend class boost::serialization::access;
-    PortablePlayerMove();
-
-    template<typename Archive>
-    void serialize(Archive& ar, const unsigned int version);    
-};
-
-template<typename Archive>
-void PortablePlayerMove::serialize(Archive& ar, const unsigned int version)
-{
-    ar & first;
-    ar & second;
-}
-
-
-/*****************************************************************************************
- * PortablePlayerGoal
- *****************************************************************************************/
-
-//typedef std::pair<PortablePlayer, unsigned int> PortablePlayerGoal;
-
-
-class PortablePlayerGoal : public std::pair<PortablePlayer, unsigned int>
-{
-public:
-    PortablePlayerGoal(const PortablePlayer& pp, unsigned int g);
-    PortablePlayerGoal(const std::pair<PortablePlayer, unsigned int>& other);
-    PortablePlayerGoal(const PlayerGoal& pg);
-    operator std::pair<PortablePlayer, unsigned int>&();
-
-private:
-    friend class boost::serialization::access;
-    PortablePlayerGoal();
-
-    template<typename Archive>
-    void serialize(Archive& ar, const unsigned int version);    
-};
-
-template<typename Archive>
-void PortablePlayerGoal::serialize(Archive& ar, const unsigned int version)
-{
-    ar & first;
-    ar & second;
-}
-
-
-
-/*****************************************************************************************
- * Support function to convert to/from collection of PortableX's.
- * E.g, Given: 
- *      std::vector<PortableState> input, Game& game, std::vector<State> output
- *      where input is a vector of PortableStates then:
- *
- *        convert_from_portable(input, game, output)
- *
- *      will populate the output vector with the corresponsing states.
- *****************************************************************************************/
-
-template<typename Cin, typename Cout>
-void convert_to_portable(const Cin& in, Cout& out)
-{
-    BOOST_FOREACH(const typename Cin::value_type& np, in)
-    {
-        out.push_back(typename Cout::value_type(np));
-    }
-}
-
-template<typename Cin, typename Cout>
-void convert_from_portable(const Cin& in, Game& game, Cout& out)
-{
-    BOOST_FOREACH(const typename Cin::value_type& p, in)
-    {
-        out.push_back(typename Cout::value_type(game, p));
-    }
-}
 
 /*****************************************************************************************
  * Support functor to convert from collection of PortableX's. Here is an example

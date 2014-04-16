@@ -151,7 +151,9 @@ BOOST_AUTO_TEST_CASE(send_players_across_games)
 
     // Now do the important stuff. 
     // Serialize a vector of PortableStates
-    convert_to_portable(players1, pplayers1);
+    std::copy(players1.begin(), players1.end(), 
+              std::inserter(pplayers1, pplayers1.begin()));
+
     BOOST_CHECK_EQUAL(players1.size(), pplayers1.size());
     
     std::ostringstream oserialstream;
@@ -164,7 +166,11 @@ BOOST_AUTO_TEST_CASE(send_players_across_games)
     BOOST_CHECK_EQUAL(pplayers1.size(), pplayerst.size());
 
     // Deserialize vector of PortableStates
-    convert_from_portable(pplayerst, game2, playerst);
+
+    std::transform(pplayerst.begin(), pplayerst.end(), 
+                   std::inserter(playerst, playerst.begin()),
+                   FromPortable(game2));
+
     BOOST_CHECK_EQUAL(pplayerst.size(), playerst.size());
 
     BOOST_FOREACH(const Player& p, playerst)
@@ -212,7 +218,8 @@ BOOST_AUTO_TEST_CASE(send_moves_across_games)
     BOOST_CHECK(movenames1 == movenames2);
 
     // Serialize a vector of portables
-    convert_to_portable(moves1, pmoves1);
+    std::copy(moves1.begin(), moves1.end(), 
+              std::inserter(pmoves1, pmoves1.begin()));
     BOOST_CHECK_EQUAL(moves1.size(), pmoves1.size());
 
     std::ostringstream oserialstream;
@@ -225,7 +232,10 @@ BOOST_AUTO_TEST_CASE(send_moves_across_games)
     BOOST_CHECK_EQUAL(pmoves1.size(), pmoves2.size());
 
     // Deserialize vector of PortableStates
-    convert_from_portable(pmoves2, game2, moves2);
+    std::transform(pmoves2.begin(), pmoves2.end(),
+                   std::inserter(moves2, moves2.begin()), 
+                   FromPortable(game2));
+
     BOOST_CHECK_EQUAL(pmoves2.size(), moves2.size());
 
     BOOST_FOREACH(const Move& p, moves2)
@@ -263,9 +273,6 @@ BOOST_AUTO_TEST_CASE(send_playermoves_across_games)
     std::copy(playermoves2.begin(), playermoves2.end(), 
               std::inserter(pplayermoves2, pplayermoves2.begin()));
 
-    //convert_to_portable(playermoves1, pplayermoves1);
-    //convert_to_portable(playermoves2, pplayermoves2);
-
     BOOST_CHECK_EQUAL(playermoves1.size(), pplayermoves1.size());
     BOOST_CHECK_EQUAL(playermoves2.size(), pplayermoves2.size());
     BOOST_CHECK_EQUAL(pplayermoves1.size(), pplayermoves2.size());
@@ -282,7 +289,6 @@ BOOST_AUTO_TEST_CASE(send_playermoves_across_games)
     std::transform(pplayermovest.begin(), pplayermovest.end(),
                    std::inserter(playermovest, playermovest.begin()),
                    FromPortable(game2));
-//    convert_from_portable(pplayermovest, game2, playermovest);
 
     BOOST_CHECK_EQUAL(playermoves1.size(), playermovest.size());
 }
@@ -309,8 +315,6 @@ BOOST_AUTO_TEST_CASE(send_playergoals_across_games)
     std::copy(playergoals1.begin(), playergoals1.end(), 
               std::inserter(pplayergoals1, pplayergoals1.begin()));
 
-//    convert_to_portable(playergoals1, pplayergoals1);
-
     BOOST_CHECK_EQUAL(playergoals1.size(), pplayergoals1.size()); 
 
     std::ostringstream oserialstream;
@@ -325,7 +329,6 @@ BOOST_AUTO_TEST_CASE(send_playergoals_across_games)
     std::transform(pplayergoalst.begin(), pplayergoalst.end(),
                    std::inserter(playergoalst, playergoalst.begin()),
                    FromPortable(game2));
-//    convert_from_portable(pplayergoalst, game2, playergoalst);
     BOOST_CHECK_EQUAL(pplayergoalst.size(), playergoalst.size());
 }
 
