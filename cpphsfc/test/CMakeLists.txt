@@ -22,6 +22,9 @@ target_link_libraries(cpphsfc-test cpphsfc_static ${Boost_LIBRARIES})
 add_executable(portable-test portable-test.cpp)
 target_link_libraries(portable-test cpphsfc_static ${Boost_LIBRARIES})
 
+add_executable(playermoves-test playermoves-test.cpp)
+target_link_libraries(playermoves-test cpphsfc_static ${Boost_LIBRARIES})
+
 
 add_test(
   NAME CppHSFCTest 
@@ -33,6 +36,12 @@ add_test(
   NAME CppHSFCPortable 
   WORKING_DIRECTORY "${hsfc_SOURCE_DIR}/testing"
   COMMAND portable-test "--log_level=test_suite"
+)
+
+add_test(
+  NAME CppHSFCPlayerMoves
+  WORKING_DIRECTORY "${hsfc_SOURCE_DIR}/testing"
+  COMMAND playermoves-test "--log_level=test_suite"
 )
 
 add_test(
