@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <iterator>
+#include <algorithm>
 #include <boost/foreach.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
@@ -257,8 +258,13 @@ BOOST_AUTO_TEST_CASE(send_playermoves_across_games)
     state1.legals(playermoves1);
     state2.legals(playermoves2);
 
-    convert_to_portable(playermoves1, pplayermoves1);
-    convert_to_portable(playermoves2, pplayermoves2);
+    std::copy(playermoves1.begin(), playermoves1.end(), 
+              std::inserter(pplayermoves1, pplayermoves1.begin()));
+    std::copy(playermoves2.begin(), playermoves2.end(), 
+              std::inserter(pplayermoves2, pplayermoves2.begin()));
+
+    //convert_to_portable(playermoves1, pplayermoves1);
+    //convert_to_portable(playermoves2, pplayermoves2);
 
     BOOST_CHECK_EQUAL(playermoves1.size(), pplayermoves1.size());
     BOOST_CHECK_EQUAL(playermoves2.size(), pplayermoves2.size());
@@ -273,7 +279,11 @@ BOOST_AUTO_TEST_CASE(send_playermoves_across_games)
     ia >> pplayermovest;
     BOOST_CHECK(pplayermoves1 == pplayermovest);
 
-    convert_from_portable(pplayermovest, game2, playermovest);
+    std::transform(pplayermovest.begin(), pplayermovest.end(),
+                   std::inserter(playermovest, playermovest.begin()),
+                   FromPortable(game2));
+//    convert_from_portable(pplayermovest, game2, playermovest);
+
     BOOST_CHECK_EQUAL(playermoves1.size(), playermovest.size());
 }
 
@@ -295,8 +305,12 @@ BOOST_AUTO_TEST_CASE(send_playergoals_across_games)
     // Setup the games get the playergoals after a playout
     state1.playout(playergoals1);
     BOOST_CHECK_EQUAL(playergoals1.size(), game1.numPlayers()); 
-    
-    convert_to_portable(playergoals1, pplayergoals1);
+
+    std::copy(playergoals1.begin(), playergoals1.end(), 
+              std::inserter(pplayergoals1, pplayergoals1.begin()));
+
+//    convert_to_portable(playergoals1, pplayergoals1);
+
     BOOST_CHECK_EQUAL(playergoals1.size(), pplayergoals1.size()); 
 
     std::ostringstream oserialstream;
@@ -308,7 +322,10 @@ BOOST_AUTO_TEST_CASE(send_playergoals_across_games)
     ia >> pplayergoalst;
     BOOST_CHECK(pplayergoals1 == pplayergoalst);
 
-    convert_from_portable(pplayergoalst, game2, playergoalst);
+    std::transform(pplayergoalst.begin(), pplayergoalst.end(),
+                   std::inserter(playergoalst, playergoalst.begin()),
+                   FromPortable(game2));
+//    convert_from_portable(pplayergoalst, game2, playergoalst);
     BOOST_CHECK_EQUAL(pplayergoalst.size(), playergoalst.size());
 }
 

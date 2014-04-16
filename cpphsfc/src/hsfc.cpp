@@ -245,7 +245,7 @@ bool Game::operator!=(const Game& other) const
 }
 
 /*****************************************************************************************
- * Implementation of PlayerMove and PlayerGoal
+ * Implementation of PlayerMove
  *****************************************************************************************/
 
 PlayerMove::PlayerMove(const Player& p, const Move& m) : std::pair<Player,Move>(p,m)
@@ -258,9 +258,12 @@ PlayerMove::PlayerMove(Game& game, const std::pair<PortablePlayer, PortableMove>
     std::pair<Player,Move>(Player(game, ppm.first), Move(game, ppm.second))
 { }
 
-PlayerMove::operator std::pair<Player,Move>&()
-{ return *this; }
+//PlayerMove::operator std::pair<Player,Move>&()
+//{ return *this; }
 
+/*****************************************************************************************
+ * Implementation of PlayerGoal
+ *****************************************************************************************/
 
 PlayerGoal::PlayerGoal(const Player& p, unsigned int g) : std::pair<Player,unsigned int>(p,g)
 { }
@@ -272,8 +275,8 @@ PlayerGoal::PlayerGoal(Game& game, const std::pair<PortablePlayer, unsigned int>
     std::pair<Player,unsigned int>(Player(game, ppg.first), ppg.second)
 { }
 
-PlayerGoal::operator std::pair<Player,unsigned int>&()
-{ return *this; }
+//PlayerGoal::operator std::pair<Player,unsigned int>&()
+//{ return *this; }
 
 
 

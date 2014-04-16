@@ -262,6 +262,62 @@ void convert_from_portable(const Cin& in, Game& game, Cout& out)
     }
 }
 
+/*****************************************************************************************
+ * Support functor to convert from collection of PortableX's. Here is an example
+ * of how to use it:
+ *
+ *     Game game(<some_game>);
+ *     std::vector<PortablePlayerMove> ppmoves;
+ * 
+ *     ....   // Assign to ppmoves;
+ *
+ *     std::vector<PlayerMove> pmoves;
+ *     std::transform(ppmoves.begin(), ppmoves.end(), 
+ *                    std::inserter(pmoves, pmoves.begin()), FromPortable(game));
+ *
+ * NOTE: there is no ToPortable because it is unnecessary. To copy from PortableX to X
+ *       you can simply use std::copy. The constructors will take care of any type 
+ *       conversions. For example:
+ * 
+ *     std::copy(pmoves.begin(), pmoves.end(), std::inserter(ppmoves, ppmoves.begin()));
+ *
+ *****************************************************************************************/
+
+struct FromPortable
+{
+public:
+    FromPortable(Game& game);
+    
+    PlayerMove operator()(const PortablePlayerMove& ppm);
+    PlayerGoal operator()(const PortablePlayerGoal& ppg);
+    Player operator()(const PortablePlayer& pp);
+    Move operator()(const PortableMove& pm);
+    State operator()(const PortableState& ps);
+    
+private:
+    Game& game_;
+};
+
+/*****************************************************************************************
+ * Inlined implementation of FromPortable.
+ *****************************************************************************************/
+
+inline FromPortable::FromPortable(Game& game) : game_(game) { }
+
+inline PlayerMove FromPortable::operator()(const PortablePlayerMove& ppm)
+{ return PlayerMove(Player(game_, ppm.first), Move(game_,ppm.second)); }
+
+inline PlayerGoal FromPortable::operator()(const PortablePlayerGoal& ppg)
+{ return PlayerGoal(Player(game_, ppg.first), ppg.second); }
+
+inline Player FromPortable::operator()(const PortablePlayer& pp)
+{ return Player(game_, pp); }
+
+inline Move FromPortable::operator()(const PortableMove& pm)
+{ return Move(game_, pm); }
+
+inline State FromPortable::operator()(const PortableState& ps)
+{ return State(game_, ps); }
 
 }; /* namespace HSFC */
 

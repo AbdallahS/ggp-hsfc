@@ -168,7 +168,7 @@ struct PlayerMove : public std::pair<Player,Move>
     PlayerMove(const Player& p, const Move& m);
     PlayerMove(const std::pair<Player, Move>& pm);
     PlayerMove(Game& game, const std::pair<PortablePlayer, PortableMove>& ppm);
-    operator std::pair<Player,Move>&();
+//    operator std::pair<Player,Move>&();
 };
 
 struct PlayerGoal : public std::pair<Player,unsigned int>
@@ -176,7 +176,7 @@ struct PlayerGoal : public std::pair<Player,unsigned int>
     PlayerGoal(const Player& p, unsigned int g);
     PlayerGoal(const std::pair<Player, unsigned int>& pg);
     PlayerGoal(Game& game, const std::pair<PortablePlayer, unsigned int>& ppg);
-    operator std::pair<Player,unsigned int>&();
+//    operator std::pair<Player,unsigned int>&();
 };
 
 
