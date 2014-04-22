@@ -68,6 +68,13 @@ bool PortableState::operator!=(const PortableState& other) const
             relationlist_ != other.relationlist_);
 }
 
+bool PortableState::operator<(const PortableState& other) const
+{
+    if (round_ != other.round_) return round_ < other.round_;
+    if (currentstep_ != other.currentstep_) return currentstep_ < other.currentstep_;
+    return relationlist_ < other.relationlist_;
+}
+
 
 std::size_t PortableState::hash_value() const
 {
@@ -109,6 +116,11 @@ bool PortablePlayer::operator==(const PortablePlayer& other) const
 bool PortablePlayer::operator!=(const PortablePlayer& other) const
 {
     return (roleid_ != other.roleid_);
+}
+
+bool PortablePlayer::operator<(const PortablePlayer& other) const
+{
+    return (roleid_ < other.roleid_);
 }
 
 std::size_t PortablePlayer::hash_value() const
@@ -158,6 +170,14 @@ bool PortableMove::operator!=(const PortableMove& other) const
 {
     return (RoleIndex_ != other.RoleIndex_ || RelationIndex_ != other.RelationIndex_ ||
             ID_ != other.ID_ || Text_ != other.Text_);
+}
+
+bool PortableMove::operator<(const PortableMove& other) const
+{
+    if (RoleIndex_ != other.RoleIndex_) return RoleIndex_ < other.RoleIndex_;
+    if (RelationIndex_ != other.RelationIndex_) return RelationIndex_ < other.RelationIndex_;
+    if (ID_ != other.ID_) return ID_ < other.ID_;
+    return Text_ < other.Text_;
 }
 
 std::size_t PortableMove::hash_value() const

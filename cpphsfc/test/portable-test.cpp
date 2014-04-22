@@ -93,7 +93,6 @@ BOOST_AUTO_TEST_CASE(send_state_across_games1)
     BOOST_CHECK(state2.isTerminal());
 }
 
-
 BOOST_AUTO_TEST_CASE(send_state_across_games2)
 {
     Game game1(boost::filesystem::path("./tictactoe.gdl"));
@@ -204,8 +203,8 @@ BOOST_AUTO_TEST_CASE(send_moves_across_games)
     boost::unordered_set<std::string> movenamest;
 
     // Setup the games and get the move and move names.
-    state1.legals(playermoves1);
-    state2.legals(playermoves2);
+    state1.legals(std::back_inserter(playermoves1));
+    state2.legals(std::back_inserter(playermoves2));
     BOOST_FOREACH(const PlayerMove& pm, playermoves1)
     {
         moves1.push_back(pm.second);
@@ -265,8 +264,8 @@ BOOST_AUTO_TEST_CASE(send_playermoves_across_games)
     std::vector<PortablePlayerMove> pplayermovest;
 
     // Setup the games and get the move and move names.
-    state1.legals(playermoves1);
-    state2.legals(playermoves2);
+    state1.legals(std::back_inserter(playermoves1));
+    state2.legals(std::back_inserter(playermoves2));
 
     std::copy(playermoves1.begin(), playermoves1.end(), 
               std::inserter(pplayermoves1, pplayermoves1.begin()));
@@ -337,4 +336,90 @@ BOOST_AUTO_TEST_CASE(send_playergoals_across_games)
 /****************************************************************
  ****************************************************************/
 
+/****************************************************************
+ * Testing that PortableJointMove are the same across 2 instances
+ * of the same game.
+ ****************************************************************/
+
+BOOST_AUTO_TEST_CASE(send_jointmove_across_games)
+{
+    Game game1(boost::filesystem::path("./tictactoe.gdl"));
+    Game game2(boost::filesystem::path("./tictactoe.gdl"));
+    State state1(game1);
+    State state2(game2);
+    std::vector<JointMove> jointmoves1;
+    std::vector<JointMove> jointmoves2;
+    std::vector<JointMove> jointmovest;
+    std::vector<PortableJointMove> pjointmoves1;
+    std::vector<PortableJointMove> pjointmoves2;
+    std::vector<PortableJointMove> pjointmovest;
+
+    // Setup the games and get the move and move names.
+    jointmoves1 = state1.joints();
+    jointmoves2 = state2.joints();
+
+    std::transform(jointmoves1.begin(), jointmoves1.end(),
+                   std::inserter(pjointmoves1, pjointmoves1.begin()),
+                   ToPortable());
+    std::transform(jointmoves2.begin(), jointmoves2.end(),
+                   std::inserter(pjointmoves2, pjointmoves2.begin()),
+                   ToPortable());
+
+    BOOST_CHECK_EQUAL(jointmoves1.size(), pjointmoves1.size());
+    BOOST_CHECK_EQUAL(jointmoves2.size(), pjointmoves2.size());
+    BOOST_CHECK(pjointmoves1 == pjointmoves2);
+
+    std::ostringstream oserialstream;
+    boost::archive::text_oarchive oa(oserialstream);
+    oa << pjointmoves1;
+    std::string serialised(oserialstream.str());
+    std::istringstream iserialstream(serialised);
+    boost::archive::text_iarchive ia(iserialstream);
+    ia >> pjointmovest;
+    BOOST_CHECK(pjointmoves1 == pjointmovest);
+
+    std::transform(pjointmovest.begin(), pjointmovest.end(),
+                   std::back_inserter(jointmovest),
+                   FromPortable(game2));
+    BOOST_CHECK_EQUAL(jointmoves1.size(), jointmovest.size());
+}
+
+/****************************************************************
+ * Testing that JointGoals can be serialized.
+ ****************************************************************/
+
+BOOST_AUTO_TEST_CASE(send_jointgoals_across_games)
+{
+    Game game1(boost::filesystem::path("./tictactoe.gdl"));
+    Game game2(boost::filesystem::path("./tictactoe.gdl"));
+    State state1(game1);
+    State state2(game2);
+    std::vector<PlayerGoal> playergoals1;
+    std::vector<PlayerGoal> playergoalst;
+    std::vector<PortablePlayerGoal> pplayergoals1;
+    std::vector<PortablePlayerGoal> pplayergoalst;
+
+    // Setup the games get the playergoals after a playout
+    state1.playout(playergoals1);
+    BOOST_CHECK_EQUAL(playergoals1.size(), game1.numPlayers()); 
+
+    std::copy(playergoals1.begin(), playergoals1.end(), 
+              std::inserter(pplayergoals1, pplayergoals1.begin()));
+
+    BOOST_CHECK_EQUAL(playergoals1.size(), pplayergoals1.size()); 
+
+    std::ostringstream oserialstream;
+    boost::archive::text_oarchive oa(oserialstream);
+    oa << pplayergoals1;
+    std::string serialised(oserialstream.str());
+    std::istringstream iserialstream(serialised);
+    boost::archive::text_iarchive ia(iserialstream);
+    ia >> pplayergoalst;
+    BOOST_CHECK(pplayergoals1 == pplayergoalst);
+
+    std::transform(pplayergoalst.begin(), pplayergoalst.end(),
+                   std::inserter(playergoalst, playergoalst.begin()),
+                   FromPortable(game2));
+    BOOST_CHECK_EQUAL(pplayergoalst.size(), playergoalst.size());
+}
 

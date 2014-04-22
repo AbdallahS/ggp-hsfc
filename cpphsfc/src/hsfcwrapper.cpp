@@ -207,7 +207,7 @@ std::ostream& HSFCManager::PrintMove(std::ostream& os, const hsfcLegalMove& lega
 }
 
 void HSFCManager::GetStateData(const hsfcState& state, 
-                 std::vector<std::pair<int,int> >& relationlist,
+                 std::map<int,int>& relationlist,
                  int& round, int& currentstep) const
 {  
   hsfcStateManager* sm = const_cast<hsfcStateManager*>(internal_->StateManager);  
@@ -220,7 +220,7 @@ void HSFCManager::GetStateData(const hsfcState& state,
     {
       for (int j=0; j < ts.NumRelations[i]; ++j)
       {
-        relationlist.push_back(std::make_pair(i, ts.RelationID[i][j]));
+        relationlist.insert(std::make_pair(i, ts.RelationID[i][j]));
       }
     }
   }  
@@ -231,7 +231,7 @@ void HSFCManager::GetStateData(const hsfcState& state,
  * if the set data is bad????
  */
 
-void HSFCManager::SetStateData(const std::vector<std::pair<int,int> >& relationlist, 
+void HSFCManager::SetStateData(const std::map<int,int>& relationlist, 
                  int round, int currentstep,
                  hsfcState& state) 
 {  

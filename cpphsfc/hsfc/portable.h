@@ -13,7 +13,8 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <boost/unordered_set.hpp>
+#include <iterator>
+#include <algorithm>
 #include <boost/assert.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -21,6 +22,7 @@
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/vector.hpp>
+#include <boost/serialization/map.hpp>
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/access.hpp>
 
@@ -47,6 +49,7 @@ public:
 
     bool operator==(const PortableState& other) const;
     bool operator!=(const PortableState& other) const;
+    bool operator<(const PortableState& other) const;
 
     std::size_t hash_value() const;
 
@@ -56,7 +59,7 @@ private:
 
     int round_;
     int currentstep_;
-    std::vector<std::pair<int,int> > relationlist_;
+    std::map<int,int> relationlist_;
 
     template<typename Archive>
     void serialize(Archive& ar, const unsigned int version);
@@ -103,6 +106,7 @@ public:
     
     bool operator==(const PortablePlayer& other) const;
     bool operator!=(const PortablePlayer& other) const;
+    bool operator<(const PortablePlayer& other) const;
 
     std::size_t hash_value() const;
 
@@ -115,8 +119,13 @@ private:
     //          This is ugly and does in theory allow empty Portable objects to 
     //          be created by a user (by way of the friend pair).
     //       2) cannot be a friend of a typedef. I think this has changed in C++11.
-    friend class std::pair<PortablePlayer,unsigned int>;
-    friend class std::pair<PortablePlayer,PortableMove>;
+    friend class std::pair<PortablePlayer, unsigned int>;
+    friend class std::pair<const PortablePlayer, unsigned int>;
+
+    friend class std::pair<PortablePlayer, PortableMove>;
+    friend class std::pair<const PortablePlayer, PortableMove>;
+    friend class std::pair<PortablePlayer, const PortableMove>;
+    friend class std::pair<const PortablePlayer, const PortableMove>;
 
     PortablePlayer();
     template<typename Archive>
@@ -146,6 +155,7 @@ public:
     
     bool operator==(const PortableMove& other) const;
     bool operator!=(const PortableMove& other) const;
+    bool operator<(const PortableMove& other) const;
 
     std::size_t hash_value() const;
 
@@ -157,7 +167,11 @@ private:
     //          of these objects to work. This is ugly and does in theory allow empty
     //          Portable objects to be created by a user (by way of the friend pair).
     //       2) cannot be a friend of a typedef. I think this has changed in C++11.
-    friend class std::pair<PortablePlayer,PortableMove>;
+    friend class std::pair<PortablePlayer, PortableMove>;
+    friend class std::pair<const PortablePlayer, PortableMove>;
+    friend class std::pair<PortablePlayer, const PortableMove>;
+    friend class std::pair<const PortablePlayer, const PortableMove>;
+
 
     PortableMove();
     template<typename Archive>
@@ -181,7 +195,7 @@ void PortableMove::serialize(Archive& ar, const unsigned int version)
 std::size_t hash_value(const PortableMove& pm); /* Can be used as a key in boost::unordered_* */
 
 /*****************************************************************************************
- * Support functor to convert from collection of PortableX's. Here is an example
+ * Support functor to convert to/from collection of PortableX's. Here is an example
  * of how to use it:
  *
  *     Game game(<some_game>);
@@ -191,23 +205,33 @@ std::size_t hash_value(const PortableMove& pm); /* Can be used as a key in boost
  *
  *     std::vector<PlayerMove> pmoves;
  *     std::transform(ppmoves.begin(), ppmoves.end(), 
- *                    std::inserter(pmoves, pmoves.begin()), FromPortable(game));
+ *                    std::back_inserter(pmoves), FromPortable(game));
  *
- * NOTE: there is no ToPortable because it is unnecessary. To copy from PortableX to X
- *       you can simply use std::copy. The constructors will take care of any type 
- *       conversions. For example:
+ * To convert in the opposite direction use ToPortable(). This is only strictly necessary
+ * necessary for PortableJointMove and PortableJointGoal conversion, since in the other
+ * cases the std::copy could be used. However, these other functions have been defined for 
+ * conversion to all portable types for simplicity/completeness.
  * 
- *     std::copy(pmoves.begin(), pmoves.end(), std::inserter(ppmoves, ppmoves.begin()));
+ *     std::transform(pmoves.begin(), pmoves.end(), std::back_inserter(ppmoves), ToPortable());
  *
+ * NOTE: I think the value_type for PortableJointMove is: 
+ *       std::pair<const PortablePlayer,PortableMove> This seems to be making conversion for 
+ *       PortablePlayerMove (which is std::pair<PortablePlayer,PortableMove>) ambiguous. So
+ *      explicitly add conversions for this. Doing the same for PortableJointGoal as well.
+ * 
  *****************************************************************************************/
 
 struct FromPortable
 {
 public:
     FromPortable(Game& game);
-    
+
+    JointMove operator()(const PortableJointMove& pjm);
+    JointGoal operator()(const PortableJointGoal& pjg);
     PlayerMove operator()(const PortablePlayerMove& ppm);
+    PlayerMove operator()(const std::pair<const PortablePlayer, PortableMove>& ppm);
     PlayerGoal operator()(const PortablePlayerGoal& ppg);
+    PlayerGoal operator()(const std::pair<const PortablePlayer, unsigned int>& ppg);
     Player operator()(const PortablePlayer& pp);
     Move operator()(const PortableMove& pm);
     State operator()(const PortableState& ps);
@@ -222,10 +246,30 @@ private:
 
 inline FromPortable::FromPortable(Game& game) : game_(game) { }
 
+inline JointMove FromPortable::operator()(const PortableJointMove& pjm)
+{
+    JointMove jm;
+    std::transform(pjm.begin(), pjm.end(), std::inserter(jm,jm.begin()),*this);
+    return jm;
+}
+
+inline JointGoal FromPortable::operator()(const PortableJointGoal& pjg)
+{
+    JointGoal jg;
+    std::transform(pjg.begin(), pjg.end(), std::inserter(jg,jg.begin()),*this);
+    return jg;
+}
+
 inline PlayerMove FromPortable::operator()(const PortablePlayerMove& ppm)
 { return PlayerMove(Player(game_, ppm.first), Move(game_,ppm.second)); }
 
+inline PlayerMove FromPortable::operator()(const std::pair<const PortablePlayer, PortableMove>& ppm)
+{ return PlayerMove(Player(game_, ppm.first), Move(game_,ppm.second)); }
+
 inline PlayerGoal FromPortable::operator()(const PortablePlayerGoal& ppg)
+{ return PlayerGoal(Player(game_, ppg.first), ppg.second); }
+
+inline PlayerGoal FromPortable::operator()(const std::pair<const PortablePlayer, unsigned int>& ppg)
 { return PlayerGoal(Player(game_, ppg.first), ppg.second); }
 
 inline Player FromPortable::operator()(const PortablePlayer& pp)
@@ -236,6 +280,64 @@ inline Move FromPortable::operator()(const PortableMove& pm)
 
 inline State FromPortable::operator()(const PortableState& ps)
 { return State(game_, ps); }
+
+
+/*****************************************************************************************
+ * ToPortable. See explanation of FromPortable.
+ *****************************************************************************************/
+
+struct ToPortable
+{
+public:
+    ToPortable();
+    ToPortable(Game& game);
+
+    PortableJointMove operator()(const JointMove& jm);
+    PortableJointGoal operator()(const JointGoal& jg);    
+    PortablePlayerMove operator()(const PlayerMove& ppm);
+    PortablePlayerGoal operator()(const PlayerGoal& ppg);
+    PortablePlayer operator()(const Player& pp);
+    PortableMove operator()(const Move& pm);
+    PortableState operator()(const State& ps);
+};
+
+/*****************************************************************************************
+ * inlined implementation of ToPortable.
+ *****************************************************************************************/
+
+inline ToPortable::ToPortable(){ }
+
+inline ToPortable::ToPortable(Game& game){ }
+
+inline PortableJointMove ToPortable::operator()(const JointMove& jm)
+{
+    PortableJointMove pjm;
+    std::copy(jm.begin(), jm.end(), std::inserter(pjm,pjm.begin()));
+    return pjm;
+}
+
+inline PortableJointGoal ToPortable::operator()(const JointGoal& jg)
+{
+    PortableJointGoal pjg;
+    std::copy(jg.begin(), jg.end(), std::inserter(pjg,pjg.begin()));
+    return pjg;
+}
+
+inline PortablePlayerMove ToPortable::operator()(const PlayerMove& pm)
+{ return PortablePlayerMove(pm); }
+
+inline PortablePlayerGoal ToPortable::operator()(const PlayerGoal& pg)
+{ return PortablePlayerGoal(pg); }
+
+inline PortablePlayer ToPortable::operator()(const Player& p)
+{ return PortablePlayer(p); }
+
+inline PortableMove ToPortable::operator()(const Move& m)
+{ return PortableMove(m); }
+
+inline PortableState ToPortable::operator()(const State& s)
+{ return PortableState(s); }
+
 
 }; /* namespace HSFC */
 

@@ -296,23 +296,13 @@ bool State::isTerminal() const
     return manager_->IsTerminal(*state_);
 }
 
-void State::legals(std::vector<PlayerMove>& moves) const
-{
-    this->legals(std::back_inserter(moves));
-}
+boost::unordered_map<Player, std::vector<Move> > State::legals() const {
+    std::vector<PlayerMove> legalMoves;
+    legals(std::back_inserter(legalMoves));
 
-boost::shared_ptr<std::vector<PlayerMove> > State::legals() const
-{
-    boost::shared_ptr<std::vector<PlayerMove> >tmp(new std::vector<PlayerMove>());
-    legals(*tmp);
-    return tmp;
-}
-
-boost::unordered_map<Player, std::vector<Move> > State::myLegals() const {
-    const boost::shared_ptr<std::vector<PlayerMove> > legalMoves(legals());
     boost::unordered_map<Player, std::vector<Move> > result;
   
-    for(std::vector<PlayerMove>::iterator pm = legalMoves->begin(); pm != legalMoves->end(); pm++) {
+    for(std::vector<PlayerMove>::iterator pm = legalMoves.begin(); pm != legalMoves.end(); pm++) {
         boost::unordered_map<Player, std::vector<Move> >::iterator iter_moves(result.find(pm->first));
         if(iter_moves == result.end()) {
             result.emplace(pm->first, std::vector<Move>(1, pm->second));
@@ -324,7 +314,8 @@ boost::unordered_map<Player, std::vector<Move> > State::myLegals() const {
 }
 
 std::vector<JointMove> State::joints() const {
-    const boost::unordered_map<Player, std::vector<Move> > inputs(myLegals());
+    const boost::unordered_map<Player, std::vector<Move> > inputs(legals());
+
     std::vector<JointMove> result (1, boost::unordered_map<Player, Move>());
 
     for (boost::unordered_map<Player, std::vector<Move> >::const_iterator iterInput = inputs.begin(); iterInput != inputs.end(); iterInput++) {
@@ -341,19 +332,7 @@ std::vector<JointMove> State::joints() const {
     return result;
 }
 
-void State::goals(std::vector<PlayerGoal>& results) const
-{
-    this->goals(std::back_inserter(results));
-}
-
-boost::shared_ptr<std::vector<PlayerGoal> > State::goals() const
-{
-    boost::shared_ptr<std::vector<PlayerGoal> >tmp(new std::vector<PlayerGoal>());
-    goals(*tmp);
-    return tmp;
-}
-
-JointGoal State::myGoals() const {
+JointGoal State::goals() const {
     JointGoal result;
     this->goals(std::inserter(result, result.begin()));
     return result;

@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE(playermoves_basics)
     std::vector<PlayerMove> playermoves1;
     PlayerMoves playermoves2;
 
-    state.legals(playermoves1);  // the old stype
+    state.legals(std::inserter(playermoves1, playermoves1.begin())); 
     state.legals(std::inserter(playermoves2, playermoves2.begin()));
     BOOST_CHECK_EQUAL(playermoves1.size(), playermoves2.size());
     

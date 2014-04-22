@@ -10,6 +10,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include <boost/scoped_ptr.hpp>
 #include <boost/filesystem.hpp>
 
@@ -66,9 +67,9 @@ public:
      * HSFC instance that is loaded with the exact same GDL file.
      *******************************************************************************/  
 
-    void GetStateData(const hsfcState& state, std::vector<std::pair<int,int> >& relationlist, int& round, int& currentstep) const;
+    void GetStateData(const hsfcState& state, std::map<int,int>& relationlist, int& round, int& currentstep) const;
   
-    void SetStateData(const std::vector<std::pair<int,int> >& relationlist, int round, int currentstep, hsfcState& state);
+    void SetStateData(const std::map<int,int>& relationlist, int round, int currentstep, hsfcState& state);
 
 };
 

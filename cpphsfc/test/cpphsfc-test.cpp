@@ -359,14 +359,21 @@ BOOST_AUTO_TEST_CASE(state_functions)
 
     /* Test legals */
     std::vector<PlayerMove> legs;
-    state1.legals(legs);       
+    state1.legals(std::back_inserter(legs));       
     BOOST_CHECK_EQUAL(legs.size(), 10);
 
     /* Test legals() */
-    boost::shared_ptr<std::vector<PlayerMove> > legs_ptr;
-    legs_ptr = state1.legals();
-    BOOST_CHECK_EQUAL(legs_ptr->size(), 10);
-
+    boost::unordered_map<Player, std::vector<Move> > legmoves = state1.legals();
+    unsigned mcount = 0;
+    typedef std::pair<Player, std::vector<Move> > pms_t;
+    BOOST_FOREACH(const pms_t& pms, legmoves)
+    {
+        mcount += pms.second.size();
+    }
+//    boost::shared_ptr<std::vector<PlayerMove> > legs_ptr;
+//    legs_ptr = state1.legals();
+//    BOOST_CHECK_EQUAL(legs_ptr->size(), 10);
+    BOOST_CHECK_EQUAL(mcount, 10);
 
     // To test the PortableState we make a single move from the
     // initial state, then save this as a portable state. Run a
@@ -428,7 +435,7 @@ BOOST_AUTO_TEST_CASE(text_check)
     BOOST_CHECK(!state1.isTerminal());
 
     std::vector<PlayerMove> legs;
-    state1.legals(legs);       
+    state1.legals(std::back_inserter(legs));       
 
     unsigned int count = 0;
     bool matchply = false;
@@ -470,7 +477,7 @@ BOOST_AUTO_TEST_CASE(tictactoe)
         tictactoe_playout_check(state);
         BOOST_CHECK(!state.isTerminal());
         std::vector<PlayerMove> legs;
-        state.legals(legs);    
+        state.legals(std::back_inserter(legs));    
         if (turn == 0)
         {
             BOOST_CHECK_EQUAL(count_player_moves(legs, "xplayer"), step);
@@ -492,12 +499,15 @@ BOOST_AUTO_TEST_CASE(tictactoe)
     // so test for this and also that a draw is 50/50.
     BOOST_CHECK(step < 5);
     std::vector<PlayerGoal> results;
-    state.goals(results);
+    state.goals(std::back_inserter(results));
     BOOST_CHECK_EQUAL(results.size(), 2);
 
-    boost::shared_ptr<std::vector<PlayerGoal> > results_ptr;
-    results_ptr = state.goals();
-    BOOST_CHECK_EQUAL(results_ptr->size(), 2);
+//    boost::shared_ptr<std::vector<PlayerGoal> > results_ptr;
+//    results_ptr = state.goals();
+//    BOOST_CHECK_EQUAL(results_ptr->size(), 2);
+
+    JointGoal results2 = state.goals();
+    BOOST_CHECK_EQUAL(results2.size(), 2);
 
     bool haswinner = 
         (results[0].second == 100 && results[1].second == 0) || 

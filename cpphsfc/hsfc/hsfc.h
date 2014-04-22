@@ -172,26 +172,20 @@ public:
      *
      * Will throw an exception if there is not at least one move per player.
      */
-    void legals(std::vector<PlayerMove>& moves) const;
-    boost::shared_ptr<std::vector<PlayerMove> > legals() const;
-
     template<typename OutputIterator>
     void legals(OutputIterator dest) const;
 
-    boost::unordered_map<Player, std::vector<Move> > myLegals() const;
+    boost::unordered_map<Player, std::vector<Move> > legals() const;
     std::vector<JointMove> joints() const;
 
     /* 
      * Return the goals. Must be called only in terminal states.
      *
      */
-    void goals(std::vector<PlayerGoal>& results) const;
-    boost::shared_ptr<std::vector<PlayerGoal> > goals() const;
-
     template<typename OutputIterator>
     void goals(OutputIterator dest) const;
 
-    JointGoal myGoals() const;
+    JointGoal goals() const;
 
     /* 
      * Return the goals after a playout. There must be exactly one move per player.
