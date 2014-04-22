@@ -17,6 +17,9 @@ class Player;
 typedef std::pair<Player,Move> PlayerMove;
 typedef std::pair<Player,unsigned int> PlayerGoal;
 
+typedef boost::unordered_map<Player, Move> JointMove;
+typedef boost::unordered_map<Player, unsigned int> JointGoal;
+
 class PortableState;
 class PortablePlayer;
 class PortableMove;

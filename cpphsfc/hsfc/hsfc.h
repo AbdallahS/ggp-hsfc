@@ -18,6 +18,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/unordered_map.hpp>
 
 #include <hsfc/hsfcexception.h>
 #include <hsfc/impl/fwd_decl.h>
@@ -29,7 +30,6 @@ namespace HSFC
 /*****************************************************************************************
  * Player represents a GDL role.
  *****************************************************************************************/
-
 class Player
 {
 public:
@@ -62,7 +62,6 @@ std::ostream& operator<<(std::ostream& os, const Player& player);
  * Note: To clear any ambiguity Move represents the move as independent from a player,
  * and NOT the move as taken by a player.
  *****************************************************************************************/
-
 class Move
 {
 public:
@@ -89,11 +88,11 @@ private:
 std::size_t hash_value(const Move& move); /* can be a key in boost::unordered_*  */
 std::ostream& operator<<(std::ostream& os, const Move& move);
 
+std::size_t hash_value(const JointMove& move); /* can be a key in boost::unordered_*  */
+
 /*****************************************************************************************
  * A game object - only one per loaded GDL game.
  *****************************************************************************************/
-
-
 class Game
 {
 public:
@@ -179,6 +178,9 @@ public:
     template<typename OutputIterator>
     void legals(OutputIterator dest) const;
 
+    boost::unordered_map<Player, std::vector<Move> > myLegals() const;
+    std::vector<JointMove> joints() const;
+
     /* 
      * Return the goals. Must be called only in terminal states.
      *
@@ -188,6 +190,8 @@ public:
 
     template<typename OutputIterator>
     void goals(OutputIterator dest) const;
+
+    JointGoal myGoals() const;
 
     /* 
      * Return the goals after a playout. There must be exactly one move per player.
@@ -203,6 +207,7 @@ public:
      *
      */
     void play(const std::vector<PlayerMove>& moves);
+    void play(const JointMove& moves);
 
     template<typename Iterator>
     void play(Iterator begin, Iterator end);
