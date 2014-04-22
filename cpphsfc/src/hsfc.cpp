@@ -361,20 +361,5 @@ void State::play(const JointMove& moves)
     this->play(moves.begin(), moves.end());
 }
 
-boost::shared_ptr<PortableState> State::CreatePortableState() const
-{
-    boost::shared_ptr<PortableState> ps(new PortableState());
-    ps->relationlist_.clear();
-    manager_->GetStateData(*state_, ps->relationlist_, ps->round_, ps->currentstep_);
-    return ps;
-}
-
-void State::LoadPortableState(const PortableState& ps)
-{
-    manager_->SetStateData(ps.relationlist_, ps.round_, ps.currentstep_, *state_);
-}
-
-
-
 }; /* namespace HSFC */
 

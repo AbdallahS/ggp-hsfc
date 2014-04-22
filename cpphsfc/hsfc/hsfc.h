@@ -206,13 +206,6 @@ public:
     template<typename Iterator>
     void play(Iterator begin, Iterator end);
 
-    /* FIXUP: Deprecated - to be removed */
-    /*
-     * Convert to and from a PortableState object
-     */
-    boost::shared_ptr<PortableState> CreatePortableState() const;
-    void LoadPortableState(const PortableState& ps);
-
 private:
     friend class PortableState;
 

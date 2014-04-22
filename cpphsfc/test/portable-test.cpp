@@ -60,40 +60,9 @@ Player get_player(const Game& game, const std::string& playername)
  * For a state in game 1 playout (so it is in a terminal state).
  * Then serialise and deserialise this into a state in game 2
  * and check that it is in a terminal state.
- * NOTE: send_state_across_games1 uses the deprecated functions.
- *       send_state_across_games2 is the preferred method.
  ****************************************************************/
 
-BOOST_AUTO_TEST_CASE(send_state_across_games1)
-{
-    Game game1(boost::filesystem::path("./tictactoe.gdl"));
-    Game game2(boost::filesystem::path("./tictactoe.gdl"));
-    State state1 = game1.initState();
-    State state2 = game2.initState();
-    BOOST_CHECK(!state1.isTerminal());
-    BOOST_CHECK(!state2.isTerminal());
-
-    std::vector<PlayerGoal> result;
-    state1.playout(result);
-    BOOST_CHECK(state1.isTerminal());
-
-    boost::shared_ptr<PortableState> pstate1 = state1.CreatePortableState();
-    boost::shared_ptr<PortableState> pstate2;
-
-    std::ostringstream oserialstream;
-    boost::archive::text_oarchive oa(oserialstream);
-    oa << pstate1;
-    std::string serialised(oserialstream.str());
-    
-    std::istringstream iserialstream(serialised);
-    boost::archive::text_iarchive ia(iserialstream);
-    ia >> pstate2;
-
-    state2.LoadPortableState(*pstate2);
-    BOOST_CHECK(state2.isTerminal());
-}
-
-BOOST_AUTO_TEST_CASE(send_state_across_games2)
+BOOST_AUTO_TEST_CASE(send_state_across_game1)
 {
     Game game1(boost::filesystem::path("./tictactoe.gdl"));
     State state1(game1);

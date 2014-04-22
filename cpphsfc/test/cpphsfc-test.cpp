@@ -392,15 +392,14 @@ BOOST_AUTO_TEST_CASE(state_functions)
     state2.play(does);
     BOOST_CHECK(!state1.isTerminal());
     BOOST_CHECK(!state2.isTerminal());
-    boost::shared_ptr<PortableState> pstate = state2.CreatePortableState();
-    BOOST_CHECK(pstate.get() != NULL);
+    boost::shared_ptr<PortableState> pstate(new PortableState(state2));
 
     std::vector<PlayerGoal> result;
     state2.playout(result);
     BOOST_CHECK(state2.isTerminal());
 
-    state2.LoadPortableState(*pstate);
-    BOOST_CHECK(!state2.isTerminal());
+    State state3(game, *pstate);
+    BOOST_CHECK(!state3.isTerminal());
     
     // Now test the serialisation of Portable state. Do the same test
     // as before but by taking the further step of (de-)serializing.
@@ -412,14 +411,15 @@ BOOST_AUTO_TEST_CASE(state_functions)
     
     std::istringstream iserialstream(serialised);
     boost::archive::text_iarchive ia(iserialstream);
+
     boost::shared_ptr<PortableState> pstate2;
     ia >> pstate2;
 
     state2.playout(result);
     BOOST_CHECK(state2.isTerminal());
 
-    state2.LoadPortableState(*pstate);
-    BOOST_CHECK(!state2.isTerminal());
+    State state4(game, *pstate2);
+    BOOST_CHECK(!state4.isTerminal());
 
 }
 
