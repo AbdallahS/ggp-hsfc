@@ -343,11 +343,10 @@ void State::playout(std::vector<PlayerGoal>& results)
     this->playout(std::back_inserter(results));
 }
 
-boost::shared_ptr<std::vector<PlayerGoal> > State::playout()
-{
-    boost::shared_ptr<std::vector<PlayerGoal> >tmp(new std::vector<PlayerGoal>());
-    playout(*tmp);
-    return tmp;
+JointGoal State::playout() {
+    JointGoal result;
+    this->playout(std::inserter(result, result.begin()));
+    return result;
 }
 
 

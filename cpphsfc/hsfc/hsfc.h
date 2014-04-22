@@ -191,10 +191,10 @@ public:
      * Return the goals after a playout. There must be exactly one move per player.
      */
     void playout(std::vector<PlayerGoal>& dest);
-    boost::shared_ptr<std::vector<PlayerGoal> > playout();
 
     template<typename OutputIterator>
     void playout(OutputIterator dest);
+    JointGoal playout();
   
     /*
      * Make a move. 
