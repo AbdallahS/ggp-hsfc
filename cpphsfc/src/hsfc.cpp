@@ -226,19 +226,11 @@ unsigned int Game::numPlayers() const
     return manager_.NumPlayers();
 }
 
-
-void Game::players(std::vector<Player>& plyrs) const
-{
-    this->players(std::back_inserter(plyrs));
-}
-
-boost::shared_ptr<std::vector<Player> > Game::players() const
-{
-    boost::shared_ptr<std::vector<Player> >tmp(new std::vector<Player>());
-    players(*tmp);
+std::vector<Player> Game::players() const {
+    std::vector<Player> tmp;
+    this->players(std::back_inserter(tmp));
     return tmp;
 }
-
 
 bool Game::operator==(const Game& other) const
 {

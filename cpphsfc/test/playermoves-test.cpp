@@ -47,8 +47,7 @@ PlayerMove pick_first(const std::vector<PlayerMove> moves, const std::string& pl
 // Return the player 
 Player get_player(const Game& game, const std::string& playername)
 {
-    std::vector<Player> players;
-    game.players(players);
+    std::vector<Player> players = game.players();
     BOOST_FOREACH(const Player& p, players)
     {
         if (p.tostring() == playername) return p;

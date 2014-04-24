@@ -46,8 +46,7 @@ PlayerMove pick_first(const std::vector<PlayerMove> moves, const std::string& pl
 // Return the player 
 Player get_player(const Game& game, const std::string& playername)
 {
-    std::vector<Player> players;
-    game.players(players);
+  std::vector<Player> players = game.players();
     BOOST_FOREACH(const Player& p, players)
     {
         if (p.tostring() == playername) return p;
@@ -104,8 +103,8 @@ BOOST_AUTO_TEST_CASE(send_players_across_games)
     boost::unordered_set<std::string> playernamest;
 
     // Setup the games and get the player and player names.
-    game1.players(players1);    
-    game2.players(players2);    
+    players1 = game1.players();    
+    players2 = game2.players();    
     BOOST_CHECK_EQUAL(players1.size(), players2.size());
     BOOST_FOREACH(const Player& p, players1)
     {

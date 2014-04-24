@@ -116,8 +116,7 @@ public:
 
 
     /* Get the players for the game */
-    void players(std::vector<Player>& plyrs) const;
-    boost::shared_ptr<std::vector<Player> > players() const;
+    std::vector<Player> players() const;
 
     template<typename OutputIterator>
     void players(OutputIterator dest) const;
