@@ -89,6 +89,9 @@ std::size_t hash_value(const Move& move); /* can be a key in boost::unordered_* 
 std::ostream& operator<<(std::ostream& os, const Move& move);
 
 std::size_t hash_value(const JointMove& move); /* can be a key in boost::unordered_*  */
+std::ostream& operator<<(std::ostream& os, const JointMove& move);
+
+std::ostream& operator<<(std::ostream& os, const JointGoal& move);
 
 /*****************************************************************************************
  * A game object - only one per loaded GDL game.

@@ -160,6 +160,21 @@ std::ostream& operator<<(std::ostream& os, const Move& move)
     return move.manager_->PrintMove(os, move.move_);
 }
 
+std::ostream& operator<<(std::ostream& os, const JointMove& jmove)
+{
+    for(JointMove::const_iterator iter = jmove.begin(); iter != jmove.end(); iter++) {
+        os << "(does " << iter->first << " " << iter->second << ") ";
+    }
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const JointGoal& jgoal)
+{
+    for(JointGoal::const_iterator iter = jgoal.begin(); iter != jgoal.end(); iter++) {
+        os << "(goal " << iter->first << " " << iter->second << ") ";
+    }
+    return os;
+}
 
 /*****************************************************************************************
  * Implementation of Game
