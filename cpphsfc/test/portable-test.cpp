@@ -61,7 +61,7 @@ Player get_player(const Game& game, const std::string& playername)
  * and check that it is in a terminal state.
  ****************************************************************/
 
-BOOST_AUTO_TEST_CASE(send_state_across_game1)
+BOOST_AUTO_TEST_CASE(send_terminal_state_across_game1)
 {
     Game game1(boost::filesystem::path("./tictactoe.gdl"));
     State state1(game1);
@@ -84,6 +84,29 @@ BOOST_AUTO_TEST_CASE(send_state_across_game1)
     BOOST_CHECK(state2.isTerminal());
 }
 
+
+BOOST_AUTO_TEST_CASE(send_state_across_game1)
+{
+    Game game1(boost::filesystem::path("./tictactoe.gdl"));
+    State state1(game1);
+    BOOST_CHECK(!state1.isTerminal());
+    boost::shared_ptr<PortableState> pstate1(new PortableState(state1));
+
+    std::ostringstream oserialstream;
+    boost::archive::text_oarchive oa(oserialstream);
+    oa << pstate1;
+    std::string serialised(oserialstream.str());
+    std::istringstream iserialstream(serialised);
+    boost::archive::text_iarchive ia(iserialstream);
+
+
+    Game game2(boost::filesystem::path("./tictactoe.gdl"));
+    boost::shared_ptr<PortableState> pstate2;
+    ia >> pstate2;
+    State state2(game2, *pstate2);
+    BOOST_CHECK(!state2.isTerminal());
+}
+
 /****************************************************************
  * Testing that converting back and forth between state and
  * portable state preserves the number of joint moves.
@@ -92,11 +115,20 @@ BOOST_AUTO_TEST_CASE(send_state_across_game2)
 {
     Game game1(boost::filesystem::path("./tictactoe.gdl"));
     State state1(game1);
+    State state1b(game1);
     PortableState pstate1(state1);
+    PortableState pstate1b(state1b);
     State state2(game1, pstate1);
     
-    state1.playout();
     BOOST_CHECK(state1.isTerminal() == state2.isTerminal());
+    BOOST_CHECK(pstate1 == pstate1b);
+
+    std::vector<PlayerMove> legals1;
+    std::vector<PlayerMove> legals2;
+    state1.legals(std::back_inserter(legals1));
+    state2.legals(std::back_inserter(legals2));
+    BOOST_CHECK(legals1.size() == legals2.size());
+
     BOOST_CHECK(state1.joints().size() == state2.joints().size());
 }
 

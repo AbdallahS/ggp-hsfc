@@ -59,7 +59,7 @@ private:
 
     int round_;
     int currentstep_;
-    std::map<int,int> relationlist_;
+    std::vector<std::pair<int,int> > relationlist_;
 
     template<typename Archive>
     void serialize(Archive& ar, const unsigned int version);
