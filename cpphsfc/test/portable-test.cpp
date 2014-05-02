@@ -85,6 +85,22 @@ BOOST_AUTO_TEST_CASE(send_state_across_game1)
 }
 
 /****************************************************************
+ * Testing that converting back and forth between state and
+ * portable state preserves the number of joint moves.
+ ****************************************************************/
+BOOST_AUTO_TEST_CASE(send_state_across_game2)
+{
+    Game game1(boost::filesystem::path("./tictactoe.gdl"));
+    State state1(game1);
+    PortableState pstate1(state1);
+    State state2(game1, pstate1);
+    
+    state1.playout();
+    BOOST_CHECK(state1.isTerminal() == state2.isTerminal());
+    BOOST_CHECK(state1.joints().size() == state2.joints().size());
+}
+
+/****************************************************************
  * Testing that the Players are the same across 2 instances
  * of the same game.
  ****************************************************************/

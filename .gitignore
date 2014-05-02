@@ -3,5 +3,7 @@ lib/*
 include/*
 examples/Makefile
 examples/build/*
+examples/lib
+examples/include
 examples/tools.pyc
 *~
