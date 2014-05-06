@@ -29,11 +29,15 @@ private:
 
     // Because the hsfcGDLManager doesn't provide an easy way to get
     // the role names we need to jump through some hoops. Running
-    // populatePlayerNamesFromLegalMoves() is also important because 
+    // PopulatePlayerNamesFromLegalMoves() is also important because 
     // the internals are not properly initialised until a state
     // has been created.
     std::vector<std::string> playernames_;
-    void populatePlayerNamesFromLegalMoves();
+    void PopulatePlayerNamesFromLegalMoves();
+
+    void RunGadelac(const boost::filesystem::path& infile, 
+                    const boost::filesystem::path& outfile,
+                    const std::string& extra_options = std::string());
 
 public:
     HSFCManager();

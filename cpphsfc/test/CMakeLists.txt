@@ -25,6 +25,15 @@ target_link_libraries(portable-test cpphsfc_static ${Boost_LIBRARIES})
 add_executable(playermoves-test playermoves-test.cpp)
 target_link_libraries(playermoves-test cpphsfc_static ${Boost_LIBRARIES})
 
+# Search for gadelac
+execute_process(COMMAND which gadelac OUTPUT_VARIABLE GADELAC_PATH)
+if (GADELAC_PATH MATCHES "^\\s*$")
+  message("Gadelac does not appear to be present. Will skip the tests of gadelac integration")
+else (GADELAC_PATH MATCHES "^\\s*$")
+  message("Found Gadelac in the PATH. Enabling Gadelac integration tests")
+  add_executable(gadelac-integration-test gadelac-integration-test.cpp)
+  target_link_libraries(gadelac-integration-test cpphsfc_static ${Boost_LIBRARIES})
+endif (GADELAC_PATH MATCHES "^\\s*$")
 
 add_test(
   NAME CppHSFCTest 
@@ -48,3 +57,10 @@ add_test(
   NAME TermFormatConversionTest 
   COMMAND sexprtoflat-test "--log_level=test_suite"
 )
+
+if (NOT GADELAC_PATH MATCHES "^\\s*$")
+  add_test(
+    NAME GadelacIntegrationTest
+    COMMAND gadelac-integration-test "--log_level=test_suite"
+  )
+endif (NOT GADELAC_PATH MATCHES "^\\s*$")

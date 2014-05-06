@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <iterator>
 #include <sstream>
 #include <cstring>
@@ -25,7 +26,7 @@ HSFCManager::HSFCManager() : internal_(new hsfcGDLManager())
  * Note: must only be called after Initialise()
  *****************************************************************************************/
 
-void HSFCManager::populatePlayerNamesFromLegalMoves()
+void HSFCManager::PopulatePlayerNamesFromLegalMoves()
 {
     hsfcState* tmpstate;
     try
@@ -60,6 +61,31 @@ void HSFCManager::populatePlayerNamesFromLegalMoves()
     }
 }
 
+/*****************************************************************************************
+ * Internal function
+ * Preprocess using gadelac
+ *****************************************************************************************/
+
+void HSFCManager::RunGadelac(const boost::filesystem::path& infile, 
+                             const boost::filesystem::path& outfile,
+                             const std::string& extra_options)
+{            
+    std::ostringstream ss;
+    ss << "gadelac " << extra_options << " --backend gdl -o " 
+       << outfile.native() << " " << infile.native();
+    std::cout << "EXECUTING: " << ss.str() << std::endl;
+    
+    int result = std::system(ss.str().c_str());
+
+    std::cout << "It ran with result: " << result << std::endl;
+
+    if (result != 0)
+    {
+        std::ostringstream sserr;
+        sserr << "Gadelac execution failure (code: " << result << "): " << ss.str();
+        throw HSFCException() << ErrorMsgInfo(sserr.str());
+    }
+}
 
 /*****************************************************************************************
  * Functions that match the hsfcGDLManager
@@ -130,26 +156,48 @@ void HSFCManager::PrintState(const hsfcState& GameState) const
  * to do this I hack it by writing to a temporary file.
  *****************************************************************************************/
 
-void HSFCManager::Initialise(const boost::filesystem::path& gdlfilename, 
+void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
                              const hsfcGDLParamaters& Parameters,
                              bool usegadelac)
 {
-    if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
+    namespace bfs=boost::filesystem;
+    bfs::path gadfile;
+    bfs::path infile;
 
-    // needed to avoid non-const in hsfcGDLManager::Initialise
-    std::string tmpstr(gdlfilename.native()); 
-    hsfcGDLParamaters params(Parameters);
-
-    int result = internal_->Initialise(&tmpstr, params);
-    if (result != 0)
+    try
     {
-        std::ostringstream ss;
-        ss << "Failed to initialise the HSFC engine. Error code: " << result;
-        throw HSFCException() << ErrorMsgInfo(ss.str());
-    }  
+        // If we need to use gadelac then use a temporary output file
+        if (usegadelac)
+        {
+            gadfile = bfs::unique_path(); 
+            RunGadelac(gdlfile, gadfile);            
+            infile = gadfile;
+        } 
+        else
+        {
+            infile = gdlfile;
+        }
 
-    // Now jump through hoops to workout the names of the players.
-    populatePlayerNamesFromLegalMoves();
+        // needed to avoid non-const in hsfcGDLManager::Initialise
+        std::string tmpstr(infile.native()); 
+        hsfcGDLParamaters params(Parameters);
+
+        int result = internal_->Initialise(&tmpstr, params);
+        if (result != 0)
+        {
+            std::ostringstream ss;
+            ss << "Failed to initialise the HSFC engine. Error code: " << result;
+            throw HSFCException() << ErrorMsgInfo(ss.str());
+        }  
+
+        // Now jump through hoops to workout the names of the players.
+        PopulatePlayerNamesFromLegalMoves();
+        
+        if (usegadelac) bfs::remove(gadfile);
+    } catch (...)
+    {
+        if (usegadelac && bfs::is_regular_file(gadfile)) bfs::remove(gadfile);    
+    }
 }
 
 void HSFCManager::Initialise(const std::string& gdldescription, 
