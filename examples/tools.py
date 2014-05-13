@@ -8,6 +8,14 @@
 
 #-----------------------------------------------------
 
+import collections
+
+def legals(playermoves):
+    result = collections.defaultdict(lambda: [])
+    for pm in playermoves:
+        result[pm.player].append(pm.move)
+    return result
+
 class JointMoves:
     def __init__(self, playermoves):
         self.playlist = {}
