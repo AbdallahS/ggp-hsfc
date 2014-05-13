@@ -66,49 +66,6 @@ Use the str(object) function to return a GDL formatted string of the action.";
 
 
 /*****************************************************************************************
- * Support for python PlayerMove.
- *****************************************************************************************/
-
-struct PyPlayerMove
-{
-    /* docstrings */
-    static const char* ds_class;     
-    static const char* ds_player;     
-    static const char* ds_move;     
-};
-
-const char* PyPlayerMove::ds_class = 
-"PlayerMove class represents an player-action pair. Each PlayerMove object is\n\
-the result of a query to a State object. The object is mutable with read-only\n\
-properties.";
-
-const char* PyPlayerMove::ds_player = "Read-only property of the Player object";
-
-const char* PyPlayerMove::ds_move = "Read-only property of the Move object";
-
-/*****************************************************************************************
- * Support for python PlayerGoal.
- *****************************************************************************************/
-
-struct PyPlayerGoal
-{
-    /* docstrings */
-    static const char* ds_class;     
-    static const char* ds_player;     
-    static const char* ds_goal;     
-};
-
-const char* PyPlayerGoal::ds_class = 
-"PlayerGoal class represents an player-goal pair that is the score for the player in some\n\
-(terminal) game state. Each PlayerGoal object is the result of a query to a State object\n\
-that represents a terminal game state.The object is mutable with read-only properties.";
-
-const char* PyPlayerGoal::ds_player = "Read-only property of the Player object";
-
-const char* PyPlayerGoal::ds_goal = "Read-only property of the score (integer: 0 - 100)";
-
-
-/*****************************************************************************************
  * Support for python Game.
  *****************************************************************************************/
 class PyState;
@@ -118,9 +75,7 @@ class PyGame : public Game
 public:
     /* docstrings */
     static const char* ds_class; 
-    static const char* ds_Players; 
-    static const char* ds_NumPlayers; 
-    static const char* ds_InitState; 
+    static const char* ds_players; 
 
     /* A constructor substitute to work with python keyword arguments */
     PyGame(const std::string& gdldescription, 
@@ -128,19 +83,14 @@ public:
            bool use_gadelac);
 
     /* Returns the list of players */
-    std::vector<Player> players();
+    py::list players();
 };
 
 const char* PyGame::ds_class = 
 "Game class represents GDL game instance. This is a finite state machine with each state\n\
 being a valid game state and joint moves the transitions between states.";
 
-const char* PyGame::ds_Players = "Returns a list of the Player objects";
-
-const char* PyGame::ds_NumPlayers = "Returns the number of players/roles in the game";
-
-const char* PyGame::ds_InitState = "Returns the initial state";
-
+const char* PyGame::ds_players = "Returns a list of the Player objects";
 
 PyGame::PyGame(const std::string& gdldescription, 
                const std::string& gdlfilename, 
@@ -158,11 +108,16 @@ PyGame::PyGame(const std::string& gdldescription,
         Game::initialise(boost::filesystem::path(gdlfilename), usegadelac);
 }
 
-std::vector<Player> PyGame::players()
+py::list PyGame::players()
 {
+    py::list pylist;
     std::vector<Player> plyrs;
     Game::players(std::back_inserter(plyrs));
-    return plyrs;
+    BOOST_FOREACH(const Player& p, plyrs)
+    {
+        pylist.append(p);
+    }
+    return pylist;
 }
 
 /*****************************************************************************************
@@ -174,18 +129,18 @@ class PyState : public State
 public:
     /* docstrings */
     static const char* ds_class; 
-    static const char* ds_IsTerminal; 
-    static const char* ds_Legals; 
-    static const char* ds_Play; 
-    static const char* ds_Playout; 
-    static const char* ds_Goals; 
+    static const char* ds_is_terminal; 
+    static const char* ds_legals; 
+    static const char* ds_joints; 
+    static const char* ds_play; 
+    static const char* ds_playout; 
+    static const char* ds_goals; 
 
-    std::vector<PlayerMove> legals();
-    std::vector<PlayerGoal> goals();
-    std::vector<PlayerGoal> playout();
-    void play1(const std::vector<PlayerMove>& jm);
-    void play2(const boost::python::list& obj);
-    void play3(const boost::python::tuple& obj);
+    py::dict legals();
+    py::list joints();
+    py::dict goals();
+    py::dict playout();
+    void play(const boost::python::object& obj);
 
     PyState(PyGame& game);
     PyState(PyGame& game, const PortableState& ps);
@@ -195,19 +150,22 @@ public:
 const char* PyState::ds_class = 
 "State class represents a GDL game state. States are Game specific and are copyable.";
 
-const char* PyState::ds_IsTerminal = 
+const char* PyState::ds_is_terminal = 
 "Returns true if the state is a terminal game state.";
 
-const char* PyState::ds_Legals = 
-"Returns the list of legal PlayerMoves for a non-terminal state.";
+const char* PyState::ds_legals = 
+"Returns the dict of legal moves matching players to the list of their moves for a non-terminal state.";
 
-const char* PyState::ds_Play = 
+const char* PyState::ds_joints = 
+"Return a list of joint moves, where each joint move is a dict from players to moves.";
+
+const char* PyState::ds_play = 
 "Execute a joint move of a move per player. Performs a transition to the next game state.";
 
-const char* PyState::ds_Playout = 
-"Perform a random playout to termination and return the PlayerGoals for the terminal state.";
+const char* PyState::ds_playout = 
+"Perform a random playout to termination and return a dict of the goal scores for each player for the terminal state.";
 
-const char* PyState::ds_Goals = "Returns the PlayerGoals for a terminal state.";
+const char* PyState::ds_goals = "Returns the dict of the goal scores for each player for a terminal state.";
 
 
 PyState::PyState(PyGame& game) : State(game)
@@ -219,44 +177,79 @@ PyState::PyState(PyGame& game, const PortableState& ps) : State(game, ps)
 PyState::PyState(const PyState& other) : State(other)
 { }
 
-
-std::vector<PlayerMove> PyState::legals()
+py::dict PyState::legals()
 {
-    std::vector<PlayerMove> pms;
-    State::legals(std::back_inserter(pms));
-    return pms;
+    py::dict pydict;
+    boost::unordered_map<Player, std::vector<Move> >lgls = State::legals();
+    typedef std::pair<Player, std::vector<Move> > pmvs_t;
+    BOOST_FOREACH(const pmvs_t& pmvs, lgls)
+    {
+        py::list pylist;
+        BOOST_FOREACH(const Move& mv, pmvs.second)
+        {
+            pylist.append(mv);
+        }
+        pydict[pmvs.first] = pylist;        
+    }
+    return pydict;
 }
 
-std::vector<PlayerGoal> PyState::goals()
+py::list PyState::joints()
 {
-    std::vector<PlayerGoal> pgs;
-    State::goals(std::back_inserter(pgs));
-    return pgs;
+    py::list pylist;
+    std::vector<JointMove> jts = State::joints();
+
+    BOOST_FOREACH(const JointMove& jm, jts)
+    {
+        py::dict pydict;
+        typedef std::pair<Player, Move> pm_t;
+        BOOST_FOREACH(const pm_t& pm, jm)
+        {
+            pydict[pm.first] = pm.second;
+        }
+        pylist.append(pydict);
+    }
+    return pylist;
 }
 
-std::vector<PlayerGoal> PyState::playout()
+
+py::dict PyState::goals()
 {
-    std::vector<PlayerGoal> pgs;
-    State::playout(std::back_inserter(pgs));
-    return pgs;
+    py::dict pydict;
+    boost::unordered_map<Player, unsigned int> pgs = State::goals();
+    typedef std::pair<Player, unsigned int > pg_t;
+    BOOST_FOREACH(const pg_t& pg, pgs)
+    {
+        pydict[pg.first] = pg.second;        
+    }
+    return pydict;
 }
 
-void PyState::play1(const std::vector<PlayerMove>& jm)
+py::dict PyState::playout()
 {
-    State::play(jm);
+    py::dict pydict;
+    boost::unordered_map<Player, unsigned int> pgs = State::playout();
+    typedef std::pair<Player, unsigned int > pg_t;
+    BOOST_FOREACH(const pg_t& pg, pgs)
+    {
+        pydict[pg.first] = pg.second;        
+    }
+    return pydict;
 }
 
-void PyState::play2(const boost::python::list& obj)
+void PyState::play(const boost::python::object& obj)
 {
-    py::stl_input_iterator<PlayerMove> begin(obj), end;
-    State::play(begin, end);
+    std::vector<std::pair<Player,Move> > pmvs;
+    for (unsigned int i = 0; i < py::len(obj); ++i)
+    {
+        py::object pm_pair = obj[i];
+        Player p = py::extract<Player>(pm_pair[0]);
+        Move m = py::extract<Move>(pm_pair[1]);
+        pmvs.push_back(std::make_pair(p, m));
+    }
+    State::play(pmvs.begin(), pmvs.end());
 }
 
-void PyState::play3(const boost::python::tuple& obj)
-{
-    py::stl_input_iterator<PlayerMove> begin(obj), end;
-    State::play(begin, end);
-}
 
 /*****************************************************************************************
  * Support for python PortableState.
@@ -312,50 +305,23 @@ BOOST_PYTHON_MODULE(pyhsfc)
         .def("__ne__", &Move::operator!=)
         ;
 
-    py::class_<PlayerMove>
-        ("PlayerMove", PyPlayerMove::ds_class, py::no_init)
-        .def("__repr__", &to_string<PlayerMove>)
-        .def_readonly("player", &PlayerMove::first, PyPlayerMove::ds_player)
-        .def_readonly("move", &PlayerMove::second, PyPlayerMove::ds_move)
-        ;
-
-    py::class_<PlayerGoal>
-        ("PlayerGoal", PyPlayerGoal::ds_class, py::no_init)
-        .def("__repr__", &to_string<PlayerGoal>)
-        .def_readonly("player", &PlayerGoal::first, PyPlayerGoal::ds_player)
-        .def_readonly("goal", &PlayerGoal::second, PyPlayerGoal::ds_goal)
-        ;
-
-    py::class_<std::vector<Player> >("PlayerVec")
-        .def(py::vector_indexing_suite<std::vector<Player> >() );
-
-    py::class_<std::vector<PlayerMove> >("PlayerMoveVec")
-        .def(py::vector_indexing_suite<std::vector<PlayerMove> >() );
-
-    py::class_<std::vector<PlayerGoal> >("PlayerGoalVec")
-        .def(py::vector_indexing_suite<std::vector<PlayerGoal> >() );
-
-
     py::class_<PyGame,boost::noncopyable>
         ("Game", PyGame::ds_class, 
          py::init<const std::string&, const std::string&, bool>(
              (py::arg("gdl")=std::string(), py::arg("file")=std::string(), py::arg("gadelac")=false)))
-        .def("NumPlayers", &Game::numPlayers, PyGame::ds_NumPlayers)
-        .def("Players", &PyGame::players, PyGame::ds_Players)
+        .def("players", &PyGame::players, PyGame::ds_players)
         ;
 
     py::class_<PyState>("State", PyState::ds_class, py::init<const PyState&>())
         .def(py::init<PyGame&>())
         .def(py::init<PyGame&, PortableState&>())
-        .def("IsTerminal", &State::isTerminal, PyState::ds_IsTerminal)
-        .def("Legals", &PyState::legals, PyState::ds_Legals)
-        .def("Goals", &PyState::goals, PyState::ds_Goals)
-        .def("Playout", &PyState::playout, PyState::ds_Playout)
-        .def("Play", &PyState::play1, PyState::ds_Play)
-        .def("Play", &PyState::play2, PyState::ds_Play)
-        .def("Play", &PyState::play3, PyState::ds_Play)
+        .def("is_terminal", &State::isTerminal, PyState::ds_is_terminal)
+        .def("legals", &PyState::legals, PyState::ds_legals)
+        .def("joints", &PyState::joints, PyState::ds_joints)
+        .def("goals", &PyState::goals, PyState::ds_goals)
+        .def("playout", &PyState::playout, PyState::ds_playout)
+        .def("play", &PyState::play, PyState::ds_play)
         ;
-
 
     py::class_<PyPortableState>("PortableState", PyPortableState::ds_class,
                               py::init<const PyState&>())
@@ -363,5 +329,4 @@ BOOST_PYTHON_MODULE(pyhsfc)
         .def("__eq__", &PortableState::operator==)
         .def("__ne__", &PortableState::operator!=)
         ;
-
 }

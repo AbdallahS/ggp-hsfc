@@ -10,44 +10,34 @@ class TictactoeTest(unittest.TestCase):
     # game state, and ensure that someone is either a 
     # winner or it is a 50-50 draw.
     #-----------------------------
-    def playout_check(self, state):
-        if state.IsTerminal(): return
+    def playout_check(self, state, xplayer, oplayer):
+        if state.is_terminal(): return
         tmpstate = State(state)
-        results = tmpstate.Playout()
+        results = tmpstate.playout()
         self.assertEqual(len(results),2)
-        if results[0].goal == 100:
-            self.assertEqual(results[1].goal,0)
-        elif results[1].goal == 100:
-            self.assertEqual(results[0].goal,0)
+        if results[xplayer] == 100:
+            self.assertEqual(results[oplayer], 0)
+        elif results[xplayer] == 0:
+            self.assertEqual(results[oplayer], 100)
         else:
-            self.assertEqual(results[0].goal,50)
-            self.assertEqual(results[1].goal,50)
-
-    #-----------------------------
-    # Pick the first available move for the player
-    #-----------------------------
-    def pick_first_legal_move(self, moves, player):
-        for m in moves:
-            if str(m.player) == player:
-                return m
+            self.assertEqual(results[xplayer], 50)
+            self.assertEqual(results[oplayer], 50)
 
 
     #-----------------------------
-    # Count the legal moves for a given player
+    # check that the legal moves match the joint moves
     #-----------------------------
-    def count_legal_moves(self, moves, player):
-        count = 0
-        for m in moves:
-            if str(m.player) == player:
-                count = count + 1
-        return count
-
+    def check_joints_match_legals(self, joints, legals):
+        for jm in joints:
+            for (p,m) in jm.iteritems():
+                mvs = legals[p]
+                self.assertTrue(m in mvs)
 
     #-----------------------------
     # Load a GDL description
     #-----------------------------
 
-    def test_load_gdldescription(self):
+    def atest_load_gdldescription(self):
         gdldescription="""
 ;;;; RULES  
 
@@ -220,7 +210,8 @@ class TictactoeTest(unittest.TestCase):
 (domain_s xplayer )
 """
         game = Game(gdl=gdldescription)
-        self.assertEqual(game.NumPlayers(), 2)
+        players = game.Players()
+        self.assertEqual(len(players), 2)
 
 
     #-----------------------------
@@ -229,50 +220,66 @@ class TictactoeTest(unittest.TestCase):
     # random playouts from each game state.
     #-----------------------------
 
+    #-----------------------------
+    # The main test: load up tictactoe and pick
+    # moves until the game terminates while running
+    # random playouts from each game state.
+    #-----------------------------
+
     def test_tictactoe(self):
         game = Game(file="./tictactoe.gdl")
-        self.assertEqual(game.NumPlayers(), 2)
+        self.assertEqual(len(game.players()), 2)
+
+        xplayer = next(r for r in game.players() if str(r) == "xplayer")
+        oplayer = next(r for r in game.players() if str(r) == "oplayer")
 
         # Test that the different ways of create states work
         state = State(game)
-        self.assertFalse(state.IsTerminal())
-        state = State(game)
-        self.assertFalse(state.IsTerminal())
+        self.assertFalse(state.is_terminal())
         state2 = State(state)
-        self.assertFalse(state2.IsTerminal())
+        self.assertFalse(state2.is_terminal())
 
         step=9
         turn=0
-        while not state.IsTerminal():
-            self.playout_check(state)
-            legals = state.Legals()
-            self.assertNotEqual(len(legals), 0)
-            if turn == 0:
-                self.assertEqual(self.count_legal_moves(legals, "xplayer"), step)
-                self.assertEqual(self.count_legal_moves(legals, "oplayer"), 1)
-            else:
-                self.assertEqual(self.count_legal_moves(legals, "xplayer"), 1)
-                self.assertEqual(self.count_legal_moves(legals, "oplayer"), step)
+        while not state.is_terminal():
+            self.playout_check(state, xplayer, oplayer)
+            legals = state.legals()
+            self.assertEqual(len(legals), 2)
+            joints = state.joints()
+            self.assertEqual(len(joints), step)
+            self.check_joints_match_legals(joints, legals)
 
-            movep0 = self.pick_first_legal_move(legals, "xplayer")
-            movep1 = self.pick_first_legal_move(legals, "oplayer")
-            state.Play((movep0,movep1))
+            if turn == 0:
+                self.assertEqual(len(legals[xplayer]), step)
+                self.assertEqual(len(legals[oplayer]), 1)
+            else:
+                self.assertEqual(len(legals[xplayer]), 1)
+                self.assertEqual(len(legals[oplayer]), step)
+
+            movep0 = legals[xplayer][0]
+            movep1 = legals[oplayer][0]
+
+            state.play([(xplayer, movep0), (oplayer, movep1)])
             turn = (turn + 1) % 2
             step = step - 1
-        
+
+
         # game has terminated so check for a valid result
 	# Tictactoe will terminate early only if there is a winner
 	# so test for this and also that a draw is 50/50.
         self.assertTrue(step < 5)
-        results = state.Goals()
+        results = state.goals()
         self.assertEqual(len(results), 2)
         if step > 1:
-            self.assertTrue(((results[0].goal == 100) and (results[1].goal == 0)) or 
-                            ((results[1].goal == 100) and (results[0].goal == 0)))
+            self.assertTrue(((results[xplayer] == 100) and (results[oplayer] == 0)) or 
+                            ((results[oplayer] == 100) and (results[xplayer] == 0)))
         else:
-            self.assertTrue(((results[0].goal == 100) and (results[1].goal == 0)) or 
-                            ((results[1].goal == 100) and (results[0].goal == 0)) or
-                            ((results[0].goal == 50) and (results[0].goal == 50)))
+            self.assertTrue(((results[xplayer] == 100) and (results[oplayer] == 0)) or 
+                            ((results[oplayer] == 100) and (results[xplayer] == 0)) or
+                            ((results[xplayer] == 50) and (results[oplayer] == 50)))
+
+
+
 
 #-----------------------------
 # main
