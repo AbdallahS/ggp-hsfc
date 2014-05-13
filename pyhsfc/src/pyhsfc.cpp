@@ -76,6 +76,7 @@ public:
     /* docstrings */
     static const char* ds_class; 
     static const char* ds_players; 
+    static const char* ds_num_players;
 
     /* A constructor substitute to work with python keyword arguments */
     PyGame(const std::string& gdldescription, 
@@ -91,6 +92,10 @@ const char* PyGame::ds_class =
 being a valid game state and joint moves the transitions between states.";
 
 const char* PyGame::ds_players = "Returns a list of the Player objects";
+
+const char* PyGame::ds_num_players = 
+"Returns the number of players. This will be a little faster than returning the list of\n\
+players and then finding the length of the list.";
 
 PyGame::PyGame(const std::string& gdldescription, 
                const std::string& gdlfilename, 
@@ -140,7 +145,8 @@ public:
     py::list joints();
     py::dict goals();
     py::dict playout();
-    void play(const boost::python::object& obj);
+    void play1(const boost::python::dict& mydict);
+    void play2(const boost::python::list& mylist);
 
     PyState(PyGame& game);
     PyState(PyGame& game, const PortableState& ps);
@@ -237,12 +243,17 @@ py::dict PyState::playout()
     return pydict;
 }
 
-void PyState::play(const boost::python::object& obj)
+void PyState::play1(const boost::python::dict& mydict)
+{
+    play2(mydict.items());
+}
+
+void PyState::play2(const boost::python::list& mylist)
 {
     std::vector<std::pair<Player,Move> > pmvs;
-    for (unsigned int i = 0; i < py::len(obj); ++i)
+    for (unsigned int i = 0; i < py::len(mylist); ++i)
     {
-        py::object pm_pair = obj[i];
+        py::object pm_pair = mylist[i];
         Player p = py::extract<Player>(pm_pair[0]);
         Move m = py::extract<Move>(pm_pair[1]);
         pmvs.push_back(std::make_pair(p, m));
@@ -310,6 +321,7 @@ BOOST_PYTHON_MODULE(pyhsfc)
          py::init<const std::string&, const std::string&, bool>(
              (py::arg("gdl")=std::string(), py::arg("file")=std::string(), py::arg("gadelac")=false)))
         .def("players", &PyGame::players, PyGame::ds_players)
+        .def("num_players", &Game::numPlayers, PyGame::ds_num_players)
         ;
 
     py::class_<PyState>("State", PyState::ds_class, py::init<const PyState&>())
@@ -320,7 +332,8 @@ BOOST_PYTHON_MODULE(pyhsfc)
         .def("joints", &PyState::joints, PyState::ds_joints)
         .def("goals", &PyState::goals, PyState::ds_goals)
         .def("playout", &PyState::playout, PyState::ds_playout)
-        .def("play", &PyState::play, PyState::ds_play)
+        .def("play", &PyState::play1, PyState::ds_play)
+        .def("play", &PyState::play2, PyState::ds_play)
         ;
 
     py::class_<PyPortableState>("PortableState", PyPortableState::ds_class,

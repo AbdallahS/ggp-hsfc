@@ -229,6 +229,7 @@ class TictactoeTest(unittest.TestCase):
     def test_tictactoe(self):
         game = Game(file="./tictactoe.gdl")
         self.assertEqual(len(game.players()), 2)
+        self.assertEqual(len(game.players()), game.num_players())
 
         xplayer = next(r for r in game.players() if str(r) == "xplayer")
         oplayer = next(r for r in game.players() if str(r) == "oplayer")
@@ -259,10 +260,14 @@ class TictactoeTest(unittest.TestCase):
             movep0 = legals[xplayer][0]
             movep1 = legals[oplayer][0]
 
-            state.play([(xplayer, movep0), (oplayer, movep1)])
+            # The State.play() function can take two forms: a list of player-move pairs,
+            # or a dictionary of players to moves. Alternate testing both these.
+            if turn == 0:
+                state.play([(xplayer, movep0), (oplayer, movep1)])
+            else:
+                state.play({xplayer : movep0, oplayer : movep1})
             turn = (turn + 1) % 2
             step = step - 1
-
 
         # game has terminated so check for a valid result
 	# Tictactoe will terminate early only if there is a winner
