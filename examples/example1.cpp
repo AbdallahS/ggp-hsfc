@@ -106,8 +106,7 @@ ostream& operator<<(ostream& os, const vector<PlayerMove>& pmvs)
  **************************************************************************/
 Player get_player(const Game& game, const string& playername)
 {
-    vector<Player> players;
-    game.players(players);
+    vector<Player> players = game.players();
     BOOST_FOREACH(const Player& p, players)
     {
         if (p.tostring() == playername) return p;
@@ -140,7 +139,7 @@ unsigned int choose_joint_move(State& state, const Player& player,vector<PlayerM
     int bestscore = -1;
     vector<PlayerMove> lgls;
     vector<PlayerMove> tmpmvs;
-    state.legals(lgls);
+    state.legals(std::back_inserter(lgls));
     JointMoveGenerator jmg(lgls);
     while (jmg.get(tmpmvs))
     {
@@ -148,7 +147,7 @@ unsigned int choose_joint_move(State& state, const Player& player,vector<PlayerM
         State tmpstate(state);
         tmpstate.play(tmpmvs);
         if (tmpstate.isTerminal())
-            tmpstate.goals(scores);
+            tmpstate.goals(std::back_inserter(scores));
         else
             tmpstate.playout(scores);
         int tmpscore = get_score(scores, player);
@@ -182,7 +181,7 @@ void run(const string& gdlfilename, const string& playername)
         state.play(jmv);        
     }
     vector<PlayerGoal> pgs;
-    state.goals(pgs);
+    state.goals(std::back_inserter(pgs));
     cout << "Final score for " << playername << " is " << get_score(pgs, player) << endl;   
 }
 

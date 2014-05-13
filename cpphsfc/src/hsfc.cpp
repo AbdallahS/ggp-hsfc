@@ -13,7 +13,8 @@ namespace HSFC
 /*****************************************************************************************
  * Implementation of Player
  *****************************************************************************************/
-Player::Player(const HSFCManager* manager, unsigned int roleid): manager_(manager), roleid_(roleid)
+Player::Player(const HSFCManager* manager, unsigned int roleid): 
+    manager_(manager), roleid_(roleid)
 { }
 
 Player::Player(const Player& other): manager_(other.manager_), roleid_(other.roleid_)
@@ -72,11 +73,12 @@ std::ostream& operator<<(std::ostream& os, const Player& player)
 }
 
 
-/*****************************************************************************************
+/*********************************************************************************
  * Implementation of Move
- *****************************************************************************************/
+ *********************************************************************************/
 
-Move::Move(HSFCManager* manager, const hsfcLegalMove& move): manager_(manager), move_(move)
+Move::Move(HSFCManager* manager, const hsfcLegalMove& move): 
+    manager_(manager), move_(move)
 { }
 
 Move::Move(const Move& other): manager_(other.manager_), move_(other.move_)
@@ -200,21 +202,19 @@ Game::Game(const boost::filesystem::path& gdlfile, bool usegadelac)
 
 void Game::initialise(const std::string& gdldescription, bool usegadelac)
 {
-    if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
     hsfcGDLParamaters params;
     initInternals(params);
 
-    manager_.Initialise(gdldescription, params);
+    manager_.Initialise(gdldescription, params, usegadelac);
     initstate_.reset(new State(*this));
 }
 
 void Game::initialise(const boost::filesystem::path& gdlfile, bool usegadelac)
 {
-    if (usegadelac) throw HSFCException() << ErrorMsgInfo("GaDeLaC is not yet supported");
     hsfcGDLParamaters params;
     initInternals(params);
 
-    manager_.Initialise(gdlfile, params);
+    manager_.Initialise(gdlfile, params, usegadelac);
     initstate_.reset(new State(*this));
 }
 
