@@ -16,7 +16,7 @@
 
 #include "hsfcGDL.h"
 
-#define DEBUG false
+#define DEBUG true
 
 using namespace std;
 
@@ -138,6 +138,7 @@ public:
 	void AddToBufferDomain(vector<hsfcTuple>& BufferDomain, unsigned int DomainIndex);
 	int ID(vector<hsfcTuple>& Term);
 	int ID(hsfcRuleCompactTerm Term[], int Offset, int NumTerms);
+	int vID(vector<hsfcTuple>& Term);
 	void Terms(int ID, vector<hsfcTuple>& Term);
 	void Terms(int ID, vector<hsfcRuleTerm>& Term);
 	int GetDomainCount(int Index);

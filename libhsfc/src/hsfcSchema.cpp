@@ -266,6 +266,8 @@ void hsfcRelationSchema::IndexDomains() {
 	int Index;
 	double Count;
 
+	printf("Indexing Domains\n");
+
 	// Convert the vectors to arrays for faster access
 	this->Domain = new hsfcDomain*[this->Arity];
 	for (int i = 0; i < this->Arity; i++) {
@@ -464,6 +466,9 @@ int hsfcRelationSchema::ID(vector<hsfcTuple>& Term) {
 	int Factor;
 	bool AllMatch;
 
+	// Is this prior to the iindexing of the domains
+	if (this->Domain == NULL) return this->vID(Term);
+
 	// TermIndex(0) = Predicate Index
 	// Initial value
 	Result = -1;
@@ -592,6 +597,81 @@ int hsfcRelationSchema::ID(hsfcRuleCompactTerm Term[], int Offset, int NumTerms)
 			// Calculate the ID
 			Result = Result + Factor * Index;
 			Factor = Factor * this->Domain[i]->Size;
+		}
+
+		return Result;
+
+	}
+
+}
+
+//-----------------------------------------------------------------------------
+// vID
+//-----------------------------------------------------------------------------
+int hsfcRelationSchema::vID(vector<hsfcTuple>& Term) {
+
+	int Index;
+	int Result;
+	int Factor;
+	bool AllMatch;
+
+	// TermIndex(0) = Predicate Index
+	// Initial value
+	Result = -1;
+
+	// Are there some terms
+	if (Term.size() < this->Arity + 1) return Result;
+	
+	// Is it a permanent fact
+	if (this->Fact == hsfcFactPermanent) {
+
+		// Check the domains
+		for (Index = 0; Index < (int)this->vDomain[0].size(); Index++) {
+			// Check that all terms match
+			AllMatch = true;
+			for (int i = 0; i < this->Arity; i++) {
+				// Is it a match
+				if ((Term[i+1].ID != this->vDomain[i][Index].Tuple.ID) || (Term[i+1].RelationIndex != this->vDomain[i][Index].Tuple.RelationIndex)) {
+					AllMatch = false;
+					break;
+				}
+			}
+			// Found it so exit
+			if (AllMatch) {
+				Result = Index;
+				break;
+			}
+		}
+
+		return Result;
+
+	} else {
+
+		// Calculate the Relation ID
+		Result = 0;
+		Factor = 1;
+		for (int i = 0; i < this->Arity; i++) {
+			Index = -1;
+			// Look for the tuple in the domain entries
+			for (unsigned int j = 0; j < this->vDomain[i].size(); j++) {
+				if (this->vDomain[i][j].Tuple.ID == -1) {
+					if (this->vDomain[i][j].Tuple.RelationIndex == Term[i+1].RelationIndex) {
+						Index = this->vDomain[i][j].Index + Term[i+1].ID;
+						break;
+					}
+				} else {
+					if ((this->vDomain[i][j].Tuple.ID == Term[i+1].ID) && (this->vDomain[i][j].Tuple.RelationIndex == Term[i+1].RelationIndex)){
+						Index = this->vDomain[i][j].Index;
+						break;
+					}
+				}
+			}
+			// Is it an error: this value is used as fail in condition references
+			if (Index == -1) return -1;
+
+			// Calculate the ID
+			Result = Result + Factor * Index;
+			Factor = Factor * this->vDomain[i].size();
 		}
 
 		return Result;
