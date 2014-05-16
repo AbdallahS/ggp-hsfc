@@ -71,7 +71,7 @@ void HSFCManager::RunGadelac(const boost::filesystem::path& infile,
                              const std::string& extra_options)
 {            
     std::ostringstream ss;
-    ss << "gadelac " << extra_options << " --backend gdl -o " 
+    ss << "gadelac " << extra_options << " --backend gdl --reachability true -o " 
        << outfile.native() << " " << infile.native();
     int result = std::system(ss.str().c_str());
     if (result != 0)
