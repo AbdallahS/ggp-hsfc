@@ -10,3 +10,6 @@ include_directories("${Boost_INCLUDE_DIRS}")
 
 add_executable(example1 example1.cpp)
 target_link_libraries(example1  -lcpphsfc ${Boost_LIBRARIES})
+
+add_executable(play_to_termination play_to_termination.cpp)
+target_link_libraries(play_to_termination  -lcpphsfc ${Boost_LIBRARIES})
