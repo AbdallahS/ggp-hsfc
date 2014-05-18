@@ -17,36 +17,6 @@ typedef boost::error_info<struct tag_my_info,std::string> errinfo;
 struct someerror: virtual boost::exception, virtual std::exception { }; 
 
 /***************************************************************************
- * Print functions
- **************************************************************************/
-/*
-std::ostream& operator<<(std::ostream& os, const std::pair<HSFC::Player, HSFC::Move>& pr)
-{
-    return os << "(PLAYER: " << pr.first.tostring() << ", MOVE: " << pr.second.tostring() << ")";
-}
-
-std::ostream& operator<<(std::ostream& os, const std::pair<HSFC::Player, unsigned int>& pr)
-{
-    return os << "(PLAYER: " << pr.first.tostring() << ", GOAL: " << pr.second << ")";
-}
-
-template<typename T1,typename T2>
-std::ostream& operator<<(std::ostream& os, const std::pair<T1, T2>& pr)
-{
-    return os << "(" << pr.first << ", " << pr.second << ")";
-}
-
-template<typename MK, typename MV>
-std::ostream& operator<<(std::ostream& os, const boost::unordered_map<MK,MV>& mymap)
-{
-    std::vector<std::pair<MK, MV> > vecpr;
-    std::copy(mymap.begin(), mymap.end(), back_inserter(vecpr));
-    std::string tmpstr = boost::algorithm::join(vecpr, ", ");
-    os << "sdfd";
-    return os << "[" << tmpstr << "]";
-}
-*/
-/***************************************************************************
  * Run the game to termination
  **************************************************************************/
 
@@ -90,6 +60,22 @@ int main(int argc, char* argv[])
     {
         if( std::string const * mi=boost::get_error_info<errinfo>(e) )
             std::cerr << "Error: " << *mi << std::endl;
+        return 1;
+    }
+    catch(HSFC::HSFCException& e)
+    {
+        if( std::string const * mi=boost::get_error_info<HSFC::ErrorMsgInfo>(e) )
+            std::cerr << "Error: " << *mi << std::endl;
+        return 1;
+    }
+    catch(boost::exception& e)
+    {
+        
+        return 1;
+    }
+    catch(std::exception& e)
+    {
+        std::cerr << "std::exception: " << e.what() << std::endl;
         return 1;
     }
     catch(...)
