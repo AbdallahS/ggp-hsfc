@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.8)
 # Testing
 #---------------------------------------------------
 
-find_package(Boost 1.4 REQUIRED COMPONENTS unit_test_framework)
+find_package(Boost 1.4 REQUIRED COMPONENTS system serialization filesystem unit_test_framework)
 include_directories("${Boost_INCLUDE_DIRS}")
 
 include_directories("${PROJECT_SOURCE_DIR}")
