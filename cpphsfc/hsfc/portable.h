@@ -41,11 +41,9 @@ class PortableState
 {
 public:
     PortableState();
+    PortableState(const State& state);
+    PortableState(const PortableState& other);
     PortableState& operator=(const PortableState& other);
-
-/* FIXUP: Deprecated constructor - to be removed */
-    template<typename Archive>
-    explicit PortableState(Archive& ar);
 
     bool operator==(const PortableState& other) const;
     bool operator!=(const PortableState& other) const;
@@ -67,22 +65,6 @@ private:
 };
 
 std::size_t hash_value(const PortableState& ps); /* Can be used as a key in boost::unordered_* */
-
-
-/* FIXUP: Deprecated constructor - to be removed */
-template<typename Archive>
-PortableState::PortableState(Archive& ar)
-{
-    ar >> *this;
-}
-
-// Explicit specialisations of the constructor so that it is
-// not captured by the constructor intended for archive objects.
-template<> PortableState::PortableState(State& state);
-template<> PortableState::PortableState(const State& state);
-template<> PortableState::PortableState(PortableState& other);
-template<> PortableState::PortableState(const PortableState& other);
-
 
 template<typename Archive>
 void PortableState::serialize(Archive& ar, const unsigned int version)

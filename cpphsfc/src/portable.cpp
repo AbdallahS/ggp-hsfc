@@ -14,38 +14,15 @@ namespace HSFC
 PortableState::PortableState() : round_(0), currentstep_(0)
 { }
 
-
-template<>
 PortableState::PortableState(const State& state)
 {
     state.manager_->GetStateData(*state.state_, relationlist_, round_, currentstep_);
 }
 
-template<>
-PortableState::PortableState(State& state)
-{
-    state.manager_->GetStateData(*state.state_, relationlist_, round_, currentstep_);
-}
-
-template<>
 PortableState::PortableState(const PortableState& other) :
 round_(other.round_), currentstep_(other.currentstep_),
 relationlist_(other.relationlist_)
 { }
-
-template<>
-PortableState::PortableState(PortableState& other) :
-round_(other.round_), currentstep_(other.currentstep_),
-relationlist_(other.relationlist_)
-{ }
-
-// Actually have to instantiate the objects.
-template PortableState::PortableState(const State&);
-template PortableState::PortableState(State&);
-template PortableState::PortableState(const PortableState&);
-template PortableState::PortableState(PortableState&);
-
-
 
 PortableState& PortableState::operator=(const PortableState& other)
 {
