@@ -14,6 +14,8 @@
 #include <time.h>
 #include <vector>
 
+#define DEBUG true
+
 using namespace std;
 
 //=============================================================================

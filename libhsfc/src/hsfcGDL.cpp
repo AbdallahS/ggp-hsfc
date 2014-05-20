@@ -387,6 +387,7 @@ void hsfcGDLRelation::FindZeroArity() {
 		// Add the new relation to the atoms for the primary relation
 		this->Atom[AtomIndex]->Relation = NewRelation;
 		this->Atom[AtomIndex]->TermIndex = 0;
+		if (DEBUG) {char Text[256]; this->AsText(Text); printf("%s\n", Text);}
 	}
 
 }
@@ -867,4 +868,5 @@ hsfcGDLRule* hsfcGDL::AddRule(){
 	return NewRule;
 
 }
+
 

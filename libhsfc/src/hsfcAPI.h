@@ -26,15 +26,15 @@ namespace HSFC { class HSFCManager; };
 // CLASS: hsfcGDLManager
 //=============================================================================
 class hsfcGDLManager {
-	
-	friend class HSFC::HSFCManager;
-	
+
+    friend class HSFC::HSFCManager;
 
 public:
 	hsfcGDLManager(void);
 	~hsfcGDLManager(void);
 
-	int Initialise(string* GDLFileName, hsfcGDLParamaters& Paramaters);
+	int Initialise(string* Script, hsfcGDLParamaters& Paramaters);
+	int InitialiseFromFile(string* GDLFileName, hsfcGDLParamaters& Paramaters);
 	int CreateGameState(hsfcState** GameState);
 	void FreeGameState(hsfcState* GameState);
 	void CopyGameState(hsfcState* Destination, hsfcState* Source);
@@ -45,6 +45,9 @@ public:
 	void GetGoalValues(hsfcState* GameState, vector<int>& GoalValue);
 	void PlayOut(hsfcState* GameState, vector<int>& GoalValue);
 	void GetRoles(vector<string>& Role);
+	void GetIDCount(vector<int>& Count);
+	void GetFluents(hsfcState* GameState, vector<hsfcTuple>& Fluent);
+	void GetExists(hsfcState* GameState, void*& Pattern, int& Size);
 	char* RelationAsKIF(hsfcTuple& Tuple);
 	char* GameStateAsText(hsfcState* GameState);
 	bool GameStateFromText(hsfcState* GameState, char* Text);

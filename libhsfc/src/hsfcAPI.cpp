@@ -46,7 +46,7 @@ hsfcGDLManager::~hsfcGDLManager(void) {
 //-----------------------------------------------------------------------------
 // Initialise
 //-----------------------------------------------------------------------------
-int hsfcGDLManager::Initialise(string* GDLFileName, hsfcGDLParamaters& Paramaters) {
+int hsfcGDLManager::Initialise(string* Script, hsfcGDLParamaters& Paramaters) {
 
 	int Result = 0;
 
@@ -56,7 +56,26 @@ int hsfcGDLManager::Initialise(string* GDLFileName, hsfcGDLParamaters& Paramater
 	this->Engine->Initialise();
 
 	// Create the schema from the gdl file
-	this->Engine->Create(GDLFileName->c_str(), Paramaters);
+	this->Engine->Create(Script->c_str(), Paramaters);
+
+	return Result;
+
+}
+
+//-----------------------------------------------------------------------------
+// InitialiseFromFile
+//-----------------------------------------------------------------------------
+int hsfcGDLManager::InitialiseFromFile(string* GDLFileName, hsfcGDLParamaters& Paramaters) {
+
+	int Result = 0;
+
+	// Initialise the engine
+	this->Lexicon->Initialise();
+	this->StateManager->Initialise();
+	this->Engine->Initialise();
+
+	// Create the schema from the gdl file
+	this->Engine->CreateFromFile(GDLFileName->c_str(), Paramaters);
 
 	return Result;
 

@@ -378,6 +378,11 @@ void hsfcStateManager::NextState(hsfcState* State) {
 		}
 	}
 
+	// Add in any permanent relations that are in nonpermanent lists eg. (legal role noop)
+	for (unsigned int i = 0; i < this->Schema->Fact.size(); i++) {
+		this->AddRelation(State, &(this->Schema->Fact[i]));
+	}
+
 	// Advance the Cycle counter
 	State->Round = State->Round + 1;
 	State->CurrentStep = 0;
@@ -720,4 +725,6 @@ void hsfcStateManager::PrintRelations(hsfcState* State, bool PermanentFacts) {
 	printf("------------------------------------------------------------\n");
 
 }
+
+
 

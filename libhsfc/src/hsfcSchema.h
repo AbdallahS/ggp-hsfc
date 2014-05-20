@@ -16,8 +16,6 @@
 
 #include "hsfcGDL.h"
 
-#define DEBUG true
-
 using namespace std;
 
 class hsfcRelationSchema;
@@ -241,7 +239,7 @@ public:
 	~hsfcSchema(void);
 
 	void Initialise();
-	bool Create(const char* FileName);
+	bool Create(char* Script);
 	void GetRoles(vector<string>& Role);
 	void PrintRelation(hsfcTuple* Tuple, bool CRLF);
 	void RelationAsText(hsfcTuple* Tuple, char* Text);
@@ -256,7 +254,7 @@ public:
 protected:
 
 private:
-	bool ReadGDL(const char* FileName);
+	bool ReadGDL(char* Script);
 	bool ReadRules(char* RuleScript);
 	bool ReadDomains(char* DomainScript);
 	bool CreateSCL();

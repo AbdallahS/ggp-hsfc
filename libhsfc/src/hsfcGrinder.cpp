@@ -1702,7 +1702,7 @@ void hsfcGrinderEngine::Initialise(){
 //-----------------------------------------------------------------------------
 // Create
 //-----------------------------------------------------------------------------
-bool hsfcGrinderEngine::Create(const char* FileName, int MaxRelationSize, double MaxReferenceSize) {
+bool hsfcGrinderEngine::Create(char* Script, int MaxRelationSize, double MaxReferenceSize) {
 
 	hsfcRule* NewRule;
 	double Size;
@@ -1712,7 +1712,7 @@ bool hsfcGrinderEngine::Create(const char* FileName, int MaxRelationSize, double
 	this->MaxRefernceSize = MaxReferenceSize;
 
 	// Create the Schema
-	if (!this->Schema->Create(FileName)) return false;
+	if (!this->Schema->Create(Script)) return false;
 
 	// Create the StateManager from the Schema
 	this->StateManager->SetSchema(this->Schema, MaxRelationSize);
@@ -2131,13 +2131,13 @@ void hsfcGrinder::Initialise(){
 //-----------------------------------------------------------------------------
 // Create
 //-----------------------------------------------------------------------------
-bool hsfcGrinder::Create(const char* FileName, int MaxRelationSize, double MaxReferenceSize) {
+bool hsfcGrinder::Create(char* Script, int MaxRelationSize, double MaxReferenceSize) {
 
 	// Initialise
 	this->Initialise();
 
 	// Create the Engine
-	if (!this->Engine->Create(FileName, MaxRelationSize, MaxReferenceSize)) return false;
+	if (!this->Engine->Create(Script, MaxRelationSize, MaxReferenceSize)) return false;
 
 	return true;
 
@@ -2240,3 +2240,4 @@ void hsfcGrinder::ResetStatistics(){
 	this->Engine->ResetStatistics();
 
 }
+

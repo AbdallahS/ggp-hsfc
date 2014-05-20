@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
 	GDLManager = new hsfcGDLManager();
 
 	// Identify the GDL file; must be a fully qualified path and file name
-	GDLFileName = new string("./tictactoe.gdl");
+	GDLFileName = new string("J:\\HSFC\\Experiments\\DNF\\Published\\GDL\\tictactoe.gdl");
 
 	// Set up the GDLManager paramaters
 	GDLParamaters.ReadGDLOnly = false;			// Validate the GDL without creating the schema
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
 	GDLParamaters.OrderRules = true;			// Optimise the rule execution cost
 
 	// Initialise the GDL Manager with the game rules and game paramaters
-	ReturnCode = GDLManager->Initialise(GDLFileName, GDLParamaters);
+	ReturnCode = GDLManager->InitialiseFromFile(GDLFileName, GDLParamaters);
 
 	/* Return Codes
 		0 - Success

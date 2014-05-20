@@ -114,7 +114,7 @@ public:
 	~hsfcGrinderEngine(void);
 
 	void Initialise();
-	bool Create(const char* FileName, int MaxRelationSize, double MaxReferenceSize);
+	bool Create(char* Script, int MaxRelationSize, double MaxReferenceSize);
 	void OptimiseRules(bool OrderInputs);
 	void GrindRules();
 
@@ -161,7 +161,7 @@ public:
 	~hsfcGrinder(void);
 
 	void Initialise();
-	bool Create(const char* FileName, int MaxRelationSize, double MaxReferenceSize);
+	bool Create(char* Script, int MaxRelationSize, double MaxReferenceSize);
 	void Optimise();
 	void Print();
 

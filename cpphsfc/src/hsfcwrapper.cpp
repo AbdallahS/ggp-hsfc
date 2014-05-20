@@ -185,7 +185,7 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
         std::string tmpstr(infile.native()); 
         hsfcGDLParamaters params(Parameters);
 
-        int result = internal_->Initialise(&tmpstr, params);
+        int result = internal_->InitialiseFromFile(&tmpstr, params);
         if (result != 0)
         {
             std::ostringstream ss;

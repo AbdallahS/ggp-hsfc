@@ -82,7 +82,8 @@ public:
 	~hsfcEngine(void);
 
 	void Initialise();
-	bool Create(const char* FileName, hsfcGDLParamaters& Paramaters);
+	bool Create(char* Script, hsfcGDLParamaters& Paramaters);
+	bool CreateFromFile(const char* FileName, hsfcGDLParamaters& Paramaters);
 	void PlayOut(hsfcState* State);
 	void Audit();
 	void SetInitialState(hsfcState* State);

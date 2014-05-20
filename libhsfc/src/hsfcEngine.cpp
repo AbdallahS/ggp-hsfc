@@ -75,7 +75,7 @@ void hsfcEngine::Initialise(){
 //-----------------------------------------------------------------------------
 // Create
 //-----------------------------------------------------------------------------
-bool hsfcEngine::Create(const char* FileName, hsfcGDLParamaters& Paramaters) {
+bool hsfcEngine::Create(char* Script, hsfcGDLParamaters& Paramaters) {
 
 	bool CreatedGDL;
 
@@ -84,7 +84,7 @@ bool hsfcEngine::Create(const char* FileName, hsfcGDLParamaters& Paramaters) {
 
 	// Create the Schema
 	this->StartClock = clock();
-	CreatedGDL = this->Grinder->Create(FileName, Paramaters.MaxRelationSize, Paramaters.MaxReferenceSize);
+	CreatedGDL = this->Grinder->Create(Script, Paramaters.MaxRelationSize, Paramaters.MaxReferenceSize);
 	this->StopClock = clock();
 	this->TimeReadGDL = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
 	if (!CreatedGDL) return false;
@@ -142,6 +142,58 @@ bool hsfcEngine::Create(const char* FileName, hsfcGDLParamaters& Paramaters) {
 	this->GoalRelation = this->Grinder->Engine->Schema->Relation[this->StateManager->GoalRelationIndex];
 
 	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// Create
+//-----------------------------------------------------------------------------
+bool hsfcEngine::CreateFromFile(const char* FileName, hsfcGDLParamaters& Paramaters) {
+
+	int Length;
+	char Letter;
+	FILE* InputFile;
+	int FileSize;
+	char* Buffer;
+	bool Result;
+
+	// Open the input file
+	InputFile = fopen(FileName, "r");
+	if (InputFile == NULL) {
+		printf("Error: GDL file does not exist\n%s\n", FileName);
+		abort();
+	}
+
+    // Find the filesize
+    fseek(InputFile, 0, SEEK_END);
+    FileSize = ftell(InputFile);
+    rewind(InputFile);
+
+    // Load the file into memory
+    Buffer = (char*) malloc (sizeof(char)*FileSize);
+	// Read one character at a time
+	Length = 0;
+	while (!feof(InputFile)) {
+		// Read a letter from the file
+		fscanf(InputFile, "%c", &Letter);
+		// Ignore control characters
+		if ((Letter < ' ') || (Letter > '~')) Letter = ' ';
+		// Ignore multiple spaces
+		if ((Letter != ' ') || ((Length != 0) && (Buffer[Length - 1] != ' '))) {
+			Buffer[Length] = Letter;
+			Length++;
+		}
+	}
+	Buffer[Length] = 0;
+    fclose(InputFile);
+
+	// Create the hsfc engine
+	Result = this->Create(Buffer, Paramaters);
+
+	// Clean up
+	delete[] Buffer;
+
+	return Result;
 
 }
 
@@ -478,3 +530,4 @@ void hsfcEngine::Print(){
 	this->Grinder->Print();
 
 }
+
