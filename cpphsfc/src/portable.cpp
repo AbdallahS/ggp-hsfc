@@ -16,34 +16,34 @@ PortableState::PortableState() : round_(0), currentstep_(0)
 
 
 template<>
-PortableState::PortableState<const State>(const State& state)
+PortableState::PortableState(const State& state)
 {
     state.manager_->GetStateData(*state.state_, relationlist_, round_, currentstep_);
 }
 
 template<>
-PortableState::PortableState<State>(State& state)
+PortableState::PortableState(State& state)
 {
     state.manager_->GetStateData(*state.state_, relationlist_, round_, currentstep_);
 }
 
 template<>
-PortableState::PortableState<const PortableState>(const PortableState& other) :
+PortableState::PortableState(const PortableState& other) :
 round_(other.round_), currentstep_(other.currentstep_),
 relationlist_(other.relationlist_)
 { }
 
 template<>
-PortableState::PortableState<PortableState>(PortableState& other) :
+PortableState::PortableState(PortableState& other) :
 round_(other.round_), currentstep_(other.currentstep_),
 relationlist_(other.relationlist_)
 { }
 
 // Actually have to instantiate the objects.
-template PortableState::PortableState<const State>(const State&);
-template PortableState::PortableState<State>(State&);
-template PortableState::PortableState<const PortableState>(const PortableState&);
-template PortableState::PortableState<PortableState>(PortableState&);
+template PortableState::PortableState(const State&);
+template PortableState::PortableState(State&);
+template PortableState::PortableState(const PortableState&);
+template PortableState::PortableState(PortableState&);
 
 
 

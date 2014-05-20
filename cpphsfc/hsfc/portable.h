@@ -78,10 +78,10 @@ PortableState::PortableState(Archive& ar)
 
 // Explicit specialisations of the constructor so that it is
 // not captured by the constructor intended for archive objects.
-template<> PortableState::PortableState<State>(State& state);
-template<> PortableState::PortableState<const State>(const State& state);
-template<> PortableState::PortableState<PortableState>(PortableState& other);
-template<> PortableState::PortableState<const PortableState>(const PortableState& other);
+template<> PortableState::PortableState(State& state);
+template<> PortableState::PortableState(const State& state);
+template<> PortableState::PortableState(PortableState& other);
+template<> PortableState::PortableState(const PortableState& other);
 
 
 template<typename Archive>
