@@ -12,7 +12,11 @@ namespace HSFC
 {
 
 typedef boost::error_info<struct tag_Message, std::string> ErrorMsgInfo;
-class HSFCException : public boost::exception, public std::exception {};
+class HSFCException : public boost::exception, public std::exception 
+{
+public:
+    char const* what() const throw();
+};
 
 };
 

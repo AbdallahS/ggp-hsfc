@@ -161,6 +161,14 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
 
     try
     {
+        // Check that the file exists
+        if (!bfs::is_regular_file(gdlfile))
+        {
+            std::ostringstream ss;
+            ss << "File does not exist: " << gdlfile.native();        
+            throw HSFCException() << ErrorMsgInfo(ss.str());
+        }
+
         // If we need to use gadelac then use a temporary output file
         if (usegadelac)
         {
@@ -192,6 +200,7 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
     } catch (...)
     {
         if (usegadelac && bfs::is_regular_file(gadfile)) bfs::remove(gadfile);    
+        throw;
     }
 }
 

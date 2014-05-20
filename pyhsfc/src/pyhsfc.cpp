@@ -7,12 +7,16 @@
 #include <boost/python.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/object.hpp>
+#include <boost/python/module.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/manage_new_object.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/wrapper.hpp>
 #include <boost/python/stl_iterator.hpp>
+#include <boost/python/exception_translator.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <hsfc/hsfc.h>
+#include <hsfc/hsfcexception.h>
 #include <hsfc/portable.h>
 
 using namespace HSFC;
@@ -22,15 +26,22 @@ namespace py = boost::python;
 
 
 /*****************************************************************************************
- * Helper functions for PlayerGoal and PlayerMove
+ * Support for passing on exceptions
  *****************************************************************************************/
 
-template<typename PairT>
-std::string to_string(const PairT& obj)
+struct PyHSFCException
 {
-    std::stringstream ss;
-    ss << "(" << obj.first << ", " << obj.second << ")";
-    return ss.str();
+    /* docstrings */
+    static const char* ds_class; 
+
+    static void translate(const std::exception& e);
+};
+
+const char* PyHSFCException::ds_class = "Exception class for all HSFC based exceptions";
+
+void PyHSFCException::translate(const std::exception& e)
+{
+    PyErr_SetString(PyExc_RuntimeError, e.what());
 }
 
 /*****************************************************************************************
@@ -297,6 +308,8 @@ BOOST_PYTHON_MODULE(pyhsfc)
 
     // the C++ signatures.
     py::docstring_options local_docstring_options(true, true, false);
+
+    py::register_exception_translator<std::exception>(&PyHSFCException::translate);
 
     py::class_<Player>
         ("Player", PyPlayer::ds_class, py::no_init)

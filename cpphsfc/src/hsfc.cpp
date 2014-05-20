@@ -11,6 +11,17 @@ namespace HSFC
 {
 
 /*****************************************************************************************
+ * Implementation of HSFCException
+ *****************************************************************************************/
+
+char const* HSFCException::what() const throw ()
+{
+    if (const std::string* mi=boost::get_error_info<ErrorMsgInfo>(*this)) return mi->c_str();
+    return "Unknown HSFCException";        
+}
+
+
+/*****************************************************************************************
  * Implementation of Player
  *****************************************************************************************/
 Player::Player(const HSFCManager* manager, unsigned int roleid): 
