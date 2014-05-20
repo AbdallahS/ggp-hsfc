@@ -82,7 +82,7 @@ public:
 	~hsfcEngine(void);
 
 	void Initialise();
-	bool Create(char* Script, hsfcGDLParamaters& Paramaters);
+	bool Create(const char* Script, hsfcGDLParamaters& Paramaters);
 	bool CreateFromFile(const char* FileName, hsfcGDLParamaters& Paramaters);
 	void PlayOut(hsfcState* State);
 	void Audit();
@@ -107,6 +107,7 @@ public:
 protected:
 
 private:
+	bool CreateEngine(char* Script, hsfcGDLParamaters& Paramaters);
 	void CreateRules();
 
 	hsfcLexicon* Lexicon;

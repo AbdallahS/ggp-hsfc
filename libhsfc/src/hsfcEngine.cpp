@@ -75,78 +75,27 @@ void hsfcEngine::Initialise(){
 //-----------------------------------------------------------------------------
 // Create
 //-----------------------------------------------------------------------------
-bool hsfcEngine::Create(char* Script, hsfcGDLParamaters& Paramaters) {
+bool hsfcEngine::Create(const char* Script, hsfcGDLParamaters& Paramaters) {
 
-	bool CreatedGDL;
+	bool Result;
+	char* Buffer;
 
-	// Initialise everything
-	this->Initialise();
+	// Copy the script so we can work on it
+	Buffer = new char[strlen(Script) + 1];
+	strcpy(Buffer, Script);
 
-	// Create the Schema
-	this->StartClock = clock();
-	CreatedGDL = this->Grinder->Create(Script, Paramaters.MaxRelationSize, Paramaters.MaxReferenceSize);
-	this->StopClock = clock();
-	this->TimeReadGDL = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
-	if (!CreatedGDL) return false;
+	// Create the engine
+	Result = CreateEngine(Buffer, Paramaters);
 
-	if (DEBUG) this->Grinder->Print();
+	// Clean up
+	delete[] Buffer;
 
-	// Calculate the state size
-	if (!this->StateManager->CalculateStateSize()) Paramaters.ReadGDLOnly = true;
-
-	// Was this read the GDL only
-	if (Paramaters.ReadGDLOnly) return true;
-
-	this->TimeOptimise = 0;
-	this->TimeLowSpeedRun = 0;
-
-	// Conduct low speed playouts to get statistics
-	this->StartClock = clock();
-	this->Grinder->Optimise();
-	this->StopClock = clock();
-	this->TimeLowSpeedRun = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
-
-	// Optimise the Schema
-	this->StartClock = clock();
-	this->Grinder->Engine->OptimiseRules(Paramaters.OrderRules);
-	this->StopClock = clock();
-	this->TimeOptimise = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
-
-	// Was this to calculate the Schema only
-	if (Paramaters.SchemaOnly) return true;
-
-	// Optimise the rule based on the statistics
-	this->StartClock = clock();
-	this->Grinder->Engine->GrindRules();
-	this->StopClock = clock();
-	this->TimeGrind = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
-
-	// Calculate the reference size
-	this->ReferenceSize = 0;
-	for (unsigned int i = 0; i < this->Grinder->Engine->Rule.size(); i++) {
-		this->ReferenceSize += this->Grinder->Engine->Rule[i]->ReferenceSize;
-	}
-
-	// Copy the rule pointers
-	for (unsigned int i = 0; i < this->Grinder->Engine->Rule.size(); i++) {
-		this->Rule.push_back(this->Grinder->Engine->Rule[i]);
-	}
-
-	// Set up the starting point for the rule execution
-	for (int i = 0; i < 6; i++) {
-		this->FirstRuleIndex[i] = this->Grinder->Engine->FirstRuleIndex[i];
-		this->LastRuleIndex[i] = this->Grinder->Engine->LastRuleIndex[i];
-	}
-
-	// Set up the goal relation
-	this->GoalRelation = this->Grinder->Engine->Schema->Relation[this->StateManager->GoalRelationIndex];
-
-	return true;
+	return Result;
 
 }
 
 //-----------------------------------------------------------------------------
-// Create
+// CreateFromFile
 //-----------------------------------------------------------------------------
 bool hsfcEngine::CreateFromFile(const char* FileName, hsfcGDLParamaters& Paramaters) {
 
@@ -170,7 +119,7 @@ bool hsfcEngine::CreateFromFile(const char* FileName, hsfcGDLParamaters& Paramat
     rewind(InputFile);
 
     // Load the file into memory
-    Buffer = (char*) malloc (sizeof(char)*FileSize);
+    Buffer = new char[FileSize + 1];
 	// Read one character at a time
 	Length = 0;
 	while (!feof(InputFile)) {
@@ -188,7 +137,7 @@ bool hsfcEngine::CreateFromFile(const char* FileName, hsfcGDLParamaters& Paramat
     fclose(InputFile);
 
 	// Create the hsfc engine
-	Result = this->Create(Buffer, Paramaters);
+	Result = this->CreateEngine(Buffer, Paramaters);
 
 	// Clean up
 	delete[] Buffer;
@@ -528,6 +477,79 @@ int hsfcEngine::GoalValue(hsfcState* State, int RoleIndex){
 void hsfcEngine::Print(){
 
 	this->Grinder->Print();
+
+}
+
+//-----------------------------------------------------------------------------
+// Create
+//-----------------------------------------------------------------------------
+bool hsfcEngine::CreateEngine(char* Script, hsfcGDLParamaters& Paramaters) {
+
+	bool CreatedGDL;
+
+	// Initialise everything
+	this->Initialise();
+
+	// Create the Schema
+	this->StartClock = clock();
+	CreatedGDL = this->Grinder->Create(Script, Paramaters.MaxRelationSize, Paramaters.MaxReferenceSize);
+	this->StopClock = clock();
+	this->TimeReadGDL = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
+	if (!CreatedGDL) return false;
+
+	if (DEBUG) this->Grinder->Print();
+
+	// Calculate the state size
+	if (!this->StateManager->CalculateStateSize()) Paramaters.ReadGDLOnly = true;
+
+	// Was this read the GDL only
+	if (Paramaters.ReadGDLOnly) return true;
+
+	this->TimeOptimise = 0;
+	this->TimeLowSpeedRun = 0;
+
+	// Conduct low speed playouts to get statistics
+	this->StartClock = clock();
+	this->Grinder->Optimise();
+	this->StopClock = clock();
+	this->TimeLowSpeedRun = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
+
+	// Optimise the Schema
+	this->StartClock = clock();
+	this->Grinder->Engine->OptimiseRules(Paramaters.OrderRules);
+	this->StopClock = clock();
+	this->TimeOptimise = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
+
+	// Was this to calculate the Schema only
+	if (Paramaters.SchemaOnly) return true;
+
+	// Optimise the rule based on the statistics
+	this->StartClock = clock();
+	this->Grinder->Engine->GrindRules();
+	this->StopClock = clock();
+	this->TimeGrind = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
+
+	// Calculate the reference size
+	this->ReferenceSize = 0;
+	for (unsigned int i = 0; i < this->Grinder->Engine->Rule.size(); i++) {
+		this->ReferenceSize += this->Grinder->Engine->Rule[i]->ReferenceSize;
+	}
+
+	// Copy the rule pointers
+	for (unsigned int i = 0; i < this->Grinder->Engine->Rule.size(); i++) {
+		this->Rule.push_back(this->Grinder->Engine->Rule[i]);
+	}
+
+	// Set up the starting point for the rule execution
+	for (int i = 0; i < 6; i++) {
+		this->FirstRuleIndex[i] = this->Grinder->Engine->FirstRuleIndex[i];
+		this->LastRuleIndex[i] = this->Grinder->Engine->LastRuleIndex[i];
+	}
+
+	// Set up the goal relation
+	this->GoalRelation = this->Grinder->Engine->Schema->Relation[this->StateManager->GoalRelationIndex];
+
+	return true;
 
 }
 
