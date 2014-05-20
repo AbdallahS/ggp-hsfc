@@ -266,8 +266,6 @@ void hsfcRelationSchema::IndexDomains() {
 	int Index;
 	double Count;
 
-	printf("Indexing Domains\n");
-
 	// Convert the vectors to arrays for faster access
 	this->Domain = new hsfcDomain*[this->Arity];
 	for (int i = 0; i < this->Arity; i++) {
@@ -1192,7 +1190,7 @@ int hsfcRuleRelationSchema::ID(vector<hsfcTuple>& Term, bool Validate) {
 	int NestedSize;
 
 	// The terms may be in the expanded form
-	// eg. (cell (cell~0~at ?0 ?1) ?2)
+	// eg. (cell (at ?0 ?1) ?2)
 	// But we need them in the compact form
 	// eg. (cell ?0 ?1)
 
@@ -2217,10 +2215,10 @@ void hsfcSchema::Initialise(){
 //-----------------------------------------------------------------------------
 // CreateGDL
 //-----------------------------------------------------------------------------
-bool hsfcSchema::Create(const char* FileName){
+bool hsfcSchema::Create(char* Script){
 
 	// Read the GDL file; specially constructed with domain information
-	if (!this->ReadGDL(FileName)) return false;
+	if (!this->ReadGDL(Script)) return false;
 	
 	// Was there anything
 	if (this->GDL->Rule.size() == 0) return false;
@@ -2231,6 +2229,7 @@ bool hsfcSchema::Create(const char* FileName){
 	// Index the domains
 	if (DEBUG) this->PrintRelations();
 	for (unsigned int i = 0; i < this->Relation.size(); i++) {
+		printf("Indexing Domains\n");
 		this->Relation[i]->IndexDomains();
 	}
 	if (DEBUG) this->PrintRelations();
@@ -2362,13 +2361,9 @@ void hsfcSchema::Print(){
 //-----------------------------------------------------------------------------
 // ReadGDL
 //-----------------------------------------------------------------------------
-bool hsfcSchema::ReadGDL(const char* FileName){
+bool hsfcSchema::ReadGDL(char* Buffer){
 
-	int Length;
-	char Letter;
-	FILE* InputFile;
-	int FileSize;
-	char* Buffer;
+	//char* Buffer;
 	char* RuleScript;
 	//char* FactScript;
 	char* StratScript;
@@ -2398,41 +2393,11 @@ bool hsfcSchema::ReadGDL(const char* FileName){
 		(domain predicate (set .. .. ..)(set .. .. ..)) 
 	*/
 
-	// Open the input file
-	InputFile = fopen(FileName, "r");
-	if (InputFile == NULL) {
-		printf("Error: GDL file does not exist\n%s\n", FileName);
-		abort();
-	}
-
-    // Find the filesize
-    fseek(InputFile, 0, SEEK_END);
-    FileSize = ftell(InputFile);
-    rewind(InputFile);
-
-    // Load the file into memory
-    Buffer = (char*) malloc (sizeof(char)*FileSize);
-	// Read one character at a time
-	Length = 0;
-	while (!feof(InputFile)) {
-		// Read a letter from the file
-		fscanf(InputFile, "%c", &Letter);
-		// Ignore control characters
-		if ((Letter < ' ') || (Letter > '~')) Letter = ' ';
-		// Ignore multiple spaces
-		if ((Letter != ' ') || ((Length != 0) && (Buffer[Length - 1] != ' '))) {
-			Buffer[Length] = Letter;
-			Length++;
-		}
-	}
-	Buffer[Length] = 0;
-    fclose(InputFile);
-
 	// Parse the buffer into subscripts for each of the sections
 	// Find the Rules
 	RuleScript = strstr(Buffer, ";;;; RULES");
 	if (RuleScript == NULL) {
-		printf("Error: GDL file does not conatin ';;;; RULES'\n%s\n", FileName);
+		printf("Error: GDL file does not conatin ';;;; RULES'\n");
 		abort();
 	}
 	//// Find the Facts
@@ -2444,19 +2409,19 @@ bool hsfcSchema::ReadGDL(const char* FileName){
 	// Find the Strats
 	StratScript = strstr(Buffer, ";;;; STRATS");
 	if (StratScript == NULL) {
-		printf("Error: GDL file does not conatin ';;;; STRATS'\n%s\n", FileName);
+		printf("Error: GDL file does not conatin ';;;; STRATS'\n");
 		abort();
 	}
 	// Find the Paths
 	PathScript = strstr(Buffer, ";;;; PATHS");
 	if (PathScript == NULL) {
-		printf("Error: GDL file does not conatin ';;;; PATHS'\n%s\n", FileName);
+		printf("Error: GDL file does not conatin ';;;; PATHS'\n");
 		abort();
 	}
 	// Find the Domains
 	DomainScript = strstr(Buffer, ";;;; DOMAINS");
 	if (DomainScript == NULL) {
-		printf("Error: GDL file does not conatin ';;;; DOMAINS'\n%s\n", FileName);
+		printf("Error: GDL file does not conatin ';;;; DOMAINS'\n");
 		abort();
 	}
 
@@ -2599,7 +2564,7 @@ bool hsfcSchema::ReadDomains(char* PathScript){
 	int DELength;
 	char* DomainEntry;
 	char Entry[512];
-	char ListEntry[512];
+	char* ListEntry;
 	char* NewEntry;
 	char* Predicate;
 	char NewPredicate[256];
@@ -2921,7 +2886,9 @@ NextEntry:
 		// Check to see if the "value" is actualy a zero arity predicate value|0
 		sprintf(NewPredicate, "%s|0", Value);
 		if (this->RelationSchemaExists(NewPredicate)) {
+			ListEntry = new char[256];
 			sprintf(ListEntry, "%s %s list:%s", Entry, Index, Value);
+			if (DEBUG) printf("%s\n", ListEntry);
 			DomainEntryList.push_back(ListEntry);
 		} else {
 
@@ -2996,6 +2963,7 @@ NextEntry:
 					
 					if (DEBUG) printf("Processing %s    Permanent Fact\n", DomainEntryList[i]);
 					// Clear the entry
+					delete [] DomainEntryList[i];
 					DomainEntryList.erase(DomainEntryList.begin() + i);
 					i--;
 
@@ -3007,6 +2975,7 @@ NextEntry:
 					if (NestedRelation == NULL) {
 						// Clear the entry
 						if (DEBUG) printf("Processing %s *** not found\n", DomainEntryList[i]);
+						delete [] DomainEntryList[i];
 						DomainEntryList.erase(DomainEntryList.begin() + i);
 						i--;
 					} else {
@@ -3019,6 +2988,7 @@ NextEntry:
 							Reference.Index = 0;
 							RelationSchema->AddToDomain(DomainIndex, &Reference);
 							// Clear the entry
+							delete [] DomainEntryList[i];
 							DomainEntryList.erase(DomainEntryList.begin() + i);
 							i--;		
 						}
