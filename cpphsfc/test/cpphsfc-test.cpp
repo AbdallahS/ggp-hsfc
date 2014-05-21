@@ -311,6 +311,10 @@ BOOST_AUTO_TEST_CASE(game_construction)
     BOOST_CHECK(tmpset1 == tmpset2);
 }
 
+/****************************************************************
+ * 
+ ****************************************************************/
+
 BOOST_AUTO_TEST_CASE(basic_game_tests)
 {
     Game game(boost::filesystem::path("./tictactoe.gdl"));

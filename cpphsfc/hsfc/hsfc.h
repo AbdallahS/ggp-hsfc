@@ -49,9 +49,9 @@ private:
     friend class PortablePlayer;
     friend std::ostream& operator<<(std::ostream& os, const Player& player);
 
-    const HSFCManager* manager_;
+    boost::shared_ptr<const HSFCManager> manager_;
     unsigned int roleid_;
-    Player(const HSFCManager* manager_, unsigned int roleid);  
+    Player(boost::shared_ptr<const HSFCManager> manager, unsigned int roleid);  
 };
 
 std::size_t hash_value(const Player& player); /* can be a key in boost::unordered_*  */
@@ -80,9 +80,9 @@ private:
     friend class PortableMove;
     friend std::ostream& operator<<(std::ostream& os, const Move& move);
   
-    HSFCManager* manager_;
+    boost::shared_ptr<HSFCManager> manager_;
     hsfcLegalMove move_;
-    Move(HSFCManager* manager, const hsfcLegalMove& move);
+    Move(boost::shared_ptr<HSFCManager> manager, const hsfcLegalMove& move);
 };
 
 std::size_t hash_value(const Move& move); /* can be a key in boost::unordered_*  */
@@ -128,16 +128,20 @@ protected:
     void initialise(const std::string& gdldescription, bool usegadelac);
     void initialise(const boost::filesystem::path& gdlfile, bool usegadelac);
 
-    // make sure users can't copy or default construct.
-    Game(const Game& other);  
+    // Default construction is only allowed by the PyGame python binding
+    // because we want to allow for a different constructor. Note: in future
+    // look at fixing this by not sub-classing Game for the python bindings.
     Game();
-    
+
 private:
+    // make sure users can't copy construct.
+    Game(const Game& other);  
+    
     friend class State;
     friend class Player;
     friend class Move;
 
-    HSFCManager manager_;
+    boost::shared_ptr<HSFCManager> manager_;
     boost::scoped_ptr<State> initstate_; // Useful to maintain an init state
 
     // FIXUP: Get Michael to fix: spelling mistake in the type
@@ -148,9 +152,9 @@ private:
 template<typename OutputIterator>
 void Game::players(OutputIterator dest) const
 {    
-    for (unsigned int i = 0; i < manager_.NumPlayers(); ++i)
+    for (unsigned int i = 0; i < manager_->NumPlayers(); ++i)
     {
-        *dest++=Player(&manager_, i); 
+        *dest++=Player(manager_, i); 
     }
 }
 
@@ -212,7 +216,7 @@ private:
     friend class PortableState;
 
     hsfcState* state_;
-    HSFCManager* manager_;  
+    boost::shared_ptr<HSFCManager> manager_;  
 };
 
 

@@ -3,6 +3,7 @@
 #include <cstring>
 #include <boost/variant/get.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/make_shared.hpp>
 #include <hsfc/hsfc.h>
 #include <hsfc/portable.h>
 #include "sexprtoflat.h"
@@ -24,7 +25,7 @@ char const* HSFCException::what() const throw ()
 /*****************************************************************************************
  * Implementation of Player
  *****************************************************************************************/
-Player::Player(const HSFCManager* manager, unsigned int roleid): 
+Player::Player(boost::shared_ptr<const HSFCManager> manager, unsigned int roleid): 
     manager_(manager), roleid_(roleid)
 { }
 
@@ -32,7 +33,7 @@ Player::Player(const Player& other): manager_(other.manager_), roleid_(other.rol
 { }
 
 Player::Player(Game& game, const PortablePlayer& pp) : 
-    manager_(&game.manager_), roleid_(pp.roleid_)
+    manager_(game.manager_), roleid_(pp.roleid_)
 {
     // Note: should probably check that the roleid is valid for this game.
 }
@@ -67,7 +68,7 @@ std::size_t Player::hash_value() const
     // we can use the pointer as a hash value.
     size_t seed = 0;
     boost::hash_combine(seed, roleid_);
-    boost::hash_combine(seed, manager_);
+    boost::hash_combine(seed, manager_.get());
     return seed;
 }
 
@@ -88,14 +89,14 @@ std::ostream& operator<<(std::ostream& os, const Player& player)
  * Implementation of Move
  *********************************************************************************/
 
-Move::Move(HSFCManager* manager, const hsfcLegalMove& move): 
+Move::Move(boost::shared_ptr<HSFCManager> manager, const hsfcLegalMove& move): 
     manager_(manager), move_(move)
 { }
 
 Move::Move(const Move& other): manager_(other.manager_), move_(other.move_)
 { }
 
-Move::Move(Game& game, const PortableMove& pm) : manager_(&game.manager_)
+Move::Move(Game& game, const PortableMove& pm) : manager_(game.manager_)
 {
     move_.RoleIndex = pm.RoleIndex_;
     strcpy(move_.Text, pm.Text_.c_str());
@@ -148,7 +149,7 @@ std::size_t Move::hash_value() const
     //       2) I think the move_.Text can be generated from the other data so
     //          we don't need to hash it. Maybe need to confirm this with Michael.
     size_t seed = 0;
-    boost::hash_combine(seed, manager_);
+    boost::hash_combine(seed, manager_.get());
     boost::hash_combine(seed, move_.RoleIndex);
     boost::hash_combine(seed, move_.Tuple.RelationIndex);
     boost::hash_combine(seed, move_.Tuple.ID);
@@ -192,22 +193,33 @@ std::ostream& operator<<(std::ostream& os, const JointGoal& jgoal)
 /*****************************************************************************************
  * Implementation of Game
  *****************************************************************************************/
-Game::Game() { }
+Game::Game() 
+{ 
+    manager_ = boost::make_shared<HSFCManager>();
+}
 
-Game::Game(const Game& other) { }
+Game::Game(const Game& other) 
+{ 
+    manager_ = boost::make_shared<HSFCManager>();
+    throw HSFCException() 
+        << ErrorMsgInfo("Internal error: Illegal use of Game::Game() copy constructor");
+}
 
 Game::Game(const std::string& gdldescription, bool usegadelac)
 {
+    manager_ = boost::make_shared<HSFCManager>();
     initialise(gdldescription, usegadelac);
 }
 
 Game::Game(const char* gdldescription, bool usegadelac)
 {
+    manager_ = boost::make_shared<HSFCManager>();
     initialise(std::string(gdldescription), usegadelac);
 }
 
 Game::Game(const boost::filesystem::path& gdlfile, bool usegadelac)
 {
+    manager_ = boost::make_shared<HSFCManager>();
     initialise(gdlfile, usegadelac);
 }
 
@@ -216,7 +228,7 @@ void Game::initialise(const std::string& gdldescription, bool usegadelac)
     hsfcGDLParamaters params;
     initInternals(params);
 
-    manager_.Initialise(gdldescription, params, usegadelac);
+    manager_->Initialise(gdldescription, params, usegadelac);
     initstate_.reset(new State(*this));
 }
 
@@ -225,7 +237,7 @@ void Game::initialise(const boost::filesystem::path& gdlfile, bool usegadelac)
     hsfcGDLParamaters params;
     initInternals(params);
 
-    manager_.Initialise(gdlfile, params, usegadelac);
+    manager_->Initialise(gdlfile, params, usegadelac);
     initstate_.reset(new State(*this));
 }
 
@@ -249,7 +261,7 @@ const State& Game::initState() const
 
 unsigned int Game::numPlayers() const
 {
-    return manager_.NumPlayers();
+    return manager_->NumPlayers();
 }
 
 std::vector<Player> Game::players() const {
@@ -274,13 +286,13 @@ bool Game::operator!=(const Game& other) const
  * Implementation of State
  *****************************************************************************************/
 
-State::State(Game& game): manager_(&game.manager_), state_(NULL)
+State::State(Game& game): manager_(game.manager_), state_(NULL)
 {
     state_ = manager_->CreateGameState();
     manager_->SetInitialGameState(*state_);
 }
 
-State::State(Game& game, const PortableState& ps): manager_(&game.manager_), state_(NULL)
+State::State(Game& game, const PortableState& ps): manager_(game.manager_), state_(NULL)
 {
     state_ = manager_->CreateGameState();
     manager_->SetStateData(ps.relationlist_, ps.round_, ps.currentstep_, *state_);
