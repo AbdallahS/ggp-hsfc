@@ -12,6 +12,10 @@ add_subdirectory(libhsfc)
 add_subdirectory(cpphsfc)
 add_subdirectory(pyhsfc)
 
-set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
+# Only set the CMAKE_INSTALL_PREFIX if the user hasn't
+# specified a location
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+   set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
+endif()
 
 enable_testing()
