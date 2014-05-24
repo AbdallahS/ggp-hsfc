@@ -225,7 +225,9 @@ void State::legals(OutputIterator dest) const
 {
     boost::unordered_set<int> ok;
     std::vector<hsfcLegalMove> lms;
-    BOOST_ASSERT_MSG(!(this->isTerminal()), "Test for non-terminal state before calling legals()");
+    if (this->isTerminal()) 
+        throw HSFCValueError() << ErrorMsgInfo("Cannot cal legals() on a terminal state");
+
     manager_->GetLegalMoves(*state_, lms);
     BOOST_FOREACH( hsfcLegalMove& lm, lms)
     {
@@ -234,7 +236,8 @@ void State::legals(OutputIterator dest) const
     }
     if (ok.size() != manager_->NumPlayers())
     {
-        throw HSFCException() << ErrorMsgInfo("HSFC internal error: missing moves for some players");
+        throw HSFCInternalError() 
+            << ErrorMsgInfo("HSFC internal error: missing moves for some players");
     }
 }
 
@@ -242,11 +245,13 @@ template<typename OutputIterator>
 void State::goals(OutputIterator dest) const
 {
     std::vector<int> vals;
-    BOOST_ASSERT_MSG(this->isTerminal(), "Test for terminal state before calling goals()");
+    if (!(this->isTerminal()))
+        throw HSFCValueError() << ErrorMsgInfo("Cannot call goals() on a non-terminal state");
     manager_->GetGoalValues(*state_, vals);
     if (vals.size() != manager_->NumPlayers())
     {
-        throw HSFCException() << ErrorMsgInfo("HSFC internal error: no goal value for some players");
+        throw HSFCInternalError() 
+            << ErrorMsgInfo("HSFC internal error: no goal value for some players");
     }
     
     for (unsigned int i = 0; i < vals.size(); ++i)
@@ -259,11 +264,13 @@ template<typename OutputIterator>
 void State::playout(OutputIterator dest)
 {
     std::vector<int> vals;
-    BOOST_ASSERT_MSG(!this->isTerminal(), "Test for terminal state before calling playOut()");
+    if (this->isTerminal())
+        throw HSFCValueError() << ErrorMsgInfo("Cannot playout() on a terminal state");
     manager_->PlayOut(*state_, vals);
     if (vals.size() != manager_->NumPlayers())
     {
-        throw HSFCException() << ErrorMsgInfo("HSFC internal error: no goal value for some players");
+        throw HSFCInternalError() 
+            << ErrorMsgInfo("HSFC internal error: no goal value for some players");
     }
     
     for (unsigned int i = 0; i < vals.size(); ++i)
@@ -277,15 +284,19 @@ void State::play(Iterator begin, Iterator end)
 {
     boost::unordered_set<int> ok;
     std::vector<hsfcLegalMove> lms;
-    BOOST_ASSERT_MSG(!(this->isTerminal()), "Test for non-terminal state before calling play()");
+    
+    if (this->isTerminal())
+        throw HSFCValueError() << ErrorMsgInfo("Cannot play() on a terminal state");
     while (begin != end)
     {
-        BOOST_ASSERT_MSG(begin->first.roleid_ == begin->second.move_.RoleIndex, "Player and Move do not match");
+        if (begin->first.roleid_ != begin->second.move_.RoleIndex)
+            throw HSFCValueError() << ErrorMsgInfo("Mismatched Player and Move");
         lms.push_back(begin->second.move_);
         ok.insert(begin->first.roleid_);
         ++begin;
     }
-    BOOST_ASSERT_MSG(ok.size() == manager_->NumPlayers(), "Must be exactly one move per player");
+    if (ok.size() != manager_->NumPlayers())
+        throw HSFCValueError() << ErrorMsgInfo("Must be exactly one move per player");
     manager_->DoMove(*state_, lms);         
 }  
 

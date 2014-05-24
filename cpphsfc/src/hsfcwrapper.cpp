@@ -42,23 +42,29 @@ void HSFCManager::PopulatePlayerNamesFromLegalMoves()
             Term term;
             parse_flat(lm.Text, term);
             if (term.children_.size() != 3)
-                throw HSFCException() 
+                throw HSFCInternalError() 
                     << ErrorMsgInfo("HSFC internal error: move_.Text term != 3");
             if (boost::get<std::string>(term.children_[0]) != "does")
-                throw HSFCException() 
+                throw HSFCInternalError() 
                     << ErrorMsgInfo("HSFC internal error: move_.Text not 'does' relation");
             playernames_[lm.RoleIndex] = boost::get<std::string>(term.children_[1]);
         }
         BOOST_FOREACH(const std::string& s, playernames_)
         {
             if (s.empty())
-                throw HSFCException() 
+                throw HSFCInternalError() 
                     << ErrorMsgInfo("HSFC internal error: Failed to find names for roles");
         }
+    } catch (HSFCException& e)
+    {
+        this->FreeGameState(tmpstate);
+        throw HSFCInternalError() << ErrorMsgInfo(e.what());
     } catch (...)
     {
         this->FreeGameState(tmpstate);
+        throw;
     }
+    
 }
 
 /*****************************************************************************************
@@ -74,12 +80,11 @@ void HSFCManager::RunGadelac(const boost::filesystem::path& infile,
     ss << "gadelac " << extra_options << " --backend gdl -o " 
        << outfile.native() << " " << infile.native();
     int result = std::system(ss.str().c_str());
-    if (result != 0)
-    {
-        std::ostringstream sserr;
-        sserr << "Gadelac execution failure (code: " << result << "): " << ss.str();
-        throw HSFCException() << ErrorMsgInfo(sserr.str());
-    }
+    if (result == 0) return;
+    if (result == 1) throw HSFCValueError() << ErrorMsgInfo("Gadelac indentified invalid GDL");
+    std::ostringstream sserr;
+    sserr << "Gadelac failed to process GDL (code: " << result << "): " << ss.str();
+    throw HSFCInternalError() << ErrorMsgInfo(sserr.str());
 }
 
 /*****************************************************************************************
@@ -91,7 +96,7 @@ hsfcState* HSFCManager::CreateGameState()
     hsfcState* state;  
     if (internal_->CreateGameState(&state))
     {
-        throw HSFCException() << ErrorMsgInfo("Failed to create HSFC game state");
+        throw HSFCInternalError() << ErrorMsgInfo("Failed to create HSFC game state");
     }
     return state;
 }
@@ -166,7 +171,7 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
         {
             std::ostringstream ss;
             ss << "File does not exist: " << gdlfile.native();        
-            throw HSFCException() << ErrorMsgInfo(ss.str());
+            throw HSFCValueError() << ErrorMsgInfo(ss.str());
         }
 
         // If we need to use gadelac then use a temporary output file
@@ -190,7 +195,7 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
         {
             std::ostringstream ss;
             ss << "Failed to initialise the HSFC engine. Error code: " << result;
-            throw HSFCException() << ErrorMsgInfo(ss.str());
+            throw HSFCInternalError() << ErrorMsgInfo(ss.str());
         }  
 
         // Now jump through hoops to workout the names of the players.
@@ -212,7 +217,7 @@ void HSFCManager::Initialise(const std::string& gdldescription,
     bfs::path tmppath = bfs::unique_path();
     try {        
         bfs::ofstream gdlfile(tmppath);
-        if (gdlfile.fail()) throw HSFCException() 
+        if (gdlfile.fail()) throw HSFCInternalError() 
                                 << ErrorMsgInfo("Failed to create temporary file");
         
         gdlfile << gdldescription;
@@ -241,7 +246,7 @@ unsigned int HSFCManager::NumPlayers() const
 std::ostream& HSFCManager::PrintPlayer(std::ostream& os, unsigned int roleid) const
 {
     if (roleid >= this->NumPlayers())
-        throw HSFCException() << ErrorMsgInfo("HSFC internal error: not a valid roleid");
+        throw HSFCInternalError() << ErrorMsgInfo("HSFC internal error: not a valid roleid");
     return os << playernames_[roleid];
 }
 
@@ -260,17 +265,23 @@ struct gdl_move_visitor : public boost::static_visitor<std::ostream&>
 
 std::ostream& HSFCManager::PrintMove(std::ostream& os, const hsfcLegalMove& legalmove) const
 {
-    Term term;
-    parse_flat(legalmove.Text, term);
-    if (term.children_.size() != 3)
-        throw HSFCException() 
-            << ErrorMsgInfo("HSFC internal error: move_.Text term != 3");
-    if (boost::get<std::string>(term.children_[0]) != "does")
-        throw HSFCException() 
-            << ErrorMsgInfo("HSFC internal error: move_.Text not 'does' relation");
-    gdl_move_visitor gmv(os);
-    boost::apply_visitor(gmv, term.children_[2]);
-    return os;
+    try
+    {
+        Term term;
+        parse_flat(legalmove.Text, term);
+        if (term.children_.size() != 3)
+            throw HSFCInternalError() 
+                << ErrorMsgInfo("HSFC internal error: move_.Text term != 3");
+        if (boost::get<std::string>(term.children_[0]) != "does")
+            throw HSFCInternalError() 
+                << ErrorMsgInfo("HSFC internal error: move_.Text not 'does' relation");
+        gdl_move_visitor gmv(os);
+        boost::apply_visitor(gmv, term.children_[2]);
+        return os;
+    } catch (HSFCException& e)
+    {
+        throw HSFCInternalError() << ErrorMsgInfo(e.what());
+    }
 }
 
 void HSFCManager::GetStateData(const hsfcState& state, 

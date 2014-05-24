@@ -201,7 +201,7 @@ Game::Game()
 Game::Game(const Game& other) 
 { 
     manager_ = boost::make_shared<HSFCManager>();
-    throw HSFCException() 
+    throw HSFCInternalError() 
         << ErrorMsgInfo("Internal error: Illegal use of Game::Game() copy constructor");
 }
 
@@ -308,7 +308,8 @@ State::State(const State& other) : manager_(other.manager_), state_(NULL)
 
 State& State::operator=(const State& other)
 {
-    BOOST_ASSERT_MSG(manager_ == other.manager_, "Cannot assign to States from different games");
+    if (manager_ != other.manager_) 
+        throw HSFCValueError() << ErrorMsgInfo("Cannot assign to a State from a different game");
     manager_->CopyGameState(*state_, *(other.state_));
     return *this;
 }

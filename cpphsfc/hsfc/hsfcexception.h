@@ -18,6 +18,11 @@ public:
     char const* what() const throw();
 };
 
+// Distinguish between an exception thrown because of bad input (ValueError)
+// and an exception thrown because something went wrong internally.
+class HSFCValueError : public HSFCException {};
+class HSFCInternalError : public HSFCException {};
+
 };
 
 
