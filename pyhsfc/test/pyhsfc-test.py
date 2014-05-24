@@ -215,10 +215,11 @@ class TictactoeTest(unittest.TestCase):
 
 
     #-----------------------------
-    # The main test - load up tictactoe and pick
-    # moves until the game terminates while running
-    # random playouts from each game state.
+    # Exception checks
     #-----------------------------
+    def test_exceptions(self):
+        self.assertRaises(ValueError, Game, file="./nofile.gdl")
+        self.assertRaises(ValueError, Game, gdl="( dfdfl (dfd", gadelac=True)
 
     #-----------------------------
     # The main test: load up tictactoe and pick

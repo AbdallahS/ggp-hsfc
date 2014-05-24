@@ -27,22 +27,40 @@ namespace py = boost::python;
 
 /*****************************************************************************************
  * Support for passing on exceptions
+ * Note: because HSFCException is derived from std::exception, trying to provide 
+ * separate translate() functions for each exception type doesn't work. The one for
+ * std::exception was being triggered even when a more specific one existed. So instead
+ * having a single translate function and use dynamic casting to tell which subclass 
+ * we are dealing with. 
  *****************************************************************************************/
 
 struct PyHSFCException
 {
     /* docstrings */
-    static const char* ds_class; 
-
     static void translate(const std::exception& e);
 };
 
-const char* PyHSFCException::ds_class = "Exception class for all HSFC based exceptions";
-
 void PyHSFCException::translate(const std::exception& e)
 {
+    try
+    {
+        const HSFCValueError& t = dynamic_cast<const HSFCValueError&>(e);
+        PyErr_SetString(PyExc_ValueError, e.what());
+        return;        
+    }
+    catch (const std::bad_cast& e) { }
+
+    try
+    {
+        const HSFCInternalError& t = dynamic_cast<const HSFCInternalError&>(e);
+        PyErr_SetString(PyExc_AssertionError, e.what());
+        return;
+    }
+    catch (const std::bad_cast& e) { }
+    
     PyErr_SetString(PyExc_RuntimeError, e.what());
 }
+
 
 /*****************************************************************************************
  * Support for python Player.
@@ -113,10 +131,10 @@ PyGame::PyGame(const std::string& gdldescription,
                bool usegadelac)
 {
     if (gdldescription.empty() && gdlfilename.empty())
-        throw HSFCException() 
+        throw HSFCValueError() 
             << ErrorMsgInfo("No GDL file or description specified"); 
     if (!gdldescription.empty() && !gdlfilename.empty())
-        throw HSFCException() 
+        throw HSFCValueError() 
             << ErrorMsgInfo("Cannot speficy both a GDL file and description");
     if (!gdldescription.empty())        
         Game::initialise(gdldescription, usegadelac);

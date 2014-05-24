@@ -70,6 +70,20 @@ void HSFCManager::PopulatePlayerNamesFromLegalMoves()
 /*****************************************************************************************
  * Internal function
  * Preprocess using gadelac
+ *
+ * BUG FIX: The return value of std::system() seems to be OS specific (maybe 
+ * compiler specific as well?). For example: 
+ * http://www.cplusplus.com/reference/cstdlib/system/ suggested that the
+ * the return value on successful completion would be the return code of gadelac, 
+ * while conceding that this may be system specific. This is not the case for 
+ * linux and from what I can tell POSIX in general. Instead you have to use the 
+ * macro WEXITSTATUS() to extract the external programs return code from the 
+ * std::system() return value. See: http://linux.die.net/man/3/system
+ *
+ * NOTE: This is exactly why I think this sort of thing is bad, you 
+ * get behaviours that don't match what you expect due to small OS quirks. 
+ * Gadelac should be a library and not an externally called executable.
+ *
  *****************************************************************************************/
 
 void HSFCManager::RunGadelac(const boost::filesystem::path& infile, 
@@ -81,9 +95,11 @@ void HSFCManager::RunGadelac(const boost::filesystem::path& infile,
        << outfile.native() << " " << infile.native();
     int result = std::system(ss.str().c_str());
     if (result == 0) return;
-    if (result == 1) throw HSFCValueError() << ErrorMsgInfo("Gadelac indentified invalid GDL");
+    if (result == -1) throw HSFCInternalError() << ErrorMsgInfo("Could not find executable: gadelac");
+    int code = WEXITSTATUS(result);
+    if (code == 1) throw HSFCValueError() << ErrorMsgInfo("Gadelac indentified invalid GDL");
     std::ostringstream sserr;
-    sserr << "Gadelac failed to process GDL (code: " << result << "): " << ss.str();
+    sserr << "Gadelac failed to process GDL (code: " << code << "): " << ss.str();
     throw HSFCInternalError() << ErrorMsgInfo(sserr.str());
 }
 
