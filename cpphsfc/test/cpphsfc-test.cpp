@@ -412,6 +412,9 @@ BOOST_AUTO_TEST_CASE(state_functions)
     boost::shared_ptr<PortableState> pstate2;
     ia >> pstate2;
 
+    // Test the State assigment operator
+    state2 = State(game, *pstate2);
+    BOOST_CHECK(!state2.isTerminal());
     state2.playout(result);
     BOOST_CHECK(state2.isTerminal());
 

@@ -309,8 +309,6 @@ State::State(const State& other) : manager_(other.manager_), state_(NULL)
 State& State::operator=(const State& other)
 {
     BOOST_ASSERT_MSG(manager_ == other.manager_, "Cannot assign to States from different games");
-    if (state_ != NULL)
-        manager_->FreeGameState(state_);
     manager_->CopyGameState(*state_, *(other.state_));
     return *this;
 }
