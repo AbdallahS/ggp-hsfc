@@ -297,7 +297,14 @@ void State::play(Iterator begin, Iterator end)
     }
     if (ok.size() != manager_->NumPlayers())
         throw HSFCValueError() << ErrorMsgInfo("Must be exactly one move per player");
-    manager_->DoMove(*state_, lms);         
+    manager_->DoMove(*state_, lms); 
+
+    // Hack to calculate legal moves so that the state will now be in a good state.
+    if (!this->isTerminal())
+    {
+        std::vector<PlayerMove> legalMoves;
+        this->legals(std::back_inserter(legalMoves));    
+    }
 }  
 
 

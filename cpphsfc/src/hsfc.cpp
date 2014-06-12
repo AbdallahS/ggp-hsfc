@@ -284,12 +284,24 @@ bool Game::operator!=(const Game& other) const
 
 /*****************************************************************************************
  * Implementation of State
+ * NOTE: 20140612. From what I can tell from looking at the HSFC code a state isn't
+ * in some sense valid until it has had the legal moves calculated from it. Or at least
+ * you cannot run Play() from a state that has not had legal moves calculated. So as
+ * a hack I will calculate (and throw away) the legal moves whenever I create a state and
+ * whenever I run Play().
  *****************************************************************************************/
 
 State::State(Game& game): manager_(game.manager_), state_(NULL)
 {
     state_ = manager_->CreateGameState();
     manager_->SetInitialGameState(*state_);
+
+    // Hack to calculate legal moves so that the state will now be in a good state.
+    if (!this->isTerminal())
+    {
+        std::vector<PlayerMove> legalMoves;
+        this->legals(std::back_inserter(legalMoves));    
+    }
 }
 
 State::State(Game& game, const PortableState& ps): manager_(game.manager_), state_(NULL)
@@ -297,6 +309,13 @@ State::State(Game& game, const PortableState& ps): manager_(game.manager_), stat
     state_ = manager_->CreateGameState();
     manager_->SetStateData(ps.relationlist_, ps.round_, ps.currentstep_, *state_);
 //  manager_->SetInitialGameState(*state_);
+
+    // Hack to calculate legal moves so that the state will now be in a good state.
+    if (!this->isTerminal())
+    {
+        std::vector<PlayerMove> legalMoves;
+        this->legals(std::back_inserter(legalMoves));    
+    }
 }
 
 
@@ -304,6 +323,13 @@ State::State(const State& other) : manager_(other.manager_), state_(NULL)
 {
     state_ = manager_->CreateGameState();
     manager_->CopyGameState(*state_, *(other.state_));
+
+    // Hack to calculate legal moves so that the state will now be in a good state.
+    if (!this->isTerminal())
+    {
+        std::vector<PlayerMove> legalMoves;
+        this->legals(std::back_inserter(legalMoves));    
+    }
 }
 
 State& State::operator=(const State& other)
@@ -311,6 +337,14 @@ State& State::operator=(const State& other)
     if (manager_ != other.manager_) 
         throw HSFCValueError() << ErrorMsgInfo("Cannot assign to a State from a different game");
     manager_->CopyGameState(*state_, *(other.state_));
+
+    // Hack to calculate legal moves so that the state will now be in a good state.
+    if (!this->isTerminal())
+    {
+        std::vector<PlayerMove> legalMoves;
+        this->legals(std::back_inserter(legalMoves));    
+    }
+
     return *this;
 }
 
