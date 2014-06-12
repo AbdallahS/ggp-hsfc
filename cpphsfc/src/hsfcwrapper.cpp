@@ -41,13 +41,21 @@ void HSFCManager::PopulatePlayerNamesFromLegalMoves()
         {
             Term term;
             parse_flat(lm.Text, term);
-            if (term.children_.size() != 3)
+            if (SubTerms* ts = boost::get<SubTerms>(&term))
+            {
+                if (ts->children_.size() != 3)
+                    throw HSFCInternalError() 
+                        << ErrorMsgInfo("HSFC internal error: move_.Text term not arity 3");
+                if (boost::get<std::string>(ts->children_[0]) != "does")
+                    throw HSFCInternalError() 
+                        << ErrorMsgInfo("HSFC internal error: move_.Text not 'does' relation");
+                playernames_[lm.RoleIndex] = boost::get<std::string>(ts->children_[1]);
+            }
+            else
+            {
                 throw HSFCInternalError() 
-                    << ErrorMsgInfo("HSFC internal error: move_.Text term != 3");
-            if (boost::get<std::string>(term.children_[0]) != "does")
-                throw HSFCInternalError() 
-                    << ErrorMsgInfo("HSFC internal error: move_.Text not 'does' relation");
-            playernames_[lm.RoleIndex] = boost::get<std::string>(term.children_[1]);
+                    << ErrorMsgInfo("HSFC internal error: move_.Text term is not a 'does' relation");
+            }
         }
         BOOST_FOREACH(const std::string& s, playernames_)
         {
@@ -276,7 +284,7 @@ struct gdl_move_visitor : public boost::static_visitor<std::ostream&>
     std::ostream& os_;
     gdl_move_visitor(std::ostream& os) : os_(os){}
     std::ostream& operator()(const std::string& name) { return os_ << name; }
-    std::ostream& operator()(const Term& t){ return generate_sexpr(t,os_); }
+    std::ostream& operator()(const SubTerms& ts){ return generate_sexpr(ts, os_); }
 };
 
 std::ostream& HSFCManager::PrintMove(std::ostream& os, const hsfcLegalMove& legalmove) const
@@ -285,15 +293,23 @@ std::ostream& HSFCManager::PrintMove(std::ostream& os, const hsfcLegalMove& lega
     {
         Term term;
         parse_flat(legalmove.Text, term);
-        if (term.children_.size() != 3)
+        if (SubTerms* ts = boost::get<SubTerms>(&term))
+        {
+            if (ts->children_.size() != 3)
+                throw HSFCInternalError() 
+                    << ErrorMsgInfo("HSFC internal error: move_.Text term not arity 3");
+            if (boost::get<std::string>(ts->children_[0]) != "does")
+                throw HSFCInternalError() 
+                    << ErrorMsgInfo("HSFC internal error: move_.Text not 'does' relation");
+            gdl_move_visitor gmv(os);
+            boost::apply_visitor(gmv, ts->children_[2]);
+            return os;
+        }
+        else
+        {
             throw HSFCInternalError() 
-                << ErrorMsgInfo("HSFC internal error: move_.Text term != 3");
-        if (boost::get<std::string>(term.children_[0]) != "does")
-            throw HSFCInternalError() 
-                << ErrorMsgInfo("HSFC internal error: move_.Text not 'does' relation");
-        gdl_move_visitor gmv(os);
-        boost::apply_visitor(gmv, term.children_[2]);
-        return os;
+                << ErrorMsgInfo("HSFC internal error: move_.Text term is not a 'does' relation");
+        }
     } catch (HSFCException& e)
     {
         throw HSFCInternalError() << ErrorMsgInfo(e.what());

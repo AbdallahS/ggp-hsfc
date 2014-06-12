@@ -2,9 +2,11 @@
  *
  *****************************************************************************************/
 #include <sstream>
+#include <algorithm>
 #include <vector>
 #include <boost/variant/get.hpp>
 #include <boost/foreach.hpp>
+#include <boost/tuple/tuple.hpp>
 #include <hsfc/hsfc.h>     /* Only needed for HSFCException */
 
 
@@ -30,22 +32,24 @@ namespace HSFC
  * Because the output format is pretty simple I'll use manual
  * generation instead of Spirit Karma.
  *****************************************************************/
+
 struct print_sexpr : public boost::static_visitor<>
 {
 	std::ostream& os_;
 	print_sexpr(std::ostream& os) : os_(os){}
 
 	void operator()(const std::string& name){ os_ << name; }
-	void operator()(const Term& t){ this->print(t); }
+	void operator()(const SubTerms& ts){ this->print(ts); }
+//	void operator()(const Term& t){ this->print(t); }
 
-	std::ostream& print(const Term& t)
+	std::ostream& print(const SubTerms& ts)
 	{
 		os_ << "(";
 		unsigned int i = 1;
-		BOOST_FOREACH(const TermNode& tn, t.children_)
+		BOOST_FOREACH(const Term& t, ts.children_)
 		{
-			boost::apply_visitor(*this, tn);
-			if (i++ < t.children_.size()) os_ << " ";
+			boost::apply_visitor(*this, t);
+			if (i++ < ts.children_.size()) os_ << " ";
 		}
 		return os_ << ")";
 	}
@@ -57,15 +61,15 @@ struct print_flat : public boost::static_visitor<>
 	print_flat(std::ostream& os) : os_(os){}
 
 	void operator()(const std::string& name){ os_ << name; }
-	void operator()(const Term& t){ this->print(t); }
+	void operator()(const SubTerms& ts){ this->print(ts); }
 
-	std::ostream& print(const Term& t)
+	std::ostream& print(const SubTerms& ts)
 	{
 		unsigned int i = 0; 
-		unsigned int arity = t.children_.size()-1;
-		BOOST_FOREACH(const TermNode& tn, t.children_)
+		unsigned int arity = ts.children_.size()-1;
+		BOOST_FOREACH(const Term& t, ts.children_)
 		{
-			boost::apply_visitor(*this, tn);
+			boost::apply_visitor(*this, t);
 			if (i == 0 && arity > 0) os_ << "|" << arity;
 			if (i < arity)  os_ << " ";
 			++i;
@@ -76,13 +80,29 @@ struct print_flat : public boost::static_visitor<>
 std::ostream& generate_sexpr(const Term& term, std::ostream& os)
 {
 	print_sexpr ps(os);
-	return ps.print(term);
+    boost::apply_visitor(ps, term);
+	return os;
 }
 
 std::ostream& generate_flat(const Term& term, std::ostream& os)
 {
 	print_flat pf(os);
-	return pf.print(term);
+    boost::apply_visitor(pf, term);
+	return os;
+}
+
+std::string generate_sexpr(const Term& term)
+{
+    std::ostringstream ss;
+    generate_sexpr(term, ss);
+    return ss.str();
+}
+
+std::string generate_flat(const Term& term)
+{
+    std::ostringstream ss;
+    generate_flat(term, ss);
+    return ss.str();
 }
 
 
@@ -104,8 +124,8 @@ struct LabelArity
  */
 
 BOOST_FUSION_ADAPT_STRUCT(
-	HSFC::Term,
-	(std::vector<HSFC::TermNode>, children_)
+	HSFC::SubTerms,
+	(std::vector<HSFC::Term>, children_)
 	)
 
 BOOST_FUSION_ADAPT_STRUCT(
@@ -144,18 +164,18 @@ struct SimpleTermParser : public _qi::grammar<Iterator, std::string()>
 /*****************************************************************
  * S-expression parsing
  *****************************************************************/
-
 template<typename Iterator>
 struct SexprParser : public _qi::grammar<Iterator, Term(),  _ascii::space_type>
 {
 	_qi::rule<Iterator, Term(), _ascii::space_type> stmt_;
-	_qi::rule<Iterator, TermNode(), _ascii::space_type> substmt_;
+	_qi::rule<Iterator, SubTerms(), _ascii::space_type> cmplxstmt_;
 	SimpleTermParser<Iterator> simpleterm_;
 
 	SexprParser() : SexprParser::base_type(stmt_, "S-expression")
 	{
-		stmt_ %= '(' > *substmt_ > ')';
-		substmt_ %= simpleterm_ | stmt_;
+        stmt_ %= simpleterm_ | cmplxstmt_;
+        cmplxstmt_ %= '(' > *stmt_ > ')';
+        
 	}
 };
 
@@ -163,13 +183,21 @@ struct SexprParser : public _qi::grammar<Iterator, Term(),  _ascii::space_type>
 void parse_sexpr(Iterator first, Iterator last, Term& result)
 {
 	Iterator begin = first;
-	static SexprParser<Iterator> sexprparser;
-	bool success = _qi::phrase_parse(first, last, sexprparser, _ascii::space, result);
+	static SexprParser<Iterator> sexpparser;
+    bool success;
+    try 
+    {
+        success = _qi::phrase_parse(first, last, sexpparser, _ascii::space, result);
+    } catch (std::exception& e)
+    {
+        throw std::invalid_argument(e.what());
+    }
 	if (success && first == last) return;
 	std::ostringstream ss;
 	ss << "Failed to parse S-expression: ";
 	while (begin != last) ss<< *begin++;
 	throw HSFCException() << ErrorMsgInfo(ss.str());
+//	throw std::invalid_argument(ss.str());
 }
 
 void parse_sexpr(const std::string& sexpr, Term& term)
@@ -181,6 +209,63 @@ void parse_sexpr(const std::string& sexpr, Term& term)
 /*****************************************************************
  * Parsing Flat format
  *****************************************************************/
+
+struct FlatStack
+{
+    typedef boost::tuple<SubTerms&, int> element_t;
+    std::vector<element_t> stack_;
+
+    Term& t_;
+    bool first_;
+    FlatStack(Term& t) : t_(t), first_(true){}
+    void operator()(const LabelArity& la);
+};
+
+void FlatStack::operator()(const LabelArity& la)
+{
+    if (stack_.empty() && !first_) 
+        throw HSFCException() << ErrorMsgInfo("Parsing error");
+    first_ = false;
+    if (stack_.empty())
+    {        
+        if (la.arity_ == 0){ t_ = Term(la.label_); }
+        else
+        {
+            t_ = Term(SubTerms());
+            SubTerms& subterms = boost::get<SubTerms>(t_);
+            subterms.children_.push_back(Term(la.label_));
+            stack_.push_back(element_t(subterms, la.arity_+1));
+        }
+        return;
+    }
+    element_t& top = stack_.back();
+    SubTerms& subterms = top.get<0>();
+    int& st_size = top.get<1>();
+
+    if (la.arity_ == 0) // Adding a 0 arity term
+    {
+        subterms.children_.push_back(Term(la.label_));
+
+        // Unwind the stack as much as possible
+        for(;;)
+        {
+            if (stack_.empty()) break;
+            const element_t& tmp_top = stack_.back();
+            const SubTerms& tmp_subterms = tmp_top.get<0>();
+            int tmp_st_size = tmp_top.get<1>();            
+            if (tmp_subterms.children_.size() < tmp_st_size) break;                
+            stack_.pop_back();
+        }
+    }
+    else       // Non 0-arity term so need to add a new subterm
+    {
+        subterms.children_.push_back(Term(SubTerms()));
+        SubTerms& subsubterms = boost::get<SubTerms>(subterms.children_.back());
+        subsubterms.children_.push_back(std::string(la.label_));
+        stack_.push_back(element_t(subsubterms, la.arity_+1));
+    }
+}
+
 
 template<typename Iterator>
 struct FlatSubParser : public _qi::grammar<Iterator, LabelArity(),  _ascii::space_type>
@@ -197,43 +282,24 @@ struct FlatSubParser : public _qi::grammar<Iterator, LabelArity(),  _ascii::spac
 };
 
 template<typename Iterator>
-bool parse_subflat(Iterator& first, Iterator last, TermNode& tn)
-{
-	LabelArity result;
-	FlatSubParser<std::string::const_iterator> fsp;
-	bool success = _qi::phrase_parse(first, last, fsp, _ascii::space, result);
-	if (!success) return false;
-	if (result.arity_ == 0) 
-	{
-		tn = result.label_;
-		return true;
-	}
-	tn = Term();
-	Term& term = boost::get<Term>(tn);
-	term.children_.push_back(result.label_);
-	for (int i=0; i < result.arity_; ++i)
-	{
-		term.children_.push_back(TermNode());
-//		TermNode& = term.children_.back();
-		if (!parse_subflat(first,last,term.children_.back())) return false;
-	}
-	return true;
-}
-
-template<typename Iterator>
 bool parse_flat(Iterator& first, Iterator last, Term& term)
 {
-	LabelArity result;
-	FlatSubParser<std::string::const_iterator> fsp;
-	bool success = _qi::phrase_parse(first, last, fsp, _ascii::space, result);
-	if (!success) return false;
-	term.children_.push_back(result.label_);
-	for (int i=0; i < result.arity_; ++i)
-	{
-		term.children_.push_back(TermNode());
-		if (!parse_subflat(first,last,term.children_.back())) return false;
-	}
-	return true;
+    try
+    {        
+        std::vector<LabelArity> labels;
+        FlatSubParser<Iterator> fsp;
+        bool success = 
+            _qi::phrase_parse(first, last, 
+                              +(fsp[_phoenix::push_back(_phoenix::ref(labels), _qi::_1)])
+                              , _ascii::space);
+        if (!success) return false;
+        FlatStack fs(term);
+        std::for_each(labels.begin(), labels.end(), fs);
+        return true;
+    } catch (HSFCException)
+    {
+        return false; 
+    }
 }
 
 void parse_flat(const std::string& flat, Term& term)

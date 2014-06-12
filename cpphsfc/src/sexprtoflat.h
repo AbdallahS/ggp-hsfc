@@ -34,16 +34,16 @@ namespace HSFC
  * Term is defined recursively
  *****************************************************************/
 
-struct Term;
+struct SubTerms;
 
 typedef boost::variant<
 	std::string,
-	boost::recursive_wrapper<Term>
-	> TermNode;
+	boost::recursive_wrapper<SubTerms>
+	> Term;
 					   
-struct Term
+struct SubTerms
 {
-	std::vector<TermNode> children_;
+	std::vector<Term> children_;
 };
 
 /*****************************************************************
