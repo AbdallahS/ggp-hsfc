@@ -53,6 +53,20 @@ Player get_player(const Game& game, const std::string& playername)
     BOOST_CHECK(false);
 }
 
+// Count the number of moves that the player has in the state
+unsigned int get_num_moves(const State& state, const std::string& player)
+{
+    typedef boost::unordered_map<Player, std::vector<Move> > pmvs_t;
+    pmvs_t pmvs = state.legals();
+    BOOST_FOREACH(const pmvs_t::value_type& pm, pmvs)
+    {
+        if (pm.first.tostring() == player) return pm.second.size();
+    }
+    BOOST_CHECK(false);
+    return 0;
+}
+
+
 /****************************************************************
  * Tictactoe specific functions.
  ****************************************************************/
@@ -522,3 +536,68 @@ BOOST_AUTO_TEST_CASE(tictactoe)
 }
 
 
+/****************************************************************
+ * Test the state changes correctly even when we don't call 
+ * legals(). Deep in the HSFC a state is not valid until the
+ * legal moves have been calculated by it. I hack around this by
+ * calling legals() whenever a state is created/copied/assigned.
+ ****************************************************************/
+
+BOOST_AUTO_TEST_CASE(state_transition)
+{
+    Game game(boost::filesystem::path("./tictactoe.gdl"));
+    State main_state(game);
+
+    /* Use a sequence of two joint moves as my test-case: jm1, jm2 */       
+    std::vector<JointMove> tmp_jms = main_state.joints();
+    BOOST_CHECK_EQUAL(tmp_jms.size(),9);
+    JointMove jm1 = tmp_jms[0];
+    main_state.play(jm1);
+    tmp_jms = main_state.joints();
+    BOOST_CHECK_EQUAL(tmp_jms.size(),8);
+    JointMove jm2 = tmp_jms[0];
+   
+    /* Now we use jm1 and jm2 to test various state transitions
+       for states that were copied and assigned without calculating
+       the legals in between play() calls. */
+    State state1(game);
+    state1.play(jm1);
+    state1.play(jm2);
+    BOOST_CHECK_EQUAL(get_num_moves(state1, "xplayer"), 7);
+    BOOST_CHECK_EQUAL(get_num_moves(state1, "oplayer"), 1);
+
+    State state2(game);
+    state2.play(jm1);
+    State state3(state2);
+    state2.play(jm2);
+    state3.play(jm2);
+    BOOST_CHECK_EQUAL(get_num_moves(state2, "xplayer"), 7);
+    BOOST_CHECK_EQUAL(get_num_moves(state2, "oplayer"), 1);
+    BOOST_CHECK_EQUAL(get_num_moves(state3, "xplayer"), 7);
+    BOOST_CHECK_EQUAL(get_num_moves(state3, "oplayer"), 1);
+
+    State state4(game);
+    State state5(state4);
+    state4.play(jm1);
+    state5 = state4;
+    state4.play(jm2);
+    state5.play(jm2);
+    BOOST_CHECK_EQUAL(get_num_moves(state4, "xplayer"), 7);
+    BOOST_CHECK_EQUAL(get_num_moves(state4, "oplayer"), 1);
+    BOOST_CHECK_EQUAL(get_num_moves(state5, "xplayer"), 7);
+    BOOST_CHECK_EQUAL(get_num_moves(state5, "oplayer"), 1);
+
+    State state6(game);
+    State state7(game);
+    state6.play(jm1);
+    state7 = state6;
+    state6.play(jm2);
+    state7.play(jm2);
+    BOOST_CHECK_EQUAL(get_num_moves(state6, "xplayer"), 7);
+    BOOST_CHECK_EQUAL(get_num_moves(state6, "oplayer"), 1);
+    BOOST_CHECK_EQUAL(get_num_moves(state7, "xplayer"), 7);
+    BOOST_CHECK_EQUAL(get_num_moves(state7, "oplayer"), 1);
+ 
+
+
+}
