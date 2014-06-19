@@ -206,8 +206,8 @@ public:
      * Make a move. 
      *
      */
-    void play(const std::vector<PlayerMove>& moves);
     void play(const JointMove& moves);
+    void play(const std::vector<PlayerMove>& moves); // deprecated!
 
     template<typename Iterator>
     void play(Iterator begin, Iterator end);
@@ -217,6 +217,8 @@ private:
 
     hsfcState* state_;
     boost::shared_ptr<HSFCManager> manager_;  
+
+    void initialize();
 };
 
 
@@ -305,12 +307,7 @@ void State::play(Iterator begin, Iterator end)
         throw HSFCValueError() << ErrorMsgInfo("Must be exactly one move per player");
     manager_->DoMove(*state_, lms); 
 
-    // Hack to calculate legal moves so that the state will now be in a good state.
-    if (!this->isTerminal())
-    {
-        std::vector<PlayerMove> legalMoves;
-        this->legals(std::back_inserter(legalMoves));    
-    }
+    initialize();
 }  
 
 
