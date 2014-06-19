@@ -1,11 +1,14 @@
 DEFAULT_BUILD = release
-
-default: 
 ifeq ($(wildcard build/Makefile),)
-	make $(DEFAULT_BUILD)
+	build = $(DEFAULT_BUILD)
 else
-	cd build; make
+	build = existing
 endif
+
+default: $(build)
+
+existing:
+	cd build; make
 
 debug: 
 	mkdir -p build
@@ -15,17 +18,11 @@ release:
 	mkdir -p build
 	cd build ; rm -rf * ; cmake -DCMAKE_BUILD_TYPE=Release ../ ; make
 
-install:
-ifeq ($(wildcard build/Makefile),)
-	make $(DEFAULT_BUILD)
-	make install
-else
+install: $(build)
 	cd build; make install
-endif
 
 test:
 	cd build; ctest
-
 #	cd build; ctest -V
 
 clean: 
