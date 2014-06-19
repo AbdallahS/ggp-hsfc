@@ -610,26 +610,21 @@ BOOST_AUTO_TEST_CASE(state_transition)
  * have now added a termination test that happens after playout() 
  * is call to ensure that the state is valid.
  * 
- * UNFORTUNATELY I can't easily test for this! A playout() by its
- * very nature 
  ****************************************************************/
 
 BOOST_AUTO_TEST_CASE(state_transition_from_playout)
 {
     Game game(boost::filesystem::path("./tictactoe.gdl"));
-    State state1(game);
+    State state(game);
 
-    /* Perform a playout from a state. Then copy that state. 
-       Test for termination in one copy and then check that they
-       are the still the same state */
+    /* Perform a playout from a state. Then make a portable copy
+       before and after testing for termination. */
 
-    state1.playout();
-    State state2(state1);
-    BOOST_CHECK(state1.isTerminal());
+    state.playout();
+    PortableState pstate1(state);
+    BOOST_CHECK(state.isTerminal());
 
-    PortableState pstate1(state1);
-    PortableState pstate2(state2);
-    
+    PortableState pstate2(state);
     BOOST_CHECK(pstate1 == pstate2);
 
 }

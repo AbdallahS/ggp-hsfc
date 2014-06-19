@@ -277,7 +277,7 @@ void State::playout(OutputIterator dest)
     // because it turns out that checking for termination does change
     // some internal structures in the state. 
     if (!this->isTerminal())
-        throw HSFCInternalError() << ErrorMsgInfo("State is not termnial after a playout()");
+        throw HSFCInternalError() << ErrorMsgInfo("State is not terminal after a playout()");
 
     for (unsigned int i = 0; i < vals.size(); ++i)
     {
