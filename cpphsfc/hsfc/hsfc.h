@@ -273,6 +273,12 @@ void State::playout(OutputIterator dest)
             << ErrorMsgInfo("HSFC internal error: no goal value for some players");
     }
     
+    // Not sure if this is necessary, but added a test for termination
+    // because it turns out that checking for termination does change
+    // some internal structures in the state. 
+    if (!this->isTerminal())
+        throw HSFCInternalError() << ErrorMsgInfo("State is not termnial after a playout()");
+
     for (unsigned int i = 0; i < vals.size(); ++i)
     {
         *dest++= PlayerGoal(Player(manager_,i), (unsigned int)vals[i]);

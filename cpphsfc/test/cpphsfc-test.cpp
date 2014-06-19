@@ -597,7 +597,40 @@ BOOST_AUTO_TEST_CASE(state_transition)
     BOOST_CHECK_EQUAL(get_num_moves(state6, "oplayer"), 1);
     BOOST_CHECK_EQUAL(get_num_moves(state7, "xplayer"), 7);
     BOOST_CHECK_EQUAL(get_num_moves(state7, "oplayer"), 1);
- 
+}
 
+/****************************************************************
+ * Related to the issue that calculating the legal moves does itself
+ * modify the internal structure of a State, similarly testing
+ * for termination also modifies the internal structure of the 
+ * State. As part of the fix for the legals moves we do test
+ * for termination when creating/copying/assigning states as 
+ * well as updating the state after a joint move play(). However,
+ * I wasn't testing for termination after a playout(). So
+ * have now added a termination test that happens after playout() 
+ * is call to ensure that the state is valid.
+ * 
+ * UNFORTUNATELY I can't easily test for this! A playout() by its
+ * very nature 
+ ****************************************************************/
+
+BOOST_AUTO_TEST_CASE(state_transition_from_playout)
+{
+    Game game(boost::filesystem::path("./tictactoe.gdl"));
+    State state1(game);
+
+    /* Perform a playout from a state. Then copy that state. 
+       Test for termination in one copy and then check that they
+       are the still the same state */
+
+    state1.playout();
+    State state2(state1);
+    BOOST_CHECK(state1.isTerminal());
+
+    PortableState pstate1(state1);
+    PortableState pstate2(state2);
+    
+    BOOST_CHECK(pstate1 == pstate2);
 
 }
+
