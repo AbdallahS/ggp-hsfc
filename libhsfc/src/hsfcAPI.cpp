@@ -316,8 +316,11 @@ void hsfcGDLManager::PlayOut(hsfcState* GameState, vector<int>& GoalValue) {
 		// Play until the game is terminal
 		while (!this->Engine->IsTerminal(GameState)) {
 
-			// Advanc eto calculate all the legal moves
-			this->Engine->AdvanceState(GameState, 2);
+            // BUG FIX: The first iteration may already have calcuated
+			// legal moves - so we don't want to advance again.
+            // Advance to calculate all the legal moves
+            if (GameState->CurrentStep < 2) 
+                this->Engine->AdvanceState(GameState, 2);
 
 			// Get the legal move tuples
 			this->Engine->ChooseRandomMoves(GameState);
