@@ -6,7 +6,6 @@
 //=============================================================================
 #include "stdafx.h"
 #include "hsfcSchema.h"
-
 #include "hsfc_config.h"
 
 using namespace std;
@@ -259,12 +258,36 @@ void hsfcRelationSchema::AddToFactDomain(vector<hsfcDomainEntry>& Entry) {
 }
 
 //-----------------------------------------------------------------------------
+// AddToDomain
+//-----------------------------------------------------------------------------
+void hsfcRelationSchema::AddToDomainFromDomain(vector<vector<hsfcDomainEntry> >& Source) {
+
+	// Do an integrity check
+	if (Source.size() != this->vDomain.size()) {
+		printf("Error: Wrong domain size\n");
+		abort();
+	}
+
+	// Transfer the entries from the source
+	for (unsigned int i = 0; i < Source.size(); i++) {
+		for (unsigned int j = 0; j < Source[i].size(); j++) {
+			this->AddToDomain(i, &Source[i][j]);
+		}
+	}
+
+}
+
+//-----------------------------------------------------------------------------
 // IndexDomains
 //-----------------------------------------------------------------------------
 void hsfcRelationSchema::IndexDomains() {
 
 	int Index;
 	double Count;
+
+	// Is this domain already indexed
+	if (this->Domain != NULL) return;
+	if (DEBUG) printf("Indexing domains for %s\n", this->Lexicon->Text(this->PredicateIndex));
 
 	// Convert the vectors to arrays for faster access
 	this->Domain = new hsfcDomain*[this->Arity];
@@ -472,7 +495,7 @@ int hsfcRelationSchema::ID(vector<hsfcTuple>& Term) {
 	Result = -1;
 
 	// Are there some terms
-	if (Term.size() < this->Arity + 1) return Result;
+	if (Term.size() < (unsigned)this->Arity + 1) return Result;
 	
 	// Is it a permanent fact
 	if (this->Fact == hsfcFactPermanent) {
@@ -618,7 +641,7 @@ int hsfcRelationSchema::vID(vector<hsfcTuple>& Term) {
 	Result = -1;
 
 	// Are there some terms
-	if (Term.size() < this->Arity + 1) return Result;
+	if (Term.size() < (unsigned)this->Arity + 1) return Result;
 	
 	// Is it a permanent fact
 	if (this->Fact == hsfcFactPermanent) {
@@ -871,7 +894,7 @@ void hsfcRelationSchema::ListDomain(vector<string>& List) {
 	// Add in the entries
 	if (this->Domain == NULL) {
 
-		for (int i = 0; i < this->vDomain[0].size(); i++) {
+		for (unsigned int i = 0; i < this->vDomain[0].size(); i++) {
 			if (this->vDomain[0][i].Tuple.ID == -1) {
 				List.push_back(this->Lexicon->Text(this->vDomain[0][i].Tuple.ID));
 			}
@@ -940,7 +963,7 @@ void hsfcRelationSchema::PrintDomains() {
 void hsfcRelationSchema::Print() {
 
 	// Print the Relation
-	printf("%s / %d\n", this->Lexicon->Text(this->PredicateIndex), this->Arity);
+	printf("%s\n", this->Lexicon->Text(this->PredicateIndex));
 	printf("     IDCount = %d\n", this->IDCount);
 	printf("        Fact = %d\n", this->Fact);
 	printf("   AveLength = %.2f\n", this->AveListLength);
@@ -1938,7 +1961,7 @@ double hsfcRuleSchema::Cost(vector<int>& InputIndex) {
 
 			// Calculate the reference size
 			this->Relation[i]->ReferenceSize = 1;
-			ReferenceSize += (double)this->Relation[i]->ReferenceSize;
+			ReferenceSize += this->Relation[i]->ReferenceSize;
 		}
 	}
 
@@ -2003,7 +2026,7 @@ double hsfcRuleSchema::Cost(vector<int>& InputIndex) {
 			MaxListLength = this->Relation[InputIndex[i]]->Template[0].RelationSchema->IDCount;
 
 			// Calculate the size of the reference table from the previous number of unique IDs
-			this->Relation[InputIndex[i]]->ReferenceSize = NoUniqueIDs * MaxListLength;
+			this->Relation[InputIndex[i]]->ReferenceSize = (double)NoUniqueIDs * (double)MaxListLength;
 			ReferenceSize += (double)this->Relation[InputIndex[i]]->ReferenceSize;
 
 			// Calculate the number of unique combinations of variables
@@ -2058,7 +2081,7 @@ double hsfcRuleSchema::Cost(vector<int>& InputIndex) {
 			}
 
 			// Calculate the reference size
-			this->Relation[i]->ReferenceSize = NoUniqueIDs;
+			this->Relation[i]->ReferenceSize = (double)NoUniqueIDs;
 			ReferenceSize += (double)this->Relation[i]->ReferenceSize;
 
 			// Use the probability for sorting and cycle calculations
@@ -2074,7 +2097,7 @@ double hsfcRuleSchema::Cost(vector<int>& InputIndex) {
 	}
 
 	// --- Result ------------------------------------------------------------
-	this->Relation[0]->ReferenceSize = NoUniqueIDs;
+	this->Relation[0]->ReferenceSize = (double)NoUniqueIDs;
 	ReferenceSize += (double)this->Relation[0]->ReferenceSize;
 	TotalCost += NoInputCycles;
 
@@ -2146,7 +2169,8 @@ hsfcSchema::hsfcSchema(hsfcLexicon* Lexicon) {
 	this->GDL = new hsfcGDL(this->Lexicon);
 
 	// Set up the SCL
-	this->SCL = new hsfcGDL(this->Lexicon);
+	//this->SCL = new hsfcGDL(this->Lexicon);
+	this->SCL = NULL;
 
 }
 
@@ -2171,8 +2195,8 @@ hsfcSchema::~hsfcSchema(void){
 	// Destroy the GDL
 	delete this->GDL;
 
-	// Destroy the SCL
-	delete this->SCL;
+	//// Destroy the SCL
+	//delete this->SCL;
 
 	// Destroy the stratum
 	this->Stratum.clear();
@@ -2191,7 +2215,7 @@ void hsfcSchema::Initialise(){
 	this->GDL->Initialise();
 
 	// Initialise the SCL
-	this->SCL->Initialise();
+	//this->SCL->Initialise();
 
 	// Initialise all of the relations
 	for (unsigned int i = 0; i < this->Relation.size(); i++) {
@@ -2222,14 +2246,19 @@ bool hsfcSchema::Create(char* Script){
 	
 	// Was there anything
 	if (this->GDL->Rule.size() == 0) return false;
+	if (DEBUG) this->Lexicon->Print();
 
 	// Set the permanent facts from the GDL relations
+	// Index the domains
+	for (unsigned int i = 0; i < this->Relation.size(); i++) {
+		if (this->Relation[i]->DomainIsComplete) {
+			this->Relation[i]->IndexDomains();
+		}
+	}
 	this->SetPermanentFacts();
 
 	// Index the domains
-	if (DEBUG) this->PrintRelations();
 	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		printf("Indexing Domains\n");
 		this->Relation[i]->IndexDomains();
 	}
 	if (DEBUG) this->PrintRelations();
@@ -2348,7 +2377,7 @@ void hsfcSchema::RelationAsText(hsfcTuple* Tuple, char* Text) {
 //-----------------------------------------------------------------------------
 void hsfcSchema::Print(){
 
-	this->SCL->Print("SCL");
+	//this->SCL->Print("SCL");
 
 	printf("\n--- Schema --------------------------------------------------\n");
 
@@ -2363,9 +2392,8 @@ void hsfcSchema::Print(){
 //-----------------------------------------------------------------------------
 bool hsfcSchema::ReadGDL(char* Buffer){
 
-	//char* Buffer;
 	char* RuleScript;
-	//char* FactScript;
+	char* FactScript;
 	char* StratScript;
 	char* DomainScript;
 	char* PathScript;
@@ -2400,8 +2428,8 @@ bool hsfcSchema::ReadGDL(char* Buffer){
 		printf("Error: GDL file does not conatin ';;;; RULES'\n");
 		abort();
 	}
-	//// Find the Facts
-	//FactScript = strstr(Buffer, ";;;; PERMANENT FACTS");
+	// Find the Facts
+	FactScript = strstr(Buffer, ";;;; PERMANENT FACTS");
 	//if (FactScript == NULL) {
 	//	printf("Error: GDL file does not conatin ';;;; PERMANENT FACTS'\n%s\n", FileName);
 	//	abort();
@@ -2420,48 +2448,29 @@ bool hsfcSchema::ReadGDL(char* Buffer){
 	}
 	// Find the Domains
 	DomainScript = strstr(Buffer, ";;;; DOMAINS");
-	if (DomainScript == NULL) {
-		printf("Error: GDL file does not conatin ';;;; DOMAINS'\n");
-		abort();
-	}
 
 	// Blank out the headings to create end-of-string for each section
 	// Assumes Rules + Facts = GDL
 	for (int i = 0; i < 10; i++) RuleScript[i] = 0;
 	RuleScript += 10;
-	//for (int i = 0; i < 20; i++) FactScript[i] = ' ';
+	if (FactScript != NULL) {
+		for (int i = 0; i < 20; i++) FactScript[i] = ' ';
+	}
 	//FactScript += 20;
 	for (int i = 0; i < 11; i++) StratScript[i] = 0;
 	StratScript += 11;
 	for (int i = 0; i < 10; i++) PathScript[i] = 0;
 	PathScript += 10;
-	for (int i = 0; i < 12; i++) DomainScript[i] = 0;
+	if (FactScript != NULL) {
+		for (int i = 0; i < 12; i++) DomainScript[i] = 0;
+	}
 	DomainScript += 12;
 
 	// Create the GDL & SCL
 	if (!this->ReadRules(RuleScript)) return false;
 
-	//-------------------------------------------------------------------------
-	// Process the rule ordering
-	//-------------------------------------------------------------------------
-
-	//// Clear the stratum
-	//this->Stratum.clear();
-	//Predicate = new char[256];
-	//
-	//// Look for "(strat relation order)"
-	//for (int i = 0; StratScript[i] != 0; i++) {
-	//	// is the is the beginning of a strat clause
-	//	if (strncmp(&StratScript[i], "(strat ", 7) == 0) {
-	//		// Read the stratum
-	//		sscanf(&StratScript[i], "(strat %s %d)", Predicate, &Order);
-	//		Reference.RelationIndex = this->Lexicon->Index(Predicate);
-	//		Reference.ID = Order;
-	//		this->Stratum.push_back(Reference);
-	//	}
-	//}
-
-	//delete[](Predicate);
+	// Read the Strats
+	if (!this->ReadStrats(StratScript)) return false;
 
 	// Read the domains
 	if (!this->ReadDomains(PathScript)) return false;
@@ -2488,6 +2497,8 @@ bool hsfcSchema::ReadRules(char* RuleScript){
 
 	// Process the GDL and the SCL
 	this->GDL->Read(RuleScript);
+	if (DEBUG) this->Lexicon->Print();
+	if (DEBUG) this->GDL->Print("GDL");
 
 	// Was there anything
 	if (this->GDL->Rule.size() == 0) {
@@ -2497,10 +2508,6 @@ bool hsfcSchema::ReadRules(char* RuleScript){
 
 	// Create the structured chaining language
 	this->CreateSCL();
-
-	// Print
-	if (DEBUG) this->Lexicon->Print();
-	//this->GDL->Print("GDL");
 	if (DEBUG) this->SCL->Print("SCL");
 
 	//-------------------------------------------------------------------------
@@ -2528,26 +2535,27 @@ bool hsfcSchema::ReadRules(char* RuleScript){
 
 	}
 
-	// At this point every primary relation is considered permanent facts
+	// At this point every primary relation is considered a permanent fact
 	for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
 		RelationSchema = this->RelationSchema(this->SCL->Relation[i]->PredicateIndex());
 		if (RelationSchema != NULL) {
 			RelationSchema->Fact = hsfcFactPermanent;
-			// Correct any key words
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "init|")) RelationSchema->Fact = hsfcFactInitial ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "terminal|")) RelationSchema->Fact = hsfcFactNone ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "goal|")) RelationSchema->Fact = hsfcFactNone ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "legal|")) RelationSchema->Fact = hsfcFactNone ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "does|")) RelationSchema->Fact = hsfcFactNone ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "sees|")) RelationSchema->Fact = hsfcFactNone ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "next>")) RelationSchema->Fact = hsfcFactNone ;
-			// Check it against the output relation of each rule
+			// Check it against the output relation of each rule, as permanent fact rules are removed
 			for (unsigned int j = 0; j < this->SCL->Rule.size(); j++) {
 				if (RelationSchema == this->Rule[j]->Relation[0]->Template[0].RelationSchema) {
 					RelationSchema->Fact = hsfcFactNone;
 					break;
 				}
 			}
+			// Correct any key words
+			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "true~")) RelationSchema->Fact = hsfcFactTrue ;
+			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "init~")) RelationSchema->Fact = hsfcFactInitial ;
+			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "terminal/")) RelationSchema->Fact = hsfcFactNone ;
+			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "goal/")) RelationSchema->Fact = hsfcFactNone ;
+			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "legal/")) RelationSchema->Fact = hsfcFactNone ;
+			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "does/")) RelationSchema->Fact = hsfcFactNone ;
+			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "sees/")) RelationSchema->Fact = hsfcFactNone ;
+			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "next~")) RelationSchema->Fact = hsfcFactNext ;
 		}
 	}
 
@@ -2556,39 +2564,57 @@ bool hsfcSchema::ReadRules(char* RuleScript){
 }
 
 //-----------------------------------------------------------------------------
+// ReadStrats
+//-----------------------------------------------------------------------------
+bool hsfcSchema::ReadStrats(char* StratScript){
+
+	//-------------------------------------------------------------------------
+	// Process the rule ordering
+	//-------------------------------------------------------------------------
+
+	//// Clear the stratum
+	//this->Stratum.clear();
+	//Predicate = new char[256];
+	//
+	//// Look for "(strat relation order)"
+	//for (int i = 0; StratScript[i] != 0; i++) {
+	//	// is the is the beginning of a strat clause
+	//	if (strncmp(&StratScript[i], "(strat ", 7) == 0) {
+	//		// Read the stratum
+	//		sscanf(&StratScript[i], "(strat %s %d)", Predicate, &Order);
+	//		Reference.RelationIndex = this->Lexicon->Index(Predicate);
+	//		Reference.ID = Order;
+	//		this->Stratum.push_back(Reference);
+	//	}
+	//}
+
+	//delete[](Predicate);
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
 // ReadDomains
 //-----------------------------------------------------------------------------
-bool hsfcSchema::ReadDomains(char* PathScript){
+bool hsfcSchema::ReadDomains(char* DomainScript){
 
-	int Length;
-	int DELength;
-	char* DomainEntry;
-	char Entry[512];
-	char* ListEntry;
-	char* NewEntry;
-	char* Predicate;
-	char NewPredicate[256];
-	char* Index;
-	char* Value;
-	vector<char*> Word;
-	vector<char*> DomainEntryValue;
-	vector<char*> DomainEntryList;
+	char* DomainRecord;
+	int Index;
+	bool Found;
+	vector<hsfcDomainRecord> DomainEntryValue;
+	vector<hsfcDomainRecord> DomainEntryList;
+	hsfcDomainRecord NewEntry;
+	vector<char*> Field;
 	hsfcDomainEntry Reference;
-	int DomainIndex;
-	char* Colon;
+	hsfcRelationDetail NewRelationDetail;
 	hsfcRelationSchema* RelationSchema;
 	hsfcRelationSchema* NestedRelation;
-	hsfcRelationDetail NewRelationDetail;
-	bool Found;
+	char Text[256];
 
 	//-------------------------------------------------------------------------
 	// Read the domains
 	//-------------------------------------------------------------------------
-
-	// Get the domains for all of the relations
-	// (arg predicate index predicate index value)) ==> (predicate_index_predicate index value)
-	// (arg true 0 predicate index value)) ==> (predicate index value)
-	// (arg next 0 predicate index value)) ==> (next>predicate predicate index value)
 
 	if (DEBUG) printf("\n--- Domains -------------------------------------------------\n");
 
@@ -2596,214 +2622,112 @@ bool hsfcSchema::ReadDomains(char* PathScript){
 	// 1st pass - Identify all of the relations by predicate / arity
 	// 2nd pass - Construct the domains
 
-	// Parse everything into a two vectors so we can read in multiple times
+	// Parse everything into two vectors so we can read it multiple times
 	// DomainEntryValue = single values
 	// DomainEntryList = lists of values
-	Length = strlen(PathScript);
-	DomainEntry = PathScript;
+
+	// Initialise
+	DomainRecord = DomainScript;
 	DomainEntryValue.clear();
 	DomainEntryList.clear();
-	while (DomainEntry < PathScript + Length) {
 
-		// Advance to the first character of the entry, just right of the '('
-		while (DomainEntry < PathScript + Length) {
-			if (DomainEntry[0] == '(') {
-				DomainEntry++;
+	// Read the domain string
+	while (true) {
+
+		// Find the beginning of an entry
+		DomainRecord = strstr(DomainRecord, "(arg ");
+		if (DomainRecord == NULL) break;
+
+		// Get the fields in the (arg   ) record
+		Index = 5;
+		if (strncmp(&DomainRecord[Index], "init/1 ", 7) == 0) Index += 9;
+		if (strncmp(&DomainRecord[Index], "true/1 ", 7) == 0) Index += 9;
+		if (strncmp(&DomainRecord[Index], "next/1 ", 7) == 0) Index += 9;
+
+		// Parse the record into fields using ' ' as delimiter
+		Field.clear();
+		Field.push_back(&DomainRecord[5]);
+		for ( ; DomainRecord[Index] != 0; Index++) {
+			if (DomainRecord[Index] == ' ') {
+				Field.push_back(&DomainRecord[Index+1]);
+				DomainRecord[Index] = 0;
+				Index++;
+			}
+			if (DomainRecord[Index] == ')') {
+				DomainRecord[Index] = 0;
 				break;
-			} else {
-				DomainEntry++;
 			}
 		}
 
-		// Zero out the ending bracket ')'
-		for (int i = 0; i < (PathScript - DomainEntry) + Length; i++) {
-			if (DomainEntry[i] == ')') {
-				if (i > 255) {
-					printf("Error: Path entry too long\n");
-					abort();
-				}
-				DomainEntry[i] = 0;
-				break;
+		// Were there fewer than 3 fields; eg. (arg terminal/0)
+		if (Field.size() < 3) goto NextEntry;
+
+		// Correct for any compound predicates
+		if (strncmp(Field[0], "init/1 ", 7) == 0) {
+			sprintf(Field[0], "init~%s", &Field[0][9]);
+		}
+		if (strncmp(Field[0], "true/1 ", 7) == 0) {
+			sprintf(Field[0], "true~%s", &Field[0][9]);
+		}
+		if (strncmp(Field[0], "next/1 ", 7) == 0) {
+			sprintf(Field[0], "next~%s", &Field[0][9]);
+		}
+
+		// Integrity check
+		if (Field.size() % 2 != 1) {
+			printf("Error: Wrong number of domain entry fields\n");
+			abort();
+		}
+
+		// Are there more than 3 fields
+		while (Field.size() > 3) {
+
+			// Construct the domain list entry
+			NewEntry.PredicateIndex = this->Lexicon->Index(Field[0]);
+			NewEntry.DomainIndex = atoi(Field[1]);
+			NewEntry.Tuple.RelationIndex = this->Lexicon->Index(Field[2]);
+			NewEntry.Tuple.ID = 0;
+
+			// Is this a new entry
+			for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
+				if ((NewEntry.PredicateIndex == DomainEntryList[i].PredicateIndex) &&
+					(NewEntry.DomainIndex == DomainEntryList[i].PredicateIndex) &&
+					(NewEntry.Tuple.RelationIndex == DomainEntryList[i].Tuple.RelationIndex)) goto NextListEntry;
 			}
-		}
-		DELength = strlen(DomainEntry);
+			DomainEntryList.push_back(NewEntry);
 
-		//printf("%s\n", DomainEntry);
-
-		// Now parse the entry one word at a time skipping the first word "arg"
-		Word.clear();
-		for (int i = 0; DomainEntry[i] != 0; i++) {
-			if ((DomainEntry[i] == ' ') && (DomainEntry[i+1] != 0)) {
-				Word.push_back(DomainEntry + i + 1);
-				DomainEntry[i] = 0;
-				i++;
-			}
-		}
-
-		// Check the number of words
-		if (Word.size() < 3 ) {
-			goto NextEntry;
-		}
-
-		// Get the Predicate, Index, and Value
-		// (arg plan 0 move 2 piece 1 king) ==> (piece 1 king) 
-		//    AND (move 2 list:piece) 
-		//    AND (plan 0 list:move)
-		// (arg next 0 cell 0 1) ==> (next>cell 0 cell 0 1)
-
-		//// Was it of the form (arg does 0 predicate index value)
-		//if (strcmp(Word[0], "does") == 0) {
-		//	goto NextEntry;
-		//}
-
-		// Was it of the form (arg true 0 predicate index value)
-		if (strcmp(Word[0], "true") == 0) {
-			Word.erase(Word.begin());
-			Word.erase(Word.begin());
-		}
-
-		// Check the number of words
-		if (Word.size() < 3 ) {
-			goto NextEntry;
-		}
-
-		// Create a domain entries for later processing
-		for (unsigned int n = 0; n < Word.size() - 1; n += 2) {
-
-			// Remember "arg" has been removed
-			// (arg plan 0 move 2 piece 1 king)
-			// n = 0 (plan 0 list:move)
-			// n = 2 (move 2 list:piece) 
-			// n = 4 (piece 1 king) 
-
-			// (arg legal 1 move 2 piece 1 king)
-			// n = 0 (legal 1 list:move)
-			// n = 2 (move 2 list:piece) 
-			// n = 4 (piece 1 king) 
-
-			// (arg next 0 move 2 piece 1 king)
-			// n = 0 (next>move 0 list:move)
-			// n = 2 (move 2 list:piece) 
-			// n = 4 (piece 1 king) 
-
-			Entry[0] = 0;
-
-			strcat(Entry, Word[n]);
-			if ((n == 0) && (strcmp(Word[0], "next") == 0)) {
-				strcat(Entry, ">");
-				strcat(Entry, Word[2]);
-			}
-
-			//// Create the predicate
-			//for (unsigned int i = 0; i < Word.size() - n - 2; i++) {
-
-			//	// Is it a keyword
-			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "init") == 0)) continue;
-			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "legal") == 0)) continue;
-			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "does") == 0)) continue;
-			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "sees") == 0)) continue;
-			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "next") == 0)) continue;
-
-			//	strcat(Entry, Word[i]);
-			//	if ((i == 0) && (strcmp(Word[0], "next") == 0)) {
-			//		strcat(Entry, ">");
-			//		strcat(Entry, Word[2]);
-			//	}
-			//	if (i < Word.size() - n - 3) {
-			//		strcat(Entry, "~");
-			//	}
-			//}
-			
-			// Create the index
-			strcat(Entry, " ");
-			strcat(Entry, Word[n+1]);
-
-			// Create the value or list:
-			strcat(Entry, " ");
-			if (n == Word.size() - 3) {
-				strcat(Entry, Word[Word.size()-1]);
-			} else {
-				strcat(Entry, "list:");
-				strcat(Entry, Word[n+2]);
-				//for (unsigned int i = 0; i < Word.size() - n; i++) {
-				//	// Is it a keyword
-				//	if ((i <= 1) && (strcmp(Word[0], "init") == 0)) continue;
-				//	if ((i <= 1) && (strcmp(Word[0], "legal") == 0)) continue;
-				//	if ((i <= 1) && (strcmp(Word[0], "does") == 0)) continue;
-				//	if ((i <= 1) && (strcmp(Word[0], "sees") == 0)) continue;
-				//	if ((i <= 1) && (strcmp(Word[0], "next") == 0)) continue;
-				//	// Concatonate the predicates
-				//	strcat(Entry, Word[i]);
-				//	if (i < Word.size() - n - 1) {
-				//		strcat(Entry, "~");
-				//	}
-				//}
-			}
-
-			// Save the entry for later processing
-			Colon = strstr(Entry, "list:");
-			if (Colon == NULL) {
-
-				// Store it for later processing
-				NewEntry = new char[strlen(Entry) + 1];
-				strcpy(NewEntry, Entry);
-				DomainEntryValue.push_back(NewEntry);
-
-			} else {
-
-				// Store it for later processing
-				// Does it exist already
-				Found = false;
-				for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
-					if (strcmp(Entry, DomainEntryList[i]) == 0) {
-						Found = true;
-					}
-				}
-				
-				// Store it for later processing
-				if (!Found) {
-					//printf("      Stored\n");
-					NewEntry = new char[strlen(Entry) + 1];
-					strcpy(NewEntry, Entry);
-					DomainEntryList.push_back(NewEntry);
-				}
-
-			}
+NextListEntry:
+			// Remove the first two fields and go again
+			Field.erase(Field.begin());
+			Field.erase(Field.begin());
 
 		}
+
+		// Construct the domain value entry
+		NewEntry.PredicateIndex = this->Lexicon->Index(Field[0]);
+		NewEntry.DomainIndex = atoi(Field[1]);
+		NewEntry.Tuple.RelationIndex = -1;
+		NewEntry.Tuple.ID = this->Lexicon->Index(Field[2]);
+		DomainEntryValue.push_back(NewEntry);
 
 NextEntry:
-		// Advance to the next domain entry
-		DomainEntry += DELength;
+		// Advance to the next domain record
+		DomainRecord += Index + 1;
 
 	}
 
-	// Look for relations that are hidden by rule variables
+	// --- Identify all of the relations -----------------------------------------------------
+
 	this->RelationDetail.clear();
 	for (unsigned int i = 0; i < DomainEntryValue.size(); i++) {
-
-		// Parse the entry
-		strcpy(Entry, DomainEntryValue[i]); 
-		Predicate = Entry;
-		Index = strstr(Entry, " ");
-		if (Index != NULL) {
-			Index[0] = 0;
-			Index++;
-			Value = strstr(Index, " ");
-			if (Value != NULL) {
-				Value[0] = 0;
-				Value++;
-			}
-		}
-		DomainIndex = atoi(Index);
 
 		// Do we have this relation in our list
 		Found = false;
 		for (unsigned int j = 0; j < RelationDetail.size(); j++) {
-			if (this->Lexicon->Match(RelationDetail[j].PredicateIndex, Predicate)) {
+			if (RelationDetail[j].PredicateIndex == DomainEntryValue[i].PredicateIndex) {
 				Found = true;
-				if (RelationDetail[j].Arity <= DomainIndex) {
-					RelationDetail[j].Arity = DomainIndex + 1;
+				if (RelationDetail[j].Arity <= DomainEntryValue[i].DomainIndex) {
+					RelationDetail[j].Arity = DomainEntryValue[i].DomainIndex + 1;
 				}
 				break;
 			}
@@ -2811,36 +2735,21 @@ NextEntry:
 
 		// Did we find an entry
 		if (!Found) {
-			NewRelationDetail.PredicateIndex = this->Lexicon->Index(Predicate);
-			NewRelationDetail.Arity = DomainIndex + 1;
+			NewRelationDetail.PredicateIndex = DomainEntryValue[i].PredicateIndex;
+			NewRelationDetail.Arity = DomainEntryValue[i].DomainIndex + 1;
 			RelationDetail.push_back(NewRelationDetail);
 		}
 	}
 
 	for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
 
-		// Parse the entry
-		strcpy(Entry, DomainEntryList[i]); 
-		Predicate = Entry;
-		Index = strstr(Entry, " ");
-		if (Index != NULL) {
-			Index[0] = 0;
-			Index++;
-			Value = strstr(Index, " ");
-			if (Value != NULL) {
-				Value[0] = 0;
-				Value++;
-			}
-		}
-		DomainIndex = atoi(Index);
-
 		// Do we have this relation in our list
 		Found = false;
 		for (unsigned int j = 0; j < RelationDetail.size(); j++) {
-			if (this->Lexicon->Match(RelationDetail[j].PredicateIndex, Predicate)) {
+			if (RelationDetail[j].PredicateIndex == DomainEntryList[i].PredicateIndex) {
 				Found = true;
-				if (RelationDetail[j].Arity <= DomainIndex) {
-					RelationDetail[j].Arity = DomainIndex + 1;
+				if (RelationDetail[j].Arity <= DomainEntryList[i].DomainIndex) {
+					RelationDetail[j].Arity = DomainEntryList[i].DomainIndex + 1;
 				}
 				break;
 			}
@@ -2848,16 +2757,10 @@ NextEntry:
 
 		// Did we find an entry
 		if (!Found) {
-			NewRelationDetail.PredicateIndex = this->Lexicon->Index(Predicate);
-			NewRelationDetail.Arity = DomainIndex + 1;
+			NewRelationDetail.PredicateIndex = DomainEntryList[i].PredicateIndex;
+			NewRelationDetail.Arity = DomainEntryList[i].DomainIndex + 1;
 			RelationDetail.push_back(NewRelationDetail);
 		}
-	}
-
-	// Add the arity to the end of the predicate
-	for (unsigned int i = 0; i < RelationDetail.size(); i++) {
-		sprintf(NewPredicate, "%s|%d", this->Lexicon->Text(RelationDetail[i].PredicateIndex), RelationDetail[i].Arity);
-		RelationDetail[i].PredicateIndex = this->Lexicon->Index(NewPredicate);
 	}
 
 	// Make sure we have all of the relations in the Schema
@@ -2866,72 +2769,68 @@ NextEntry:
 		this->RelationSchema(RelationDetail[i].PredicateIndex, RelationDetail[i].Arity);
 	}
 
-	// Process the entries like (Predicate DomainIndex Value)
+
+	// --- Construct Domains ----------------------------------------------------------------
+
+	if (DEBUG) this->Lexicon->Print();
+
+	// Process the entries like (Predicate DomainIndex Value) first
 	for (unsigned int i = 0; i < DomainEntryValue.size(); i++) {
 
-		// Parse the entry
-		strcpy(Entry, DomainEntryValue[i]); 
-		Predicate = Entry;
-		Index = strstr(Entry, " ");
-		if (Index != NULL) {
-			Index[0] = 0;
-			Index++;
-			Value = strstr(Index, " ");
-			if (Value != NULL) {
-				Value[0] = 0;
-				Value++;
-			}
-		}
-
-		// Check to see if the "value" is actualy a zero arity predicate value|0
-		sprintf(NewPredicate, "%s|0", Value);
-		if (this->RelationSchemaExists(NewPredicate)) {
-			ListEntry = new char[256];
-			sprintf(ListEntry, "%s %s list:%s", Entry, Index, Value);
-			if (DEBUG) printf("%s\n", ListEntry);
-			DomainEntryList.push_back(ListEntry);
+		// Get the target relation from the predicate and the target domain index
+		RelationSchema = this->RelationSchema(DomainEntryValue[i].PredicateIndex);
+		if (RelationSchema == NULL) {
+			printf("Error: Bad predicate index\n");
+			abort();
 		} else {
+			if (RelationSchema->Fact == hsfcFactPermanent) {
+				//printf("   Permanent Fact\n");
+			} else {
 
-			RelationSchema = this->RelationSchemaByName(this->Lexicon->Index(Predicate));
-			if (RelationSchema != NULL) {
-				if (RelationSchema->Fact == hsfcFactPermanent) {
-					//printf("   Permanent Fact\n");
-				} else {
-					//printf("\n");
-					DomainIndex = atoi(Index);
-					// The value might be a zero arity relation or a lexicon entry
-					Reference.Tuple.RelationIndex = -1;
-					Reference.Tuple.ID = this->Lexicon->Index(Value);
-					Reference.Count = 1;
-					Reference.Index = 0;
-					// Look for zero arity predicate
-					for (unsigned int i = 0; i < this->Relation.size(); i++) {
-						if (this->Lexicon->Match(this->Relation[i]->PredicateIndex, Value)) {
-							Reference.Tuple.RelationIndex = i;
-							Reference.Tuple.ID = 0;
-							break;
-						}
+				// The value might be a zero arity relation or a lexicon entry
+				Reference.Tuple.RelationIndex = -1;
+				Reference.Tuple.ID = DomainEntryValue[i].Tuple.ID;
+				Reference.Count = 1;
+				Reference.Index = 0;
+
+				// Look for zero arity predicate
+				for (unsigned int j = 0; j < this->Relation.size(); j++) {
+					if (this->Relation[j]->PredicateIndex == DomainEntryValue[i].Tuple.ID) {
+						Reference.Tuple.RelationIndex = j;
+						Reference.Tuple.ID = 0;
+						break;
 					}
-					RelationSchema->AddToDomain(DomainIndex, &Reference);
 				}
+
+				// Find the Value index without the /0 at the end
+				if (Reference.Tuple.RelationIndex == -1) {
+					strcpy(Text, this->Lexicon->Text(DomainEntryValue[i].Tuple.ID));
+					for (int j = 0; Text[j] != 0; j++) {
+						if (Text[j] == '/') Text[j] = 0;
+					}
+					Reference.Tuple.ID = this->Lexicon->Index(Text);
+				}
+
+				RelationSchema->AddToDomain(DomainEntryValue[i].DomainIndex, &Reference);
 			}
 		}
-
 	}
 
 	// Process the entries like (Predicate DomainIndex List:Name)
 	while (DomainEntryList.size() > 0) {
 
-		// First see if the domains are complete
+		// Make sure we process something
+		Found = false;
+
+		// First see if any of the domains are complete
 		for (unsigned int i = 0; i < this->Relation.size(); i++) {
-			this->Relation[i]->DomainIsComplete = true;
-			for (unsigned int j = 0; j < DomainEntryList.size(); j++) {
-				strcpy(Entry, DomainEntryList[j]);
-				Index = strstr(Entry, " ");
-				Index[0] = 0;
-				if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, Entry)) {
-					this->Relation[i]->DomainIsComplete = false;
-					break;
+			if (Relation[i]->Fact != hsfcFactPermanent) {
+				this->Relation[i]->DomainIsComplete = true;
+				for (unsigned int j = 0; j < DomainEntryList.size(); j++) {
+					if (this->Relation[i]->PredicateIndex == DomainEntryList[j].PredicateIndex) {
+						this->Relation[i]->DomainIsComplete = false;
+						break;
+					}
 				}
 			}
 		}
@@ -2939,64 +2838,569 @@ NextEntry:
 		// Process the entry
 		for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
 
-			// Parse the entry
-			strcpy(Entry, DomainEntryList[i]);
-			Predicate = Entry;
-			Index = strstr(Entry, " ");
-			if (Index != NULL) {
-				Index[0] = 0;
-				Index++;
-				Value = strstr(Index, " ");
-				if (Value != NULL) {
-					Value[0] = 0;
-					Value++;
-				}
-			}
-
 			// Get the target relation from the predicate and the target domain index
-			RelationSchema = this->RelationSchemaByName(this->Lexicon->Index(Predicate));
-			DomainIndex = atoi(Index);
+			RelationSchema = this->RelationSchema(DomainEntryList[i].PredicateIndex);
+			if (RelationSchema == NULL) {
+				printf("Error: Bad predicate index\n");
+				abort();
+			} else {
 
-			// Only process non facts
-			if (RelationSchema != NULL) {
+				// Only process non facts
 				if (RelationSchema->Fact == hsfcFactPermanent) {
 					
 					if (DEBUG) printf("Processing %s    Permanent Fact\n", DomainEntryList[i]);
 					// Clear the entry
-					delete [] DomainEntryList[i];
 					DomainEntryList.erase(DomainEntryList.begin() + i);
 					i--;
 
 				} else {
 
 					// Only process if the list predicate is complete
-					Colon = strstr(Value, ":");
-					NestedRelation = this->RelationSchemaByName(this->Lexicon->Index(&Colon[1]));
+					NestedRelation = this->RelationSchema(DomainEntryList[i].Tuple.RelationIndex);
 					if (NestedRelation == NULL) {
-						// Clear the entry
-						if (DEBUG) printf("Processing %s *** not found\n", DomainEntryList[i]);
-						delete [] DomainEntryList[i];
-						DomainEntryList.erase(DomainEntryList.begin() + i);
-						i--;
+						printf("Error: Nested Relation not found\n");
+						abort();
 					} else {
 						if (NestedRelation->DomainIsComplete) {
 							// Add the entry
-							if (DEBUG) printf("Processing %s = %d items\n", DomainEntryList[i], (int)NestedRelation->RelationSize());
 							Reference.Tuple.RelationIndex = NestedRelation->Index;
 							Reference.Tuple.ID = -1;
 							Reference.Count = (int)NestedRelation->RelationSize();
 							Reference.Index = 0;
-							RelationSchema->AddToDomain(DomainIndex, &Reference);
+							RelationSchema->AddToDomain(DomainEntryList[i].DomainIndex, &Reference);
 							// Clear the entry
-							delete [] DomainEntryList[i];
 							DomainEntryList.erase(DomainEntryList.begin() + i);
-							i--;		
+							i--;	
+							Found = true;
 						}
 					}
 				}
 			}
 		}
+
+		// Was anything found
+		if (!Found) {
+			printf("Error: Unable to complete domains\n");
+			abort();
+		}
+
 	}
+
+	// Make sure that for every (next~predicate ...) <==> (true~predicate ...)
+	for (unsigned int i = 0; i < this->Relation.size(); i++) {
+		// Is this a (next~predicate ...)
+		if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, "true~")) {
+			// Find the corresponding (true~predicate ...)
+			sprintf(Text, "next~%s", &(this->Lexicon->Text(this->Relation[i]->PredicateIndex))[5]);
+			Index = this->Lexicon->Index(Text);
+			RelationSchema = this->RelationSchemaByName(Index);
+			if (RelationSchema == NULL) {
+				printf("Error: Unable to match relations.\n");
+				abort();
+			}
+			// Match the domain entries
+			RelationSchema->AddToDomainFromDomain(this->Relation[i]->vDomain);
+		}
+	}
+
+
+
+
+	// Mark all non permanent domains as complete
+	for (unsigned int i = 0; i < this->Relation.size(); i++) {
+		if (Relation[i]->Fact != hsfcFactPermanent) {
+			this->Relation[i]->DomainIsComplete = true;
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//	int Length;
+//	int DELength;
+//	int DomainEntryIndex;
+//	char Entry[512];
+//	char* NewEntry;
+//	int NewEntryLength;
+//	char* Predicate;
+//	char* Index;
+//	char* Value;
+//	char* NewWord;
+//	vector<char*> Word;
+//	vector<char*> DomainEntryValue;
+//	vector<char*> DomainEntryList;
+//	hsfcDomainEntry Reference;
+//	int DomainIndex;
+//	char* Colon;
+//	hsfcRelationSchema* RelationSchema;
+//	hsfcRelationSchema* NestedRelation;
+//	hsfcRelationDetail NewRelationDetail;
+//	bool Found;
+//
+//	//-------------------------------------------------------------------------
+//	// Read the domains
+//	//-------------------------------------------------------------------------
+//
+//	if (DEBUG) printf("\n--- Domains -------------------------------------------------\n");
+//
+//	// We do this in two passes
+//	// 1st pass - Identify all of the relations by predicate / arity
+//	// 2nd pass - Construct the domains
+//
+//	// Parse everything into two vectors so we can read in multiple times
+//	// DomainEntryValue = single values
+//	// DomainEntryList = lists of values
+//
+//	Length = strlen(DomainScript);
+//	DomainEntryIndex = 0;
+//	DomainEntryValue.clear();
+//	DomainEntryList.clear();
+//int Count = 0;
+//	while (DomainEntryIndex < Length) {
+//
+//printf("%d", Count);
+//Count++;
+//
+//		// Advance to the first character of the entry, just right of the '('
+//		while (DomainEntryIndex < Length) {
+//			if (DomainScript[DomainEntryIndex] == '(') {
+//				DomainEntryIndex++;
+//				break;
+//			} else {
+//				DomainEntryIndex++;
+//			}
+//		}
+//
+//		// Zero out the ending bracket ')'
+//		for (int i = 0; i < Length - DomainEntryIndex ; i++) {
+//			if (i > 254) {
+//				printf("Error: Path entry too long\n");
+//				abort();
+//			}
+//			if (DomainScript[DomainEntryIndex + i] == ')') {
+//				DomainScript[DomainEntryIndex + i] = 0;
+//				break;
+//			}
+//		}
+//		DELength = strlen(&DomainScript[DomainEntryIndex]);
+//printf(" %d", DELength); 
+//
+//printf(" 1");
+//		// Now parse the entry one word at a time skipping the first word "arg"
+//		Word.clear();
+//		for (int i = 0; i < DELength; i++) {
+//			if (DomainScript[DomainEntryIndex + i] == ' ') {
+//				DomainScript[DomainEntryIndex + i] = 0;
+//			}
+//		}
+//		for (int i = 0; i < DELength; i++) {
+//			if ((DomainScript[DomainEntryIndex + i] == 0) && (DomainScript[DomainEntryIndex + i+1] != 0)) {
+//				NewWord = new char[strlen(&DomainScript[DomainEntryIndex + i+1])];
+//				strcpy(NewWord, &DomainScript[DomainEntryIndex + i+1]);
+//				Word.push_back(NewWord);
+//				i++;
+//			}
+//		}
+//
+//		// Check the number of words
+//		if (Word.size() < 3 ) {
+//			goto NextEntry;
+//		}
+//
+//		// Get the Predicate, Index, and Value
+//		// (arg plan 0 move 2 piece 1 king) ==> (piece 1 king) 
+//		//    AND (move 2 list:piece) 
+//		//    AND (plan 0 list:move)
+//		// (arg next 0 cell 0 1) ==> (next>cell 0 cell 0 1)
+//
+//printf(" 2");
+//		// Was it of the form (arg true 0 predicate index value)
+//		if (strcmp(Word[0], "init/1") == 0) {
+//			NewWord = new char[strlen(Word[2] + 6)];
+//			sprintf(NewWord, "init~%s", Word[2]);
+//			Word[0] = NewWord;
+//			Word.erase(Word.begin() + 1);
+//			Word.erase(Word.begin() + 1);
+//		}
+//		if (strcmp(Word[0], "true/1") == 0) {
+//			NewWord = new char[strlen(Word[2] + 6)];
+//			sprintf(NewWord, "true~%s", Word[2]);
+//			Word[0] = NewWord;
+//			Word.erase(Word.begin() + 1);
+//			Word.erase(Word.begin() + 1);
+//		}
+//
+//		if (strcmp(Word[0], "next/1") == 0) {
+//			NewWord = new char[strlen(Word[2] + 6)];
+//			sprintf(NewWord, "next~%s", Word[2]);
+//			Word[0] = NewWord;
+//			Word.erase(Word.begin() + 1);
+//			Word.erase(Word.begin() + 1);
+//		}
+//
+//printf(" 3");
+//		// Check the number of words
+//		if (Word.size() < 3 ) {
+//			goto NextEntry;
+//		}
+//
+//		// Create a domain entries for later processing
+//		for (unsigned int n = 0; n < Word.size() - 1; n += 2) {
+//
+//			// Remember "arg" has been removed
+//			// (arg plan 0 move 2 piece 1 king)
+//			// n = 0 (plan 0 list:move)
+//			// n = 2 (move 2 list:piece) 
+//			// n = 4 (piece 1 king) 
+//
+//			// (arg legal 1 move 2 piece 1 king)
+//			// n = 0 (legal 1 list:move)
+//			// n = 2 (move 2 list:piece) 
+//			// n = 4 (piece 1 king) 
+//
+//			// (arg next 0 move 2 piece 1 king)
+//			// n = 0 (next>move 0 list:move)
+//			// n = 2 (move 2 list:piece) 
+//			// n = 4 (piece 1 king) 
+//
+//			Entry[0] = 0;
+//
+//			strcat(Entry, Word[n]);
+//
+//			//// Create the predicate
+//			//for (unsigned int i = 0; i < Word.size() - n - 2; i++) {
+//
+//			//	// Is it a keyword
+//			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "init") == 0)) continue;
+//			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "legal") == 0)) continue;
+//			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "does") == 0)) continue;
+//			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "sees") == 0)) continue;
+//			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "next") == 0)) continue;
+//
+//			//	strcat(Entry, Word[i]);
+//			//	if ((i == 0) && (strcmp(Word[0], "next") == 0)) {
+//			//		strcat(Entry, ">");
+//			//		strcat(Entry, Word[2]);
+//			//	}
+//			//	if (i < Word.size() - n - 3) {
+//			//		strcat(Entry, "~");
+//			//	}
+//			//}
+//			
+//			// Create the index
+//			strcat(Entry, " ");
+//			strcat(Entry, Word[n+1]);
+//
+//			// Create the value or list:
+//			strcat(Entry, " ");
+//			if (n == Word.size() - 3) {
+//				strcat(Entry, Word[Word.size()-1]);
+//			} else {
+//				strcat(Entry, "list:");
+//				strcat(Entry, Word[n+2]);
+//			}
+//
+//printf(" 4");
+//			// Save the entry for later processing
+//			Colon = strstr(Entry, "list:");
+//			if (Colon == NULL) {
+//
+//printf(" 5");
+//				// Store it for later processing
+//printf(" %s", Entry);
+//				NewEntryLength = strlen(Entry) + 1;
+//printf(" %d", NewEntryLength); 
+//				NewEntry = new char[NewEntryLength];
+//printf(" a");
+//				strcpy(NewEntry, Entry);
+//printf(" b");
+//				DomainEntryValue.push_back(NewEntry);
+//printf(" c");
+//
+//			} else {
+//
+//printf(" 6");
+//				// Store it for later processing
+//				// Does it exist already
+//				Found = false;
+//				for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
+//					if (strcmp(Entry, DomainEntryList[i]) == 0) {
+//						Found = true;
+//					}
+//				}
+//				
+//printf(" 7");
+//				// Store it for later processing
+//				if (!Found) {
+//					//printf("      Stored\n");
+//					NewEntry = new char[strlen(Entry) + 1];
+//					strcpy(NewEntry, Entry);
+//					DomainEntryList.push_back(NewEntry);
+//				}
+//
+//			}
+//
+//		}
+//
+//NextEntry:
+//		// Advance to the next domain entry
+//		DomainEntryIndex += DELength;
+//printf("\n");
+//	}
+//
+//	if (DEBUG) {
+//		for (unsigned int i = 0; i < DomainEntryValue.size(); i++) {
+//			printf("%s\n", DomainEntryValue[i]);
+//		}
+//		for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
+//			printf("%s\n", DomainEntryList[i]);
+//		}
+//	}
+//
+//	// --- Identify all of the relations -----------------------------------------------------
+//	this->RelationDetail.clear();
+//	for (unsigned int i = 0; i < DomainEntryValue.size(); i++) {
+//
+//		// Parse the entry
+//		strcpy(Entry, DomainEntryValue[i]); 
+//		Predicate = Entry;
+//		Index = strstr(Entry, " ");
+//		if (Index != NULL) {
+//			Index[0] = 0;
+//			Index++;
+//			Value = strstr(Index, " ");
+//			if (Value != NULL) {
+//				Value[0] = 0;
+//				Value++;
+//			}
+//		}
+//		DomainIndex = atoi(Index);
+//
+//		// Do we have this relation in our list
+//		Found = false;
+//		for (unsigned int j = 0; j < RelationDetail.size(); j++) {
+//			if (this->Lexicon->Match(RelationDetail[j].PredicateIndex, Predicate)) {
+//				Found = true;
+//				if (RelationDetail[j].Arity <= DomainIndex) {
+//					RelationDetail[j].Arity = DomainIndex + 1;
+//				}
+//				break;
+//			}
+//		}
+//
+//		// Did we find an entry
+//		if (!Found) {
+//			NewRelationDetail.PredicateIndex = this->Lexicon->Index(Predicate);
+//			NewRelationDetail.Arity = DomainIndex + 1;
+//			RelationDetail.push_back(NewRelationDetail);
+//		}
+//	}
+//
+//	for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
+//
+//		// Parse the entry
+//		strcpy(Entry, DomainEntryList[i]); 
+//		Predicate = Entry;
+//		Index = strstr(Entry, " ");
+//		if (Index != NULL) {
+//			Index[0] = 0;
+//			Index++;
+//			Value = strstr(Index, " ");
+//			if (Value != NULL) {
+//				Value[0] = 0;
+//				Value++;
+//			}
+//		}
+//		DomainIndex = atoi(Index);
+//
+//		// Do we have this relation in our list
+//		Found = false;
+//		for (unsigned int j = 0; j < RelationDetail.size(); j++) {
+//			if (this->Lexicon->Match(RelationDetail[j].PredicateIndex, Predicate)) {
+//				Found = true;
+//				if (RelationDetail[j].Arity <= DomainIndex) {
+//					RelationDetail[j].Arity = DomainIndex + 1;
+//				}
+//				break;
+//			}
+//		}
+//
+//		// Did we find an entry
+//		if (!Found) {
+//			NewRelationDetail.PredicateIndex = this->Lexicon->Index(Predicate);
+//			NewRelationDetail.Arity = DomainIndex + 1;
+//			RelationDetail.push_back(NewRelationDetail);
+//		}
+//	}
+//
+//	//// Add the arity to the end of the predicate
+//	//for (unsigned int i = 0; i < RelationDetail.size(); i++) {
+//	//	sprintf(NewPredicate, "%s|%d", this->Lexicon->Text(RelationDetail[i].PredicateIndex), RelationDetail[i].Arity);
+//	//	RelationDetail[i].PredicateIndex = this->Lexicon->Index(NewPredicate);
+//	//}
+//
+//	// Make sure we have all of the relations in the Schema
+//	for (unsigned int i = 0; i < RelationDetail.size(); i++) {
+//		if (DEBUG) printf("Found %s / %d\n", this->Lexicon->Text(RelationDetail[i].PredicateIndex), RelationDetail[i].Arity);
+//		this->RelationSchema(RelationDetail[i].PredicateIndex, RelationDetail[i].Arity);
+//	}
+//
+//	// --------------------------------------------------------------------------------------
+//
+//	// Process the entries like (Predicate DomainIndex Value)
+//	for (unsigned int i = 0; i < DomainEntryValue.size(); i++) {
+//
+//		// Parse the entry
+//		strcpy(Entry, DomainEntryValue[i]); 
+//		Predicate = Entry;
+//		Index = strstr(Entry, " ");
+//		if (Index != NULL) {
+//			Index[0] = 0;
+//			Index++;
+//			Value = strstr(Index, " ");
+//			if (Value != NULL) {
+//				Value[0] = 0;
+//				Value++;
+//			}
+//		}
+//		for (unsigned int i = 0; i < strlen(Value); i++) {
+//			if (Value[i] == '/') {
+//				Value[i] = 0;
+//			}
+//		}
+//
+//		//// Check to see if the "value" is actualy a zero arity predicate value|0
+//		//sprintf(NewPredicate, "%s/0", Value);
+//		//if (this->RelationSchemaExists(NewPredicate)) {
+//		//	ListEntry = new char[256];
+//		//	sprintf(ListEntry, "%s %s list:%s", Entry, Index, Value);
+//		//	if (DEBUG) printf("%s\n", ListEntry);
+//		//	DomainEntryList.push_back(ListEntry);
+//		//} else {
+//
+//			RelationSchema = this->RelationSchemaByName(this->Lexicon->Index(Predicate));
+//			if (RelationSchema != NULL) {
+//				if (RelationSchema->Fact == hsfcFactPermanent) {
+//					//printf("   Permanent Fact\n");
+//				} else {
+//					//printf("\n");
+//					DomainIndex = atoi(Index);
+//					// The value might be a zero arity relation or a lexicon entry
+//					Reference.Tuple.RelationIndex = -1;
+//					Reference.Tuple.ID = this->Lexicon->Index(Value);
+//					Reference.Count = 1;
+//					Reference.Index = 0;
+//					// Look for zero arity predicate
+//					for (unsigned int i = 0; i < this->Relation.size(); i++) {
+//						if (this->Lexicon->Match(this->Relation[i]->PredicateIndex, Value)) {
+//							Reference.Tuple.RelationIndex = i;
+//							Reference.Tuple.ID = 0;
+//							break;
+//						}
+//					}
+//					RelationSchema->AddToDomain(DomainIndex, &Reference);
+//				}
+//			}
+//		//}
+//
+//	}
+//
+//	// Process the entries like (Predicate DomainIndex List:Name)
+//	while (DomainEntryList.size() > 0) {
+//
+//		// First see if the domains are complete
+//		for (unsigned int i = 0; i < this->Relation.size(); i++) {
+//			if (Relation[i]->Fact != hsfcFactPermanent) {
+//				this->Relation[i]->DomainIsComplete = true;
+//				for (unsigned int j = 0; j < DomainEntryList.size(); j++) {
+//					strcpy(Entry, DomainEntryList[j]);
+//					Index = strstr(Entry, " ");
+//					Index[0] = 0;
+//					if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, Entry)) {
+//						this->Relation[i]->DomainIsComplete = false;
+//						break;
+//					}
+//				}
+//			}
+//		}
+//
+//		// Process the entry
+//		for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
+//
+//			// Parse the entry
+//			strcpy(Entry, DomainEntryList[i]);
+//			Predicate = Entry;
+//			Index = strstr(Entry, " ");
+//			if (Index != NULL) {
+//				Index[0] = 0;
+//				Index++;
+//				Value = strstr(Index, " ");
+//				if (Value != NULL) {
+//					Value[0] = 0;
+//					Value++;
+//				}
+//			}
+//
+//			// Get the target relation from the predicate and the target domain index
+//			RelationSchema = this->RelationSchemaByName(this->Lexicon->Index(Predicate));
+//			DomainIndex = atoi(Index);
+//
+//			// Only process non facts
+//			if (RelationSchema != NULL) {
+//				if (RelationSchema->Fact == hsfcFactPermanent) {
+//					
+//					if (DEBUG) printf("Processing %s    Permanent Fact\n", DomainEntryList[i]);
+//					// Clear the entry
+//					delete [] DomainEntryList[i];
+//					DomainEntryList.erase(DomainEntryList.begin() + i);
+//					i--;
+//
+//				} else {
+//
+//					// Only process if the list predicate is complete
+//					Colon = strstr(Value, ":");
+//					NestedRelation = this->RelationSchemaByName(this->Lexicon->Index(&Colon[1]));
+//					if (NestedRelation == NULL) {
+//						// Clear the entry
+//						if (DEBUG) printf("Processing %s *** not found\n", DomainEntryList[i]);
+//						delete [] DomainEntryList[i];
+//						DomainEntryList.erase(DomainEntryList.begin() + i);
+//						i--;
+//					} else {
+//						if (NestedRelation->DomainIsComplete) {
+//							// Add the entry
+//							if (DEBUG) printf("Processing %s = %d items\n", DomainEntryList[i], (int)NestedRelation->RelationSize());
+//							Reference.Tuple.RelationIndex = NestedRelation->Index;
+//							Reference.Tuple.ID = -1;
+//							Reference.Count = (int)NestedRelation->RelationSize();
+//							Reference.Index = 0;
+//							RelationSchema->AddToDomain(DomainIndex, &Reference);
+//							// Clear the entry
+//							delete [] DomainEntryList[i];
+//							DomainEntryList.erase(DomainEntryList.begin() + i);
+//							i--;		
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
 
 	return true;
 
@@ -3007,41 +3411,28 @@ NextEntry:
 //-----------------------------------------------------------------------------
 bool hsfcSchema::CreateSCL(){
 
-	hsfcGDLRelation* NewRelation;
-	hsfcGDLRule* NewRule;
-	bool Negated;
+	//hsfcGDLRelation* NewRelation;
+	//hsfcGDLRule* NewRule;
+	//bool Negated;
 
-	// Copy the GDL relations
-	for (unsigned int i = 0; i < this->GDL->Relation.size(); i++) {
-		// Create the relation and copy
-		NewRelation = new hsfcGDLRelation(this->Lexicon);
-		NewRelation->FromGDLRelation(this->GDL->Relation[i]);
-		// Add to the SCL
-		this->SCL->Relation.push_back(NewRelation);
-	}
+	// From this point onwards GDL == SCL, the different names are to make coding easier
+	this->SCL = this->GDL;
 
-	// Copy the GDL rules
-	for (unsigned int i = 0; i < this->GDL->Rule.size(); i++) {
-		// Create the rule and copy
-		NewRule = new hsfcGDLRule(this->Lexicon);
-		NewRule->FromGDLRule(this->GDL->Rule[i]);
-		// Add to the SCL
-		this->SCL->Rule.push_back(NewRule);
-	}
+	if (DEBUG) printf("\nFinding Arity\n");
 
-	// Find zero arity
+	// Find relation arity
 	for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
-		this->SCL->Relation[i]->FindZeroArity();
+		this->SCL->Relation[i]->FindArity();
 	}
 
 	// Find zero arity
 	for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
 		for (unsigned int j = 0; j < this->SCL->Rule[i]->Relation.size(); j++) {
-			this->SCL->Rule[i]->Relation[j]->FindZeroArity();
+			this->SCL->Rule[i]->Relation[j]->FindArity();
 		}
 	}
 
-	// Remove any (not ()) and (true ()) and flag the relation accordingly
+	// Remove any (not ()) and flag the relation accordingly
 	for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
 		for (unsigned int j = 1; j < this->SCL->Rule[i]->Relation.size(); j++) {
 			// Is this a (not ()) or a (not atom) or (not (true ())) or (not (true atom))
@@ -3053,17 +3444,6 @@ bool hsfcSchema::CreateSCL(){
 					this->SCL->Rule[i]->Relation[j] = this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation;
 				}
 				this->SCL->Rule[i]->Relation[j]->Not = true;
-			}
-			// Is this a (true ()) or a (true atom)
-			if (this->Lexicon->Match(this->SCL->Rule[i]->Relation[j]->PredicateIndex(), "true")) {
-				// Point the relation to the second atom
-				Negated = this->SCL->Rule[i]->Relation[j]->Not;
-				if (this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation == NULL) {
-					this->SCL->Rule[i]->Relation[j]->Atom.erase(this->SCL->Rule[i]->Relation[j]->Atom.begin());
-				} else {
-					this->SCL->Rule[i]->Relation[j] = this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation;
-				}
-				this->SCL->Rule[i]->Relation[j]->Not = Negated;
 			}
 		}
 	}
@@ -3081,6 +3461,78 @@ bool hsfcSchema::CreateSCL(){
 	}
 
 	return true;
+
+
+	//// Copy the GDL relations
+	//for (unsigned int i = 0; i < this->GDL->Relation.size(); i++) {
+	//	// Create the relation and copy
+	//	NewRelation = new hsfcGDLRelation(this->Lexicon);
+	//	NewRelation->FromGDLRelation(this->GDL->Relation[i]);
+	//	// Add to the SCL
+	//	this->SCL->Relation.push_back(NewRelation);
+	//}
+
+	//// Copy the GDL rules
+	//for (unsigned int i = 0; i < this->GDL->Rule.size(); i++) {
+	//	// Create the rule and copy
+	//	NewRule = new hsfcGDLRule(this->Lexicon);
+	//	NewRule->FromGDLRule(this->GDL->Rule[i]);
+	//	// Add to the SCL
+	//	this->SCL->Rule.push_back(NewRule);
+	//}
+
+	//// Find zero arity
+	//for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
+	//	this->SCL->Relation[i]->FindArity();
+	//}
+
+	//// Find zero arity
+	//for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
+	//	for (unsigned int j = 0; j < this->SCL->Rule[i]->Relation.size(); j++) {
+	//		this->SCL->Rule[i]->Relation[j]->FindArity();
+	//	}
+	//}
+
+	//// Remove any (not ()) and (true ()) and flag the relation accordingly
+	//for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
+	//	for (unsigned int j = 1; j < this->SCL->Rule[i]->Relation.size(); j++) {
+	//		// Is this a (not ()) or a (not atom) or (not (true ())) or (not (true atom))
+	//		if (this->Lexicon->Match(this->SCL->Rule[i]->Relation[j]->PredicateIndex(), "not")) {
+	//			// Point the relation to the second atom
+	//			if (this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation == NULL) {
+	//				this->SCL->Rule[i]->Relation[j]->Atom.erase(this->SCL->Rule[i]->Relation[j]->Atom.begin());
+	//			} else {
+	//				this->SCL->Rule[i]->Relation[j] = this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation;
+	//			}
+	//			this->SCL->Rule[i]->Relation[j]->Not = true;
+	//		}
+	//		// Is this a (true ()) or a (true atom)
+	//		if (this->Lexicon->Match(this->SCL->Rule[i]->Relation[j]->PredicateIndex(), "true")) {
+	//			// Point the relation to the second atom
+	//			Negated = this->SCL->Rule[i]->Relation[j]->Not;
+	//			if (this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation == NULL) {
+	//				this->SCL->Rule[i]->Relation[j]->Atom.erase(this->SCL->Rule[i]->Relation[j]->Atom.begin());
+	//			} else {
+	//				this->SCL->Rule[i]->Relation[j] = this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation;
+	//			}
+	//			this->SCL->Rule[i]->Relation[j]->Not = Negated;
+	//		}
+	//	}
+	//}
+
+	//// Normalise the relation
+	//for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
+	//	this->SCL->Relation[i]->NormaliseTerms();
+	//}
+
+	//// Normalise the rule
+	//for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
+	//	for (unsigned int j = 0; j < this->SCL->Rule[i]->Relation.size(); j++) {
+	//		this->SCL->Rule[i]->Relation[j]->NormaliseTerms();
+	//	}
+	//}
+
+	//return true;
 
 }
 
@@ -3114,11 +3566,11 @@ void hsfcSchema::Stratify(){
 
 	// Now find all of the key words
 	for (unsigned int i = 0; i < this->Lexicon->Size(); i++) {
-		if (this->Lexicon->PartialMatch(i, "terminal|")) this->Stratum[i].ID = 0;
-		if (this->Lexicon->PartialMatch(i, "goal|")) this->Stratum[i].ID = 1;
-		if (this->Lexicon->PartialMatch(i, "legal|")) this->Stratum[i].ID = 2;
-		if (this->Lexicon->PartialMatch(i, "sees|")) this->Stratum[i].ID = 3;
-		if (this->Lexicon->PartialMatch(i, "next>")) this->Stratum[i].ID = 4;
+		if (this->Lexicon->PartialMatch(i, "terminal/")) this->Stratum[i].ID = 0;
+		if (this->Lexicon->PartialMatch(i, "goal/")) this->Stratum[i].ID = 1;
+		if (this->Lexicon->PartialMatch(i, "legal/")) this->Stratum[i].ID = 2;
+		if (this->Lexicon->PartialMatch(i, "sees/")) this->Stratum[i].ID = 3;
+		if (this->Lexicon->PartialMatch(i, "next~")) this->Stratum[i].ID = 4;
 	}
 
 	// Now find everything necessary to calculate all of the keywords
@@ -3272,27 +3724,31 @@ void hsfcSchema::SetPermanentFacts() {
 	vector<hsfcGDLTerm> GDLTerm;
 	hsfcDomainEntry NewReference;
 	vector<hsfcDomainEntry> Reference;
-	unsigned int i;
+	//unsigned int i;
 
 	// Every relation in the SCL is either a fact or a (init (...))
 
 	// Go through all of the SCL relations and construct the fact domains
 	// The domains for facts are not independent
 	// Do it in reverse order as embedded facts are added at the end of the array
-	for (unsigned int ni = 0; ni < this->SCL->Relation.size(); ni++) {
+	for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
 
-		i = this->SCL->Relation.size() - 1 - ni;
+		//i = this->SCL->Relation.size() - 1 - ni;
 
 		// Get the Schema relation
 		PredicateIndex = this->SCL->Relation[i]->PredicateIndex();
 		RelationSchema = this->RelationSchema(PredicateIndex);
 
-		// Is this relation a fact that is not permanent
+		// Is this relation a permanent fact 
 		if (RelationSchema->Fact == hsfcFactPermanent) {
 
 			// Find the terms that make up the fact
 			GDLTerm.clear();
 			this->SCL->Relation[i]->Terms(GDLTerm);
+			//for (unsigned int j = 0; j < GDLTerm.size(); j++) {
+			//	printf("%d:%d.%d ", GDLTerm[j].PredicateIndex, GDLTerm[j].Tuple.RelationIndex, GDLTerm[j].Tuple.ID);
+			//}
+			//printf("\n");
 
 			// Nest the terms from the flat SCL
 			this->NestTerms(GDLTerm, 0, PredicateIndex);
@@ -3305,7 +3761,9 @@ void hsfcSchema::SetPermanentFacts() {
 				NewReference.Tuple.RelationIndex = GDLTerm[j].Tuple.RelationIndex;
 				NewReference.Tuple.ID = GDLTerm[j].Tuple.ID;
 				Reference.push_back(NewReference);
+				//printf("%d.%d ", NewReference.Tuple.RelationIndex, NewReference.Tuple.ID);
 			}
+			//printf("\n\n");
 
 			// Load the fact into the domain
 			RelationSchema->AddToFactDomain(Reference);
@@ -3326,6 +3784,7 @@ void hsfcSchema::SetInitialRelations() {
 	vector<hsfcGDLTerm> GDLTerm;
 	hsfcTuple NewReference;
 	vector<hsfcTuple> Reference;
+	char TruePredicate[256];
 
 	// At this point all of the lists have been identfied
 	// Now create the reference lists for initialising the state
@@ -3357,11 +3816,34 @@ void hsfcSchema::SetInitialRelations() {
 			Reference.push_back(NewReference);
 		}
 
+		// Find the ID for this fact
+		NewReference.RelationIndex = RelationSchema->Index;
+		NewReference.ID = RelationSchema->ID(Reference);
+		if (NewReference.ID == -1) {
+			printf("Error: Bad ID\n");
+			abort();
+		}
+
 		if (RelationSchema->Fact == hsfcFactInitial) {
 
+			// This is of the form (init~cell/3 1 1 blank)
+			// It needs to be like (true~cell/3 1 1 blank)
+			// The Domains for these two relations may not be identical
+
+			// Get the terms
+			RelationSchema->Terms(NewReference.ID, Reference);
+
+			// Get the new relation
+			sprintf(TruePredicate, "true~%s", &this->Lexicon->Text(PredicateIndex)[5]);
+			PredicateIndex = this->Lexicon->Index(TruePredicate);
+			RelationSchema = this->RelationSchema(PredicateIndex);
+
+			// Get the True reference
+			Reference[0].ID = PredicateIndex;
+			NewReference.RelationIndex = RelationSchema->Index;
+			NewReference.ID = RelationSchema->ID(Reference);
+
 			// Add it to the list of initials
-			NewReference.RelationIndex = Reference[1].RelationIndex;
-			NewReference.ID = Reference[1].ID;
 			this->Initial.push_back(NewReference);
 			if (DEBUG) printf("%6d.%d   Initial   ", NewReference.RelationIndex, NewReference.ID);
 			if (DEBUG) this->PrintRelation(&NewReference, true);
@@ -3370,51 +3852,60 @@ void hsfcSchema::SetInitialRelations() {
 
 			// Is the relation a fact that is not a permanent fact
 			if (RelationSchema->Fact != hsfcFactPermanent) {
+
 				// Add it to the list of facts
-				NewReference.RelationIndex = RelationSchema->Index;
-				NewReference.ID = RelationSchema->ID(Reference);
-				if (NewReference.ID == -1) {
-					printf("Error: Bad ID\n");
-					abort();
-				}
 				this->Fact.push_back(NewReference);
 				if (DEBUG) printf("%6d.%d   Fact      ", NewReference.RelationIndex, NewReference.ID);
 				if (DEBUG) this->PrintRelation(&NewReference, true);
+
 			}
 		}
 	}
 
 	// Identify the State relations
-	for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
-		// Get the Schema relation
-		PredicateIndex = this->SCL->Relation[i]->PredicateIndex();
-		RelationSchema = this->RelationSchema(PredicateIndex);
-		RelationSchema->IsInState = true;
-		// Is it an (init (...))
-		if (this->Lexicon->PartialMatch(PredicateIndex, "init|")) {
-			PredicateIndex = this->SCL->Relation[i]->Atom[1]->Relation->PredicateIndex();
-			RelationSchema = this->RelationSchema(PredicateIndex);
+	for (unsigned int i = 0; i < this->Relation.size(); i++) {
+		RelationSchema = this->RelationSchema(this->Relation[i]->PredicateIndex);
+		RelationSchema->IsInState = false;
+		if (this->Relation[i]->Fact == hsfcFactPermanent) {
+			RelationSchema->IsInState = true;
+		}
+		if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, "true~")) {
+			RelationSchema->IsInState = true;
+		}
+		if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, "next~")) {
+			RelationSchema->IsInState = true;
+		}
+		if (this->Lexicon->Match(this->Relation[i]->PredicateIndex, "legal/2")) {
+			RelationSchema->IsInState = true;
+		}
+		if (this->Lexicon->Match(this->Relation[i]->PredicateIndex, "does/2")) {
+			RelationSchema->IsInState = true;
+		}
+		if (this->Lexicon->Match(this->Relation[i]->PredicateIndex, "sees/2")) {
 			RelationSchema->IsInState = true;
 		}
 	}
 
-	// Identify the State relations
+	// Identify any auxiliary State relations
 	for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
 		// Get the Schema relation
 		PredicateIndex = this->SCL->Rule[i]->Relation[0]->PredicateIndex();
 		RelationSchema = this->RelationSchema(PredicateIndex);
 		RelationSchema->IsInState = true;
-		if (this->Lexicon->PartialMatch(PredicateIndex, "next>")) {
-			PredicateIndex = this->SCL->Rule[i]->Relation[0]->Atom[1]->Relation->PredicateIndex();
-			RelationSchema = this->RelationSchema(PredicateIndex);
-			RelationSchema->IsInState = true;
+	}
+
+	if (DEBUG) {
+		for (unsigned int i = 0; i < this->Relation.size(); i++) {
+			RelationSchema = this->RelationSchema(this->Relation[i]->PredicateIndex);
+			printf("%s", this->Lexicon->Text(this->Relation[i]->PredicateIndex));
+			if (RelationSchema->IsInState) {
+				printf(" - IsInState\n");
+			} else {
+				printf("\n");
+			}
 		}
 	}
 
-	// Add in (does ... ...)
-	PredicateIndex = this->Lexicon->Index("does|2");
-	RelationSchema = this->RelationSchema(PredicateIndex);
-	RelationSchema->IsInState = true;
 
 }
 
@@ -3429,27 +3920,31 @@ void hsfcSchema::SetNextRelations() {
 	vector<hsfcTuple> Reference;
 	hsfcRelationLink Link;
 
+	if (DEBUG) printf("--- Next ==> True--------------------------------------\n");
+
 	// Now create the reference lists for linking next to predicate
 	for (unsigned int i = 0; i < this->Relation.size(); i++) {
 
 		// Is it a (next (...))
-		if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, "next>")) {
+		if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, "next~")) {
 
 			// Flag this list
 			this->Relation[i]->Fact = hsfcFactNext;
 
 			// Get the index of the state relation; eg (next>cell ... ...) we want (cell ... ...)
-			strcpy(Predicate, this->Lexicon->Text(this->Relation[i]->PredicateIndex));
-			for (unsigned int j = 0; j < strlen(Predicate); j++) {
-				if (Predicate[j] == '|') Predicate[j] = 0;
-			}
-			PredicateIndex = this->Lexicon->Index(&Predicate[5]);
+			sprintf(Predicate, "true~%s", &this->Lexicon->Text(this->Relation[i]->PredicateIndex)[5]);
+			PredicateIndex = this->Lexicon->Index(Predicate);
 			RelationSchema = this->RelationSchemaByName(PredicateIndex);
+			if (RelationSchema == NULL) {
+				printf("Error: Bad next reference\n");
+				abort();
+			}
 
 			// Add it to the list of facts
 			Link.SourceListIndex = i;
 			Link.DestinationListIndex = RelationSchema->Index;
 			this->Next.push_back(Link);
+			if (DEBUG) printf("%s ==> %s\n", this->Lexicon->Text(this->Relation[i]->PredicateIndex), this->Lexicon->Text(this->Relation[RelationSchema->Index]->PredicateIndex));
 
 		}
 	}
@@ -3461,23 +3956,14 @@ void hsfcSchema::SetNextRelations() {
 //-----------------------------------------------------------------------------
 void hsfcSchema::AddRelationSchema(hsfcGDLRelation* GDLRelation) {
 
-	//unsigned int TermIndex;
+	char Predicate[256];
+	int TermIndex;
 
 	// Ignore (distinct )
 	if (GDLRelation->Atom[0]->TermIndex == this->Lexicon->Index("distinct")) {
 		return;
 	}
 	
-	// Ignore (true (....))
-	if (GDLRelation->Atom[0]->TermIndex == this->Lexicon->Index("true")) {
-		if (GDLRelation->Atom[1] == NULL) {
-			printf("Error: Badly formed (true (...))\n");
-			abort();
-		}
-		this->AddRelationSchema(GDLRelation->Atom[1]->Relation);
-		return;
-	}
-
 	// Ignore (not (....))
 	if (GDLRelation->Atom[0]->TermIndex == this->Lexicon->Index("not")) {
 		if (GDLRelation->Atom[1] == NULL) {
@@ -3491,29 +3977,23 @@ void hsfcSchema::AddRelationSchema(hsfcGDLRelation* GDLRelation) {
 	// Find a matching Schema relation
 	this->RelationSchema(GDLRelation->PredicateIndex(), GDLRelation->Arity());
 
-	//// Was this an (next>predicate ... ...); if so then we also need to add (predicate ... ...)
-	//if (this->Lexicon->PartialMatch(GDLRelation->PredicateIndex(), "next>")) {
-	//	//// Add the new predicate to the lexicon
-	//	//TermIndex = this->Lexicon->Index(&this->Lexicon->Text(GDLRelation->PredicateIndex())[5]);
-	//	//// Add the new relation
-	//	//this->RelationSchema(TermIndex, GDLRelation->Arity());
-	//	// Add the new predicate to the lexicon
-	//	TermIndex = GDLRelation->Atom[1]->Relation->PredicateIndex();
-	//	// Add the new relation
-	//	this->RelationSchema(TermIndex, GDLRelation->Atom[1]->Relation->Arity());
-	//}
+	// Was this an (next~predicate ... ...); if so then we also need to add (true~predicate ... ...)
+	if (this->Lexicon->PartialMatch(GDLRelation->PredicateIndex(), "next~")) {
+		// Add the new predicate to the lexicon
+		sprintf(Predicate, "true~%s", &this->Lexicon->Text(GDLRelation->PredicateIndex())[5]);
+		TermIndex = this->Lexicon->Index(Predicate);
+		//// Add the new relation
+		this->RelationSchema(TermIndex, GDLRelation->Arity());
+	}
 
-	//// Was this an (init~predicate ... ...); if so then we also need to add (predicate ... ...)
-	//if (this->Lexicon->Match(GDLRelation->PredicateIndex(), "init")) {
-	//	//// Add the new predicate to the lexicon
-	//	//TermIndex = this->Lexicon->Index(&this->Lexicon->Text(GDLRelation->PredicateIndex())[5]);
-	//	//// Add the new relation
-	//	//this->RelationSchema(TermIndex, GDLRelation->Arity());
-	//	// Add the new predicate to the lexicon
-	//	TermIndex = GDLRelation->Atom[1]->Relation->PredicateIndex();
-	//	// Add the new relation
-	//	this->RelationSchema(TermIndex, GDLRelation->Atom[1]->Relation->Arity());
-	//}
+	// Was this an (init~predicate ... ...); if so then we also need to add (true~predicate ... ...)
+	if (this->Lexicon->PartialMatch(GDLRelation->PredicateIndex(), "init~")) {
+		// Add the new predicate to the lexicon
+		sprintf(Predicate, "true~%s", &this->Lexicon->Text(GDLRelation->PredicateIndex())[5]);
+		TermIndex = this->Lexicon->Index(Predicate);
+		//// Add the new relation
+		this->RelationSchema(TermIndex, GDLRelation->Arity());
+	}
 
 	// Go through recursively to find all of the relations
 	for (unsigned int i = 0; i < GDLRelation->Atom.size(); i++) {
@@ -3754,7 +4234,7 @@ void hsfcSchema::NestTerms(vector<hsfcGDLTerm>& Term, int RelationOffset, int Pr
 //-----------------------------------------------------------------------------
 void hsfcSchema::PrintRelations() {
 
-    printf("Relations\n");
+    printf("\n--- Schema ~ Relations-------------------------------------\n");
 
 	// Print out the relations
 	for (unsigned int i = 0; i < this->Relation.size(); i++) {
@@ -3768,7 +4248,7 @@ void hsfcSchema::PrintRelations() {
 //-----------------------------------------------------------------------------
 void hsfcSchema::PrintRules() {
 
-    printf("Rules\n");
+    printf("\n--- Schema ~ Rules-----------------------------------------\n");
 
 	// Print out the Schema Rules
 	for (unsigned int i = 0; i < this->Rule.size(); i++) {

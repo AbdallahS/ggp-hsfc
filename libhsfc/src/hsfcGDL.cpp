@@ -6,7 +6,6 @@
 //=============================================================================
 #include "stdafx.h"
 #include "hsfcGDL.h"
-
 #include "hsfc_config.h"
 
 using namespace std;
@@ -169,17 +168,19 @@ void hsfcGDLAtom::Terms(int PredicateIndex, vector<hsfcGDLTerm>& Term) {
 //-----------------------------------------------------------------------------
 // AsText
 //-----------------------------------------------------------------------------
-int hsfcGDLAtom::AsText(char* Text){
+int hsfcGDLAtom::AsText(char* Text, int Length){
 
 	int Index;
 
 	// Construct the text
 	Index = 0;
 	if (this->TermIndex != 0) {
-		Index += sprintf(&Text[Index], "%s", this->Lexicon->Text(this->TermIndex));
+		if (strlen(this->Lexicon->Text(this->TermIndex)) < Length) {
+			Index += sprintf(&Text[Index], "%s", this->Lexicon->Text(this->TermIndex));
+		}
 	}
 	if (this->Relation != NULL) {
-		Index += this->Relation->AsText(Text); 
+		Index += this->Relation->AsText(Text, Length); 
 	}
 
 	return Index;
@@ -313,6 +314,7 @@ int hsfcGDLRelation::Read(char* Text) {
 void hsfcGDLRelation::NormaliseTerms() {
 
 	char Predicate[256];
+	char Text[1024];
 
 	// This must only be run once
 	// Calls are recursive
@@ -321,13 +323,52 @@ void hsfcGDLRelation::NormaliseTerms() {
 
 	// Is this an (next (...)) relation
 	if (this->Lexicon->Match(this->PredicateIndex(), "next")) {
-		sprintf(Predicate, "next>%s", this->Lexicon->Text(this->Atom[1]->Relation->PredicateIndex()));
-		this->Atom[0]->TermIndex = this->Lexicon->Index(Predicate);
+		// Check integrity
+		if (this->Atom[1]->Relation == NULL) {
+			this->AsText(Text, 1024);
+			printf("Error: Unable to parse '%s'\n", Text);
+			abort();
+		}
+		// Create a compound predicate
+		sprintf(Predicate, "next~%s", this->Lexicon->Text(this->Atom[1]->Relation->PredicateIndex()));
+		this->Atom[1]->Relation->Atom[0]->TermIndex = this->Lexicon->Index(Predicate);
+		// Point the relation to the second atom
+		this->Atom = this->Atom[1]->Relation->Atom;
+	}
+
+	// Is this an (init (...)) relation
+	if (this->Lexicon->Match(this->PredicateIndex(), "init")) {
+		// Check integrity
+		if (this->Atom[1]->Relation == NULL) {
+			this->AsText(Text, 1024);
+			printf("Error: Unable to parse '%s'\n", Text);
+			abort();
+		}
+		// Create a compound predicate
+		sprintf(Predicate, "init~%s", this->Lexicon->Text(this->Atom[1]->Relation->PredicateIndex()));
+		this->Atom[1]->Relation->Atom[0]->TermIndex = this->Lexicon->Index(Predicate);
+		// Point the relation to the second atom
+		this->Atom = this->Atom[1]->Relation->Atom;
+	}
+
+	// Is this an (true (...)) relation
+	if (this->Lexicon->Match(this->PredicateIndex(), "true")) {
+		// Check integrity
+		if (this->Atom[1]->Relation == NULL) {
+			this->AsText(Text, 1024);
+			printf("Error: Unable to parse '%s'\n", Text);
+			abort();
+		}
+		// Create a compound predicate
+		sprintf(Predicate, "true~%s", this->Lexicon->Text(this->Atom[1]->Relation->PredicateIndex()));
+		this->Atom[1]->Relation->Atom[0]->TermIndex = this->Lexicon->Index(Predicate);
+		// Point the relation to the second atom
+		this->Atom = this->Atom[1]->Relation->Atom;
 	}
 
 	// Converts (nested (mark ?x ?y) (piece ?p))
-	// into (nested|2 (mark|2 ?x ?y) (piece|1 ?p))
-	sprintf(Predicate, "%s|%d", this->Lexicon->Text(this->PredicateIndex()), this->Arity());
+	// into (nested/2 (mark/2 ?x ?y) (piece/1 ?p))
+	sprintf(Predicate, "%s/%d", this->Lexicon->Text(this->PredicateIndex()), this->Arity());
 	this->Atom[0]->TermIndex = this->Lexicon->Index(Predicate);
 
 	// Look at each atom for a nested relation
@@ -340,15 +381,19 @@ void hsfcGDLRelation::NormaliseTerms() {
 }
 
 //-----------------------------------------------------------------------------
-// FindZeroArity
+// FindArity
 //-----------------------------------------------------------------------------
-void hsfcGDLRelation::FindZeroArity() {
+void hsfcGDLRelation::FindArity() {
 
 	hsfcGDLRelation* NewRelation;
 	hsfcGDLAtom* NewAtom;
 	bool FoundZeroArity;
 	int AtomIndex;
 
+	// Find the arity of all of the relation
+	// (init (cell 0 0 x))  ==>  (init/1 (cell/3 0 0 x))
+
+	// First promote any zero arity relations so they get a schema and/or database relation
 	FoundZeroArity = false;
 	if (this->Lexicon->Match(this->PredicateIndex(), "init")) {
 		if (this->Atom[1]->Relation == NULL) {
@@ -366,6 +411,8 @@ void hsfcGDLRelation::FindZeroArity() {
 		if ((this->Atom[1]->Relation == NULL) && (!this->Lexicon->PartialMatch(this->Atom[1]->TermIndex, "?"))) {
 			FoundZeroArity = true;
 			AtomIndex = 1;
+		} else {
+			this->Atom[1]->Relation->FindArity();
 		}
 	}
 	if (this->Lexicon->Match(this->PredicateIndex(), "true")) {
@@ -387,8 +434,12 @@ void hsfcGDLRelation::FindZeroArity() {
 		// Add the new relation to the atoms for the primary relation
 		this->Atom[AtomIndex]->Relation = NewRelation;
 		this->Atom[AtomIndex]->TermIndex = 0;
-		if (DEBUG) {char Text[256]; this->AsText(Text); printf("%s\n", Text);}
+		if (DEBUG) {char Text[256]; this->AsText(Text, 256); printf("Zero Arity: %s\n", Text);}
 	}
+
+
+
+
 
 }
 
@@ -479,18 +530,30 @@ bool hsfcGDLRelation::AddRelationDetail(vector<hsfcRelationDetail>& RelationDeta
 //-----------------------------------------------------------------------------
 // AsText
 //-----------------------------------------------------------------------------
-int hsfcGDLRelation::AsText(char* Text){
+int hsfcGDLRelation::AsText(char* Text, int Length){
 
 	int Index;
 
 	Index = 0;
-	if (this->Not) Index += sprintf(&Text[Index], "not "); 
-	Index += sprintf(&Text[Index], "(");
-	for (unsigned int i = 0; i < this->Atom.size(); i++) {
-		if (i > 0) Index += sprintf(&Text[Index], " ");
-		Index += this->Atom[i]->AsText(&Text[Index]);
+
+	if ((this->Not) && (Length - Index > 4)) {
+		Index += sprintf(&Text[Index], "not "); 
 	}
-	Index += sprintf(&Text[Index], ")");
+
+	if (Length - Index > 1) {
+		Index += sprintf(&Text[Index], "(");
+	}
+
+	for (unsigned int i = 0; i < this->Atom.size(); i++) {
+		if ((i > 0) && (Length - Index > 1)) {
+			Index += sprintf(&Text[Index], " ");
+		}
+		Index += this->Atom[i]->AsText(&Text[Index], Length - Index);
+	}
+	
+	if (Length - Index > 1) {
+		Index += sprintf(&Text[Index], ")");
+	}
 
 	return Index;
 
@@ -638,18 +701,29 @@ int hsfcGDLRule::Arity(){
 //-----------------------------------------------------------------------------
 // AsText
 //-----------------------------------------------------------------------------
-int hsfcGDLRule::AsText(char* Text){
+int hsfcGDLRule::AsText(char* Text, int Length){
 
 	int Index;
 
 	Index = 0;
-	Index += sprintf(&Text[Index], "(<= ");
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		if (i > 0) Index += sprintf(&Text[Index], "    ");
-		Index += this->Relation[i]->AsText(&Text[Index]);
-		Index += sprintf(&Text[Index], "\n");
+	
+	if (Length - Index > 4) {
+		Index += sprintf(&Text[Index], "(<= ");
 	}
-	Index += sprintf(&Text[Index], ")");
+
+	for (unsigned int i = 0; i < this->Relation.size(); i++) {
+		if ((i > 0) && (Length - Index > 4)) {
+			Index += sprintf(&Text[Index], "    ");
+		}
+		Index += this->Relation[i]->AsText(&Text[Index], Length - Index);
+		if (Length - Index > 1) {
+			Index += sprintf(&Text[Index], "\n");
+		}
+	}
+
+	if (Length - Index > 1) {
+		Index += sprintf(&Text[Index], ")");
+	}
 
 	return Index;
 
@@ -822,7 +896,7 @@ void hsfcGDL::Print(char* Title) {
 	// Print relations
 	printf("Relations\n");
 	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		Index = this->Relation[i]->AsText(Text);
+		Index = this->Relation[i]->AsText(Text, 2048);
 		Text[Index] = 0;
 		printf("%s\n", Text);
 	}
@@ -830,7 +904,7 @@ void hsfcGDL::Print(char* Title) {
 	// Print rules
 	printf("Rules\n");
 	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-		Index = this->Rule[i]->AsText(Text);
+		Index = this->Rule[i]->AsText(Text, 2048);
 		Text[Index] = 0;
 		printf("%s\n", Text);
 	}

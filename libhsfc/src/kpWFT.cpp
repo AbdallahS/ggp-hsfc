@@ -494,7 +494,7 @@ void kpWFT::LoadFlat(const char* Script){
 	// {/ # ; : '} . . . . . {\r \n} = comment
 	// "literal"
 	// {space spacespace} delimiter
-	// predicate|arity
+	// predicate/arity
 	// ( ) are just characters
 
 	// Process the script
@@ -532,7 +532,7 @@ void kpWFT::LoadFlat(const char* Script){
 				}
 				Length = Index;
 			} else {
-				while ((Start[Index] != '|') && (Start[Index] != ' ') && (Start[Index] != 0)) {
+				while ((Start[Index] != '/') && (Start[Index] != ' ') && (Start[Index] != 0)) {
 					Index++;
 				}
 				Length = Index;
@@ -540,7 +540,7 @@ void kpWFT::LoadFlat(const char* Script){
 		}
 
 		// Is this an arity marker
-		if (Start[Length] == '|') {
+		if (Start[Length] == '/') {
 			this->Structure->AddElement("(", 1, Level);
 			Level++;
 			sscanf(&Start[Length+1], "%d ", &Arity);
@@ -568,7 +568,7 @@ void kpWFT::LoadFlat(const char* Script){
 		}
 
 		// Was it an arity marker
-		if (Start[Length] == '|') {
+		if (Start[Length] == '/') {
 			while ((Start[Length] != ' ') && (Start[Length] != 0)) {
 				Length++;
 			}

@@ -310,8 +310,8 @@ State::State(Game& game): manager_(game.manager_), state_(NULL)
 State::State(Game& game, const PortableState& ps): manager_(game.manager_), state_(NULL)
 {
     state_ = manager_->CreateGameState();
+    manager_->SetInitialGameState(*state_);
     manager_->SetStateData(ps.relationlist_, ps.round_, ps.currentstep_, *state_);
-//  manager_->SetInitialGameState(*state_);
     this->initialize();
 }
 
@@ -319,6 +319,7 @@ State::State(Game& game, const PortableState& ps): manager_(game.manager_), stat
 State::State(const State& other) : manager_(other.manager_), state_(NULL)
 {
     state_ = manager_->CreateGameState();
+    manager_->SetInitialGameState(*state_);
     manager_->CopyGameState(*state_, *(other.state_));
     this->initialize();
 }
@@ -327,6 +328,7 @@ State& State::operator=(const State& other)
 {
     if (manager_ != other.manager_) 
         throw HSFCValueError() << ErrorMsgInfo("Cannot assign to a State from a different game");
+    manager_->SetInitialGameState(*state_);
     manager_->CopyGameState(*state_, *(other.state_));
     this->initialize();
 

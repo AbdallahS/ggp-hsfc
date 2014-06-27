@@ -70,7 +70,7 @@ struct print_flat : public boost::static_visitor<>
 		BOOST_FOREACH(const Term& t, ts.children_)
 		{
 			boost::apply_visitor(*this, t);
-			if (i == 0 && arity > 0) os_ << "|" << arity;
+			if (i == 0 && arity > 0) os_ << "/" << arity;
 			if (i < arity)  os_ << " ";
 			++i;
 		}
@@ -107,7 +107,7 @@ std::string generate_flat(const Term& term)
 
 
 /**********************************************************************
- * Helper struct for parsing flat format (eg., "label|1")
+ * Helper struct for parsing flat format (eg., "label/1")
  **********************************************************************/
 struct LabelArity
 {
@@ -147,7 +147,7 @@ namespace _phoenix = boost::phoenix;
 
 /*****************************************************************
  * Spirit grammars
- * SimpleTerm - a sequence of characters other than "(", ")", "|", or whitespace.
+ * SimpleTerm - a sequence of characters other than "(", ")", "/", or whitespace.
  *****************************************************************/
 
 template<typename Iterator>
@@ -157,7 +157,7 @@ struct SimpleTermParser : public _qi::grammar<Iterator, std::string()>
 
 	SimpleTermParser() : SimpleTermParser::base_type(simple_, "Simple term")
 	{		
-		simple_ %= _qi::lexeme[+(_qi::char_ - (_qi::char_("|()") | _qi::space))];
+		simple_ %= _qi::lexeme[+(_qi::char_ - (_qi::char_("/()") | _qi::space))];
 	}
 };
 
@@ -277,7 +277,7 @@ struct FlatSubParser : public _qi::grammar<Iterator, LabelArity(),  _ascii::spac
 	FlatSubParser() : FlatSubParser::base_type(stmt_, "flat sub-expression")
 	{
 		stmt_ %= simpleterm_ >> arity_;
-		arity_ %= ( '|' >> _qi::uint_ )  | _qi::attr(0);
+		arity_ %= ( '/' >> _qi::uint_ )  | _qi::attr(0);
 	}
 };
 

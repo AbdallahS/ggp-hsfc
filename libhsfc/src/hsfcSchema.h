@@ -25,9 +25,9 @@ class hsfcRelationSchema;
 //=============================================================================
 enum hsfcFact {
 	hsfcFactNone, 
-	hsfcFactPersistent, 
 	hsfcFactPermanent,
 	hsfcFactInitial,
+	hsfcFactTrue, 
 	hsfcFactNext
 };
 
@@ -51,6 +51,15 @@ enum hsfcRuleRelationType {
 	hsfcRuleInput,
 	hsfcRuleCondition
 };
+
+//=============================================================================
+// STRUCT: hsfcDomainRecord
+//=============================================================================
+typedef struct hsfcDomainRecord {
+	int PredicateIndex;
+	int DomainIndex;
+	hsfcTuple Tuple;
+} hsfcDomainRecord;
 
 //=============================================================================
 // STRUCT: hsfcDomainEntry
@@ -130,6 +139,7 @@ public:
 	void FromRelationSchema(hsfcRelationSchema* Source);
 	void AddToDomain(int DomainIndex, hsfcDomainEntry* Entry);
 	void AddToFactDomain(vector<hsfcDomainEntry>& Term);
+	void AddToDomainFromDomain(vector<vector<hsfcDomainEntry> >& Source);
 	void IndexDomains();
 	double RelationSize();
 	void IntersectBufferDomain(vector<hsfcTuple>& BufferDomain, unsigned int DomainIndex);
@@ -155,12 +165,12 @@ public:
 	bool DomainIsComplete;
 	bool HasComplexEntries;
 	bool IsInState;
+	vector<vector<hsfcDomainEntry> > vDomain;	
 
 protected:
 
 private:
 	hsfcLexicon* Lexicon;
-	vector<vector<hsfcDomainEntry> > vDomain;	
 	hsfcDomain** Domain;
 
 };
@@ -186,7 +196,7 @@ public:
 	hsfcRuleRelationType Type;
 	int Function;
 	vector<hsfcRuleTemplate> Template;
-	int ReferenceSize;
+	double ReferenceSize;
 	double SortOrder;
 
 protected:
@@ -256,6 +266,7 @@ protected:
 private:
 	bool ReadGDL(char* Script);
 	bool ReadRules(char* RuleScript);
+	bool ReadStrats(char* StratScript);
 	bool ReadDomains(char* DomainScript);
 	bool CreateSCL();
 	void Stratify();

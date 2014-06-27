@@ -7,7 +7,6 @@
 
 #include "stdafx.h"
 #include "hsfcLexicon.h"
-
 #include "hsfc_config.h"
 
 using namespace std;
@@ -256,3 +255,4 @@ unsigned int hsfcLexicon::AddTerm(const char* Value) {
 	return Index;
 
 }
+

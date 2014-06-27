@@ -15,6 +15,7 @@
 #include <vector>
 
 #define DEBUG true
+#define TICKS_PER_SECOND 1000000
 
 using namespace std;
 

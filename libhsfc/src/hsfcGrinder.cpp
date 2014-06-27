@@ -7,7 +7,6 @@
 
 #include "stdafx.h"
 #include "hsfcGrinder.h"
-
 #include "hsfc_config.h"
 
 using namespace std;
@@ -412,6 +411,22 @@ void hsfcRule::Grind() {
 
 	// Schema Relations are now sorted to their final ordering
 	// Dimension the lookup array for inputs and set values to -1 = Fail
+
+	if (DEBUG) printf("    EstReferenceSize = %.0f\n", this->RuleSchema->EstReferenceSize);
+
+	if (this->NumInputs < 0) {
+		printf("Error: NumInputs < 0\n");
+		abort();
+	}
+	if (this->NumConditions < 0) {
+		printf("Error: NumConditions < 0\n");
+		abort();
+	}
+	if (this->NumPreConditions < 0) {
+		printf("Error: NumPreConditions < 0\n");
+		abort();
+	}
+
 	InputIndex = 0;
 	ConditionIndex = 0;
 	PreConditionIndex = 0;
@@ -459,21 +474,23 @@ void hsfcRule::Grind() {
 
 	}
 
-	// Dimension the maximum lookup values
-	this->MaxInputLookup = new int[this->NumInputs];
-	for (int i = 0; i < this->NumInputs; i++) this->MaxInputLookup[i] = 0;
-
-	this->MaxConditionLookup = new int[this->NumConditions];		
-	for (int i = 0; i < this->NumConditions; i++) this->MaxConditionLookup[i] = 0;
-
-	this->MaxPreConditionLookup = new int[this->NumPreConditions];
-	for (int i = 0; i < this->NumPreConditions; i++) this->MaxPreConditionLookup[i] = 0;
-
-
 	// Dimension the lookup arrays
-	this->InputLookup = new int*[this->NumInputs];
-	this->ConditionLookup = new int*[this->NumConditions];		
-	this->PreConditionLookup = new int*[this->NumPreConditions];
+	// Dimension the maximum lookup values
+	if (this->NumInputs > 0) {
+		this->InputLookup = new int*[this->NumInputs];
+		this->MaxInputLookup = new int[this->NumInputs];
+		for (int i = 0; i < this->NumInputs; i++) this->MaxInputLookup[i] = 0;
+	}
+	if (this->NumConditions > 0) {
+		this->ConditionLookup = new int*[this->NumConditions];		
+		this->MaxConditionLookup = new int[this->NumConditions];		
+		for (int i = 0; i < this->NumConditions; i++) this->MaxConditionLookup[i] = 0;
+	}
+	if (this->NumPreConditions > 0) {
+		this->PreConditionLookup = new int*[this->NumPreConditions];
+		this->MaxPreConditionLookup = new int[this->NumPreConditions];
+		for (int i = 0; i < this->NumPreConditions; i++) this->MaxPreConditionLookup[i] = 0;
+	}
 
 	//--- PreConditions ---------------------------------------------------------------------------
 
@@ -488,6 +505,7 @@ void hsfcRule::Grind() {
 			this->ReferenceSize += 1;
 
 			this->PreConditionLookup[PreConditionIndex] = new int[1];
+			if (DEBUG) printf("    PreCondition %d   Size = 1", PreConditionIndex);
 
 			// Collect all of the terms in the relation
 			Term.clear();
@@ -506,7 +524,7 @@ void hsfcRule::Grind() {
 			this->PreConditionLookup[PreConditionIndex][0] = ID;
 			//printf("    %5d: %5d\n", 0, ID);
 
-			if (DEBUG) printf("    PreCondition %d   Size = 1   Unique = 1\n", PreConditionIndex);
+			if (DEBUG) printf("   Unique = 1\n", PreConditionIndex);
 			PreConditionIndex++;
 
 		}
@@ -520,12 +538,18 @@ void hsfcRule::Grind() {
 		this->ResultRelation->ReferenceSize = 1;
 		this->ReferenceSize += 1;
 
-		this->ResultLookup = new int[this->ResultRelation->ReferenceSize];
+		if (this->ResultRelation->ReferenceSize > 0) {
+			this->ResultLookup = new int[(unsigned)(int)this->ResultRelation->ReferenceSize];
+		} else {
+			printf("Error: ResultRelation->ReferenceSize <= 0\n");
+			abort();
+		}
+		if (DEBUG) printf("    Result   Size = %d", this->ResultRelation->ReferenceSize);
 
 		// Get the result
 		this->ResultLookup[0] = this->CheckResult();
 		//printf("    %5d: %5d\n", 0, this->ResultLookup[0]);
-		if (DEBUG) printf("    Result   Size = %d   Count = %d\n", this->ResultRelation->ReferenceSize, 1);
+		if (DEBUG) printf("   Count = 1\n");
 
 		return;
 
@@ -539,8 +563,10 @@ void hsfcRule::Grind() {
 	// etc..
 
 	// Zero the lookup counters
-	NextLookupValue = new int[this->NumInputs];
-	this->InputCount = new int[this->NumInputs];
+	if (this->NumInputs > 0) {
+		NextLookupValue = new int[this->NumInputs];
+		this->InputCount = new int[this->NumInputs];
+	}
 	for (int i = 0; i < this->NumInputs; i++) {
 		NextLookupValue[i] = 0;
 		this->InputCount[i] = this->InputRelation[i]->Template[0].RelationSchema->IDCount;
@@ -557,7 +583,14 @@ void hsfcRule::Grind() {
 		}
 		this->ReferenceSize += this->InputRelation[InputIndex]->ReferenceSize;
 
-		this->InputLookup[InputIndex] = new int[this->InputRelation[InputIndex]->ReferenceSize];
+		if (this->ResultRelation->ReferenceSize > 0) {
+			this->InputLookup[InputIndex] = new int[(unsigned)(int)this->InputRelation[InputIndex]->ReferenceSize];
+		} else {
+			printf("Error: InputRelation[InputIndex]->ReferenceSize <= 0\n");
+			abort();
+		}
+		if (DEBUG) printf("    Input %d   Size = %0.1f", InputIndex, this->InputRelation[InputIndex]->ReferenceSize);
+
 		// Initialise to -1 for fail
 		for (int j = 0; j < this->InputRelation[InputIndex]->ReferenceSize; j++) {
 			this->InputLookup[InputIndex][j] = -1;
@@ -614,7 +647,7 @@ void hsfcRule::Grind() {
 		// Print the reference table
 		//for (int i = 0; i < this->InputRelation[InputIndex]->ReferenceSize; i++) 
 			//printf("    %5d: %5d\n", i, this->InputLookup[InputIndex][i]);
-		if (DEBUG) printf("    Input %d   Size = %d   Unique = %d\n", InputIndex, this->InputRelation[InputIndex]->ReferenceSize, this->MaxInputLookup[InputIndex] + 1);
+		if (DEBUG) printf("   Unique = %d\n", this->MaxInputLookup[InputIndex] + 1);
 
 	}
 
@@ -633,7 +666,13 @@ void hsfcRule::Grind() {
 		this->ConditionRelation[i]->ReferenceSize = this->MaxInputLookup[this->NumInputs-1] + 1;
 		this->ReferenceSize += this->ConditionRelation[i]->ReferenceSize;
 
-		this->ConditionLookup[i] = new int[this->ConditionRelation[i]->ReferenceSize];
+		if (this->ResultRelation->ReferenceSize > 0) {
+			this->ConditionLookup[i] = new int[(unsigned)(int)this->ConditionRelation[i]->ReferenceSize];
+		} else {
+			printf("Error: ConditionRelation[i]->ReferenceSize <= 0\n");
+			abort();
+		}
+
 		// Initialise to -1 for fail
 		for (int j = 0; j < this->ConditionRelation[i]->ReferenceSize; j++) {
 			this->ConditionLookup[i][j] = -1;
@@ -647,7 +686,12 @@ void hsfcRule::Grind() {
 	this->ResultRelation->ReferenceSize = this->MaxInputLookup[this->NumInputs-1] + 1;
 		this->ReferenceSize += this->ResultRelation->ReferenceSize;
 
-		this->ResultLookup = new int[this->ResultRelation->ReferenceSize];
+		if (this->ResultRelation->ReferenceSize > 0) {
+			this->ResultLookup = new int[(unsigned)(int)this->ResultRelation->ReferenceSize];
+		} else {
+			printf("Error: this->ResultRelation->ReferenceSize <= 0\n");
+			abort();
+		}
 	// Initialise to -1 for fail
 	for (int j = 0; j < this->ResultRelation->ReferenceSize; j++) {
 		this->ResultLookup[j] = -1;
@@ -735,14 +779,14 @@ void hsfcRule::Grind() {
 			if (this->ConditionLookup[i][j] >= 0) Count++;
 			//printf("    %5d: %5d\n", j, this->ConditionLookup[i][j]);
 		}
-		if (DEBUG) printf("    Condition %d   Size = %d   Count = %d\n", i, this->ConditionRelation[i]->ReferenceSize, Count);
+		if (DEBUG) printf("    Condition %d   Size = %0.1f   Count = %d\n", i, this->ConditionRelation[i]->ReferenceSize, Count);
 	}
 	Count = 0;
 	for (int j = 0; j < this->ResultRelation->ReferenceSize; j++) {
 		if (this->ResultLookup[j] >= 0) Count++;
 		//printf("    %5d: %5d\n", j, this->ResultLookup[j]);
 	}
-	if (DEBUG) printf("    Result   Size = %d   Count = %d\n", this->ResultRelation->ReferenceSize, Count);
+	if (DEBUG) printf("    Result   Size = %0.1f   Count = %d\n", this->ResultRelation->ReferenceSize, Count);
 
 	// Cleanup
 	delete[] NextLookupValue;
@@ -1108,7 +1152,7 @@ void hsfcRule::Print(){
 		printf("\n");
 		Index++;
 	}
-	if (this->LowSpeed) printf("      LowSpeedExecution = NoReferenceTables\n");
+	if (this->LowSpeed) printf("      LowSpeedExecution: EstReferenceSize = %.0f\n", this->RuleSchema->EstReferenceSize);
 
 }
 
@@ -1733,26 +1777,26 @@ bool hsfcGrinderEngine::Create(char* Script, int MaxRelationSize, double MaxRefe
 		this->Rule.push_back(NewRule);
 		
 		// Check to see if it is the last of a group of rules
-		if (this->Lexicon->Match(NewRule->ResultRelation->PredicateIndex, "terminal|0")) {
+		if (this->Lexicon->Match(NewRule->ResultRelation->PredicateIndex, "terminal/0")) {
 			this->LastRuleIndex[1] = i;
 			this->LastRuleIndex[2] = i;
 			this->LastRuleIndex[3] = i;
 			this->LastRuleIndex[4] = i;
 			this->LastRuleIndex[5] = i;
 		}
-		if (this->Lexicon->Match(NewRule->ResultRelation->PredicateIndex, "legal|2")) {
+		if (this->Lexicon->Match(NewRule->ResultRelation->PredicateIndex, "legal/2")) {
 			this->LastRuleIndex[2] = i;
 			this->LastRuleIndex[3] = i;
 			this->LastRuleIndex[4] = i;
 		}
-		if (this->Lexicon->Match(NewRule->ResultRelation->PredicateIndex, "sees|2")) {
+		if (this->Lexicon->Match(NewRule->ResultRelation->PredicateIndex, "sees/2")) {
 			this->LastRuleIndex[3] = i;
 			this->LastRuleIndex[4] = i;
 		}
-		if (this->Lexicon->PartialMatch(NewRule->ResultRelation->PredicateIndex, "next>")) {
+		if (this->Lexicon->PartialMatch(NewRule->ResultRelation->PredicateIndex, "next~")) {
 			this->LastRuleIndex[4] = i;
 		}
-		if (this->Lexicon->Match(NewRule->ResultRelation->PredicateIndex, "goal|2")) {
+		if (this->Lexicon->Match(NewRule->ResultRelation->PredicateIndex, "goal/2")) {
 			this->LastRuleIndex[5] = i;
 		}
 
@@ -1806,7 +1850,7 @@ void hsfcGrinderEngine::OptimiseRules(bool OrderRules) {
 		for (unsigned int j = 0; j < this->Schema->Rule[i]->Relation.size(); j++) {
 			this->Schema->Rule[i]->EstReferenceSize += (double)this->Schema->Rule[i]->Relation[j]->ReferenceSize;
 		}
-		if (this->Schema->Rule[i]->EstReferenceSize > this->MaxRefernceSize) {
+		if (this->Schema->Rule[i]->EstReferenceSize < this->MaxRefernceSize) {
 			this->EstReferenceSize += this->Schema->Rule[i]->EstReferenceSize;
 		}
 	}
@@ -1840,7 +1884,7 @@ void hsfcGrinderEngine::GrindRules() {
 	for (unsigned int i = 0; i < this->Rule.size(); i++) {
 		if (DEBUG) printf("Rule %d\n", i);
 		if (this->Rule[i]->LowSpeed) {
-			if (DEBUG) printf("    LowSpeedExecution = NoReferenceTables\n");
+			if (DEBUG) printf("    LowSpeedExecution: EstReferenceSize = %.0f\n", this->Rule[i]->RuleSchema->EstReferenceSize);
 		} else {
 			this->Rule[i]->Grind();
 		}
@@ -2150,6 +2194,7 @@ void hsfcGrinder::Optimise() {
 
 	hsfcState* State;
 	clock_t Start;
+	int PlayoutLimit;
 
 	if (DEBUG) printf("\n--- Optimising --------------------------------------------\n");
 
@@ -2163,8 +2208,9 @@ void hsfcGrinder::Optimise() {
 	this->Engine->States = 0;
 
 	// Run for some number of random games or some time
+	PlayoutLimit = 1000;
 	Start = clock();
-	for (int i = 0; i < 1000; i++) {
+	while ((!DEBUG) && (this->Engine->Playouts < PlayoutLimit)) {
 
 		if (DEBUG) printf(".");
 
@@ -2206,15 +2252,13 @@ void hsfcGrinder::Optimise() {
 				break;
 			}
 
-			if (clock() > Start + 100 * CLOCKS_PER_SEC) break;
+			if (clock() > Start + 1000 * TICKS_PER_SECOND) break;
 
 		}
 
 		// Count the playouts and check the time
 		this->Engine->Playouts++;
-		if (clock() > Start + 100 * CLOCKS_PER_SEC) break;
-		if ((this->Engine->Playouts >= 10) && (clock() > Start + 30 * CLOCKS_PER_SEC)) break;
-		if ((this->Engine->Playouts >= 100) && (clock() > Start + 10 * CLOCKS_PER_SEC)) break;
+		PlayoutLimit = 1000 / ((clock() - Start) / TICKS_PER_SECOND + 1);
 
 	}
 

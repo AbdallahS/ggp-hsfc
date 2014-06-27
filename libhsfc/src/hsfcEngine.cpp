@@ -123,15 +123,21 @@ bool hsfcEngine::CreateFromFile(const char* FileName, hsfcGDLParamaters& Paramat
 	// Read one character at a time
 	Length = 0;
 	while (!feof(InputFile)) {
+
 		// Read a letter from the file
 		fscanf(InputFile, "%c", &Letter);
 		// Ignore control characters
 		if ((Letter < ' ') || (Letter > '~')) Letter = ' ';
 		// Ignore multiple spaces
 		if ((Letter != ' ') || ((Length != 0) && (Buffer[Length - 1] != ' '))) {
+			if (Length > FileSize) {
+				printf("Error: Bad file size\n");
+				abort();
+			}
 			Buffer[Length] = Letter;
 			Length++;
 		}
+
 	}
 	Buffer[Length] = 0;
     fclose(InputFile);
@@ -208,7 +214,11 @@ void hsfcEngine::Audit() {
 			this->Rule[i]->Execute(LowSpeedState, true);
 			printf("\n");
 			printf("%3d =>", i);
-			this->Rule[i]->HighSpeedAudit(HighSpeedState);
+			if (this->Rule[i]->LowSpeed) {
+				this->Rule[i]->Execute(HighSpeedState, true);
+			} else {
+				this->Rule[i]->HighSpeedAudit(HighSpeedState);
+			}
 			printf("\n\n");
 		}
 
@@ -225,7 +235,11 @@ void hsfcEngine::Audit() {
 			this->Rule[i]->Execute(LowSpeedState, true);
 			printf("\n");
 			printf("%3d =>", i);
-			this->Rule[i]->HighSpeedAudit(HighSpeedState);
+			if (this->Rule[i]->LowSpeed) {
+				this->Rule[i]->Execute(HighSpeedState, true);
+			} else {
+				this->Rule[i]->HighSpeedAudit(HighSpeedState);
+			}
 			printf("\n\n");
 		}
 
@@ -236,7 +250,11 @@ void hsfcEngine::Audit() {
 			this->Rule[i]->Execute(LowSpeedState, true);
 			printf("\n");
 			printf("%3d =>", i);
-			this->Rule[i]->HighSpeedAudit(HighSpeedState);
+			if (this->Rule[i]->LowSpeed) {
+				this->Rule[i]->Execute(HighSpeedState, true);
+			} else {
+				this->Rule[i]->HighSpeedAudit(HighSpeedState);
+			}
 			printf("\n\n");
 		}
 
@@ -256,7 +274,11 @@ void hsfcEngine::Audit() {
 			this->Rule[i]->Execute(LowSpeedState, true);
 			printf("\n");
 			printf("%3d =>", i);
-			this->Rule[i]->HighSpeedAudit(HighSpeedState);
+			if (this->Rule[i]->LowSpeed) {
+				this->Rule[i]->Execute(HighSpeedState, true);
+			} else {
+				this->Rule[i]->HighSpeedAudit(HighSpeedState);
+			}
 			printf("\n\n");
 		}
 
@@ -267,7 +289,11 @@ void hsfcEngine::Audit() {
 			this->Rule[i]->Execute(LowSpeedState, true);
 			printf("\n");
 			printf("%3d =>", i);
-			this->Rule[i]->HighSpeedAudit(HighSpeedState);
+			if (this->Rule[i]->LowSpeed) {
+				this->Rule[i]->Execute(HighSpeedState, true);
+			} else {
+				this->Rule[i]->HighSpeedAudit(HighSpeedState);
+			}
 			printf("\n\n");
 		}
 
@@ -280,6 +306,8 @@ void hsfcEngine::Audit() {
 
 		// Print the initial states
 		this->StateManager->CompareStates(LowSpeedState, HighSpeedState);
+
+		getchar();
 
 	}
 
@@ -433,6 +461,12 @@ void hsfcEngine::ChooseRandomMoves(hsfcState* State) {
 		}
 	}
 	for (int i = 0; i < State->NumRelations[this->StateManager->RoleRelationIndex]; i++) {
+		// Is there a move to make
+		if (NumMoves[i] == 0) {
+			printf("Error: No moves for role %d\n", i);
+			abort();
+		}
+		// Make the chosen move
 		this->StateManager->AddRelation(State, &NewMove[i]);
 	}
 
@@ -494,7 +528,7 @@ bool hsfcEngine::CreateEngine(char* Script, hsfcGDLParamaters& Paramaters) {
 	this->StartClock = clock();
 	CreatedGDL = this->Grinder->Create(Script, Paramaters.MaxRelationSize, Paramaters.MaxReferenceSize);
 	this->StopClock = clock();
-	this->TimeReadGDL = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
+	this->TimeReadGDL = (float)(this->StopClock - this->StartClock) / (float)TICKS_PER_SECOND; 
 	if (!CreatedGDL) return false;
 
 	if (DEBUG) this->Grinder->Print();
@@ -512,13 +546,13 @@ bool hsfcEngine::CreateEngine(char* Script, hsfcGDLParamaters& Paramaters) {
 	this->StartClock = clock();
 	this->Grinder->Optimise();
 	this->StopClock = clock();
-	this->TimeLowSpeedRun = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
+	this->TimeLowSpeedRun = (float)(this->StopClock - this->StartClock) / (float)TICKS_PER_SECOND; 
 
 	// Optimise the Schema
 	this->StartClock = clock();
 	this->Grinder->Engine->OptimiseRules(Paramaters.OrderRules);
 	this->StopClock = clock();
-	this->TimeOptimise = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
+	this->TimeOptimise = (float)(this->StopClock - this->StartClock) / (float)TICKS_PER_SECOND; 
 
 	// Was this to calculate the Schema only
 	if (Paramaters.SchemaOnly) return true;
@@ -527,7 +561,7 @@ bool hsfcEngine::CreateEngine(char* Script, hsfcGDLParamaters& Paramaters) {
 	this->StartClock = clock();
 	this->Grinder->Engine->GrindRules();
 	this->StopClock = clock();
-	this->TimeGrind = (float)(this->StopClock - this->StartClock) / (float)CLOCKS_PER_SEC; 
+	this->TimeGrind = (float)(this->StopClock - this->StartClock) / (float)TICKS_PER_SECOND; 
 
 	// Calculate the reference size
 	this->ReferenceSize = 0;

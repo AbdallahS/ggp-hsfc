@@ -51,7 +51,7 @@ public:
 	int Read(char* Text);
 	void Terms(vector<hsfcTuple>& Term);
 	void Terms(int PredicateIndex, vector<hsfcGDLTerm>& Term);
-	int AsText(char* Text);
+	int AsText(char* Text, int Length);
 
 	hsfcGDLRelation* Relation;
 	int TermIndex;
@@ -76,13 +76,13 @@ public:
 	void FromGDLRelation(hsfcGDLRelation* Source);
 	int Read(char* Text);
 	void NormaliseTerms();
-	void FindZeroArity();
+	void FindArity();
 	void Terms(vector<hsfcTuple>& Term);
 	void Terms(vector<hsfcGDLTerm>& Term);
 	int Arity();
 	int PredicateIndex();
 	bool AddRelationDetail(vector<hsfcRelationDetail>& RelationDetail);
-	int AsText(char* Text);
+	int AsText(char* Text, int Length);
 
 	vector<hsfcGDLAtom*> Atom;
 	bool Not;
@@ -109,7 +109,7 @@ public:
 	void FromGDLRule(hsfcGDLRule* Source);
 	int Read(char* Text);
 	int Arity();
-	int AsText(char* Text);
+	int AsText(char* Text, int Length);
 
 	vector<hsfcGDLRelation*> Relation;
 

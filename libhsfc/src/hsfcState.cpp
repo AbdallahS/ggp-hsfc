@@ -6,7 +6,6 @@
 //=============================================================================
 #include "stdafx.h"
 #include "hsfcState.h"
-
 #include "hsfc_config.h"
 
 using namespace std;
@@ -74,25 +73,25 @@ void hsfcStateManager::SetSchema(hsfcSchema* Schema, int MaxRelationSize){
 	// Set the relation indexes
 	NoNextRelation = 0;
 	for (unsigned int i = 0; i < this->Schema->Relation.size(); i++) {
-		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "role|1")) {
+		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "role/1")) {
 			this->RoleRelationIndex = i;
 		}
-		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "terminal|0")) {
+		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "terminal/0")) {
 			this->TerminalRelationIndex = i;
 		}
-		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "goal|2")) {
+		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "goal/2")) {
 			this->GoalRelationIndex = i;
 		}
-		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "legal|2")) {
+		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "legal/2")) {
 			this->LegalRelationIndex = i;
 		}
-		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "does|2")) {
+		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "does/2")) {
 			this->DoesRelationIndex = i;
 		}
-		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "sees|2")) {
+		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "sees/2")) {
 			this->SeesRelationIndex = i;
 		}
-		if (this->Lexicon->PartialMatch(this->Schema->Relation[i]->PredicateIndex, "next>")) {
+		if (this->Lexicon->PartialMatch(this->Schema->Relation[i]->PredicateIndex, "next~")) {
 			this->NoNextRelation++;
 		}
 	}
@@ -103,7 +102,7 @@ void hsfcStateManager::SetSchema(hsfcSchema* Schema, int MaxRelationSize){
 	// Add the reference to the next relations
 	Index = 0;
 	for (unsigned int i = 0; i < this->Schema->Relation.size(); i++) {
-		if (this->Lexicon->PartialMatch(this->Schema->Relation[i]->PredicateIndex, "next>")) {
+		if (this->Lexicon->PartialMatch(this->Schema->Relation[i]->PredicateIndex, "next~")) {
 			NextRelationIndex[Index] = i;
 			Index++;
 		}
@@ -641,7 +640,7 @@ char* hsfcStateManager::StateAsText(hsfcState* State) {
 	}
 
 	// Allocate the memory
-	Text = new char[Length];
+	Text = new char[Length + 1];
 
 	// Do it for real
 	Length = sprintf(Text, "%d %d ", State->Round, State->CurrentStep);

@@ -54,6 +54,7 @@ public:
 	hsfcRuleRelationSchema** InputRelation;
 	hsfcRuleRelationSchema** ConditionRelation;
 	hsfcRuleRelationSchema** PreConditionRelation;
+	hsfcRuleSchema* RuleSchema;
 	bool LowSpeed;
 
 protected:
@@ -75,7 +76,6 @@ private:
 
 	hsfcLexicon* Lexicon;
 	hsfcStateManager* StateManager;
-	hsfcRuleSchema* RuleSchema;
 
 	int* Cursor;
 	hsfcBufferEntry* Buffer;

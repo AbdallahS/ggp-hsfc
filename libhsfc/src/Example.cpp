@@ -31,14 +31,19 @@ int main(int argc, char* argv[]) {
 	vector<hsfcLegalMove> DoesMove;
 	vector<int> GoalValue;
 	vector<int> SumGoalValue;
+	vector<int> Sum2GoalValue;
+	int SumMoves;
+	int Sum2Moves;
 	int ReturnCode;
 	vector<string> Role;
+	double Average;
+	double StdDev;
 
 	// Create the GDLManager
 	GDLManager = new hsfcGDLManager();
 
 	// Identify the GDL file; must be a fully qualified path and file name
-	GDLFileName = new string("J:\\HSFC\\Experiments\\DNF\\Published\\GDL\\tictactoe.gdl");
+	GDLFileName = new string("tictactoe.gdl");
 
 	// Set up the GDLManager paramaters
 	GDLParamaters.ReadGDLOnly = false;			// Validate the GDL without creating the schema
@@ -160,18 +165,39 @@ int main(int argc, char* argv[]) {
 
 	// Prepare the evaluation function
 	SumGoalValue.clear();
-	for (int i = 0; i < GDLManager->NumRoles; i++) SumGoalValue.push_back(0);
+	Sum2GoalValue.clear();
+	SumMoves = 0;
+	Sum2Moves = 0;
+	for (int i = 0; i < GDLManager->NumRoles; i++) {
+		SumGoalValue.push_back(0);
+		Sum2GoalValue.push_back(0);
+	}
 
-	// Perform 10 playouts from the search node and sum the goal values
-	for (int i = 0; i < 10; i++) {
+	// Perform 1000 playouts from the search node and sum the goal values
+	for (int i = 0; i < 1000; i++) {
 		GDLManager->CopyGameState(PlayOutGame, SearchNode);
 		GDLManager->PlayOut(PlayOutGame, GoalValue);
-		for (int i = 0; i < GDLManager->NumRoles; i++) SumGoalValue[i] += GoalValue[i];
+		for (int i = 0; i < GDLManager->NumRoles; i++) {
+			SumGoalValue[i] += GoalValue[i];
+			Sum2GoalValue[i] += (GoalValue[i] * GoalValue[i]);
+		}
+		SumMoves += PlayOutGame->Round;
+		Sum2Moves += (PlayOutGame->Round * PlayOutGame->Round);
 	}
 
 	// Report the average goal values
 	cout << endl << "Average Goal Values" << endl;
-	for (int i = 0; i < GDLManager->NumRoles; i++) cout << "Role" << i << ": " << SumGoalValue[i] / 10 << endl;
+	for (int i = 0; i < GDLManager->NumRoles; i++) {
+		Average = (double)SumGoalValue[i] / 1000.0;
+		cout << "Role" << i << ":   Average = " << Average;
+		StdDev = sqrt(((double)Sum2GoalValue[i] / 1000.0) - (Average * Average));
+		cout << " StdDev = " << StdDev << endl;
+	}
+	cout << endl << "Average Move Values" << endl;
+	Average = (double)SumMoves / 1000.0;
+	cout << "Move:   Average = " << Average;
+	StdDev = sqrt(((double)Sum2Moves / 1000.0) - (Average * Average));
+	cout << " StdDev = " << StdDev << endl;
 
 	// Clean up the objects
 	GDLManager->FreeGameState(GameFromText);

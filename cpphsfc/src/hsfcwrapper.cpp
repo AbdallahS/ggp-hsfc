@@ -202,7 +202,8 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
         if (usegadelac)
         {
             gadfile = bfs::unique_path(); 
-            RunGadelac(gdlfile, gadfile, " --oldhsfc");
+//            RunGadelac(gdlfile, gadfile, " --oldhsfc");
+            RunGadelac(gdlfile, gadfile, "");
             std::ofstream outfile;
             outfile.open(gadfile.c_str(), std::ios_base::app);
             outfile << ";;;; DOMAINS";
