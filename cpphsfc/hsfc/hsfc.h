@@ -212,6 +212,12 @@ public:
     template<typename Iterator>
     void play(Iterator begin, Iterator end);
 
+    
+    /*
+     * For examining the internal state 
+     */
+    const hsfcState& internal(){ return *state_; }
+
 private:
     friend class PortableState;
 
@@ -219,6 +225,15 @@ private:
     boost::shared_ptr<HSFCManager> manager_;  
 
     void initialize();
+
+
+    /*
+     * Internal format to return the legals in a structure that is easy
+     * to check if some move is legal.
+     */
+    void get_legals(boost::unordered_map<Player, boost::unordered_set<Move> >& lgls) const;
+    void throw_on_illegal_move(const PlayerMove& pm, 
+                               boost::unordered_map<Player, boost::unordered_set<Move> >& legals) const;
 };
 
 
@@ -292,11 +307,14 @@ void State::play(Iterator begin, Iterator end)
 {
     boost::unordered_set<int> ok;
     std::vector<hsfcLegalMove> lms;
-    
+
+    boost::unordered_map<Player, boost::unordered_set<Move> > lglmap;
+    get_legals(lglmap);
     if (this->isTerminal())
         throw HSFCValueError() << ErrorMsgInfo("Cannot play() on a terminal state");
     while (begin != end)
     {
+        throw_on_illegal_move(*begin, lglmap);
         if (begin->first.roleid_ != begin->second.move_.RoleIndex)
             throw HSFCValueError() << ErrorMsgInfo("Mismatched Player and Move");
         lms.push_back(begin->second.move_);
@@ -309,6 +327,8 @@ void State::play(Iterator begin, Iterator end)
 
     initialize();
 }  
+
+
 
 
 }; /* namespace HSFC */

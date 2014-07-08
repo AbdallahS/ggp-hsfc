@@ -202,3 +202,19 @@ BOOST_AUTO_TEST_CASE(playermoves_viewmovesbyplayer)
 
 
 
+/****************************************************************
+ * Test that the wrong move will throw an exception
+ ****************************************************************/
+
+BOOST_AUTO_TEST_CASE(playermoves_illegalplay)
+{
+    Game game(boost::filesystem::path("./tictactoe.gdl"));
+    State state(game);
+    std::vector<JointMove> jms = state.joints();
+    BOOST_CHECK(jms.size() > 0);
+    state.play(jms[0]);
+    BOOST_CHECK(!state.isTerminal());
+
+    // Playing the move again should throw an exception
+    BOOST_CHECK_THROW(state.play(jms[0]), HSFCValueError);
+}

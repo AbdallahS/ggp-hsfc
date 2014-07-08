@@ -410,5 +410,47 @@ void State::play(const JointMove& moves)
     this->play(moves.begin(), moves.end());
 }
 
+/***********************************************************************
+ * Internal format to return the legals in a structure that is easy
+ * to check if some move is legal.
+ ***********************************************************************/
+void State::get_legals(boost::unordered_map<Player, boost::unordered_set<Move> >& result) const
+{
+    typedef boost::unordered_map<Player, boost::unordered_set<Move> > tmp_t; 
+
+    result.clear();
+    std::vector<PlayerMove> legalMoves;
+    legals(std::back_inserter(legalMoves));
+
+    for(std::vector<PlayerMove>::iterator pm = legalMoves.begin(); pm != legalMoves.end(); pm++) {
+        tmp_t::iterator iter_moves(result.find(pm->first));
+        if(iter_moves == result.end()) {
+            std::pair<tmp_t::iterator, bool> ok = result.emplace(pm->first, boost::unordered_set<Move>());
+            ok.first->second.emplace(pm->second);
+        } else {
+            iter_moves->second.emplace(pm->second);
+        }
+    }
+}
+
+void State::throw_on_illegal_move(const PlayerMove& pm, 
+                                  boost::unordered_map<Player, boost::unordered_set<Move> >& legals) const
+{
+    typedef boost::unordered_map<Player, boost::unordered_set<Move> > tmp_t; 
+    const Player& p = pm.first;
+    const Move& m = pm.second;
+
+    tmp_t::const_iterator itp(legals.find(p));
+    if (itp == legals.end())
+    {
+        throw HSFCValueError() << ErrorMsgInfo("Illegal PlayerMove: unknown player");
+    }
+    boost::unordered_set<Move>::const_iterator itm(itp->second.find(m));
+    if (itm == itp->second.end())
+    {
+        throw HSFCValueError() << ErrorMsgInfo("Illegal PlayerMove: unknown move");
+    }
+}
+
 }; /* namespace HSFC */
 
