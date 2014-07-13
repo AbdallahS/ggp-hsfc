@@ -1,5 +1,6 @@
 #include <iterator>
 #include <sstream>
+#include <climits>
 #include <boost/functional/hash.hpp>
 #include <hsfc/hsfc.h>
 #include <hsfc/portable.h>
@@ -70,7 +71,7 @@ std::size_t hash_value(const PortableState& ps)
 /*****************************************************************************************
  * PortablePlayer
  *****************************************************************************************/
-PortablePlayer::PortablePlayer() : roleid_(0)
+PortablePlayer::PortablePlayer() : roleid_(UINT_MAX)
 { }
 
 PortablePlayer::PortablePlayer(const Player& player) : roleid_(player.roleid_)
@@ -115,7 +116,7 @@ std::size_t hash_value(const PortablePlayer& pp)
 /*****************************************************************************************
  * PortableMove
  *****************************************************************************************/
-PortableMove::PortableMove() : RoleIndex_(0), RelationIndex_(0), ID_(0)
+PortableMove::PortableMove() : RoleIndex_(-1), RelationIndex_(-1), ID_(-1)
 { }
 
 PortableMove::PortableMove(const Move& move) : 

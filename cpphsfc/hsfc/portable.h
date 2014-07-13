@@ -15,6 +15,7 @@
 #include <memory>
 #include <iterator>
 #include <algorithm>
+#include <stdint.h>
 #include <boost/assert.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -58,7 +59,6 @@ private:
     int round_;
     int currentstep_;
     std::vector<std::pair<int,int> > relationlist_;
-
     template<typename Archive>
     void serialize(Archive& ar, const unsigned int version);
 
@@ -82,6 +82,7 @@ void PortableState::serialize(Archive& ar, const unsigned int version)
 class PortablePlayer
 {
 public:
+    PortablePlayer();
     PortablePlayer(const Player& player);
     PortablePlayer(const PortablePlayer& other);
     PortablePlayer& operator=(const PortablePlayer& other);
@@ -96,6 +97,7 @@ private:
     friend class Player;
     friend class boost::serialization::access;
     
+/* PortablePlayer default constructor is now public!
     // NOTE: 1) Need to make PortablePlayerMove and PortablePlayerGoal friends
     //          to allow the deserialization of these objects to work.
     //          This is ugly and does in theory allow empty Portable objects to 
@@ -103,13 +105,14 @@ private:
     //       2) cannot be a friend of a typedef. I think this has changed in C++11.
     friend class std::pair<PortablePlayer, unsigned int>;
     friend class std::pair<const PortablePlayer, unsigned int>;
+    friend class std::pair<PortablePlayer, uint64_t>;
+    friend class std::pair<const PortablePlayer, uint64_t>;
 
     friend class std::pair<PortablePlayer, PortableMove>;
     friend class std::pair<const PortablePlayer, PortableMove>;
     friend class std::pair<PortablePlayer, const PortableMove>;
     friend class std::pair<const PortablePlayer, const PortableMove>;
-
-    PortablePlayer();
+*/
     template<typename Archive>
     void serialize(Archive& ar, const unsigned int version);
 
@@ -131,6 +134,7 @@ std::size_t hash_value(const PortablePlayer& pp); /* Can be used as a key in boo
 class PortableMove
 {
 public:
+    PortableMove();
     PortableMove(const Move& move);
     PortableMove(const PortableMove& other);
     PortableMove& operator=(const PortableMove& other);
@@ -145,6 +149,8 @@ private:
     friend class Move;
     friend class boost::serialization::access;
 
+/*
+  PortableMove default constructor is now public!
     // NOTE: 1) Need to make PortablePlayerMove a friend to allow the deserialization 
     //          of these objects to work. This is ugly and does in theory allow empty
     //          Portable objects to be created by a user (by way of the friend pair).
@@ -153,13 +159,12 @@ private:
     friend class std::pair<const PortablePlayer, PortableMove>;
     friend class std::pair<PortablePlayer, const PortableMove>;
     friend class std::pair<const PortablePlayer, const PortableMove>;
+*/
 
-
-    PortableMove();
     template<typename Archive>
     void serialize(Archive& ar, const unsigned int version);
 
-    unsigned int RoleIndex_;
+    int RoleIndex_;
     std::string Text_;
     int RelationIndex_;
     int ID_;

@@ -11,9 +11,9 @@
 namespace HSFC
 {
 
-/*****************************************************************************************
+/***************************************************************************************
  * Implementation of HSFCException
- *****************************************************************************************/
+ ***************************************************************************************/
 
 char const* HSFCException::what() const throw ()
 {
@@ -35,7 +35,11 @@ Player::Player(const Player& other): manager_(other.manager_), roleid_(other.rol
 Player::Player(Game& game, const PortablePlayer& pp) : 
     manager_(game.manager_), roleid_(pp.roleid_)
 {
-    // Note: should probably check that the roleid is valid for this game.
+    // Check that it is a valid roleid
+    if (pp.roleid_ >= manager_->NumPlayers())
+        throw HSFCValueError() << 
+            ErrorMsgInfo("Cannot create a Player from unitialised PortablePlayer");
+
 }
 
 std::string Player::tostring() const
@@ -98,11 +102,16 @@ Move::Move(const Move& other): manager_(other.manager_), move_(other.move_)
 
 Move::Move(Game& game, const PortableMove& pm) : manager_(game.manager_)
 {
+    // Some validity checks of the PortableMove object
+    if (pm.RoleIndex_ < 0 || pm.RelationIndex_ < 0 ||
+        pm.ID_ < 0 || pm.Text_.empty())
+        throw HSFCValueError() << 
+            ErrorMsgInfo("Cannot create a Move from an uintialised PortableMove");
+
     move_.RoleIndex = pm.RoleIndex_;
     strcpy(move_.Text, pm.Text_.c_str());
     move_.Tuple.RelationIndex = pm.RelationIndex_;
     move_.Tuple.ID = pm.ID_;
-    // Note: should probably check that all the values are legit.
 }
 
 std::string Move::tostring() const
@@ -309,6 +318,10 @@ State::State(Game& game): manager_(game.manager_), state_(NULL)
 
 State::State(Game& game, const PortableState& ps): manager_(game.manager_), state_(NULL)
 {
+    if (ps.relationlist_.empty())
+        throw HSFCValueError() << 
+            ErrorMsgInfo("Cannot create a State from an empty PortableState");
+
     state_ = manager_->CreateGameState();
     manager_->SetInitialGameState(*state_);
     manager_->SetStateData(ps.relationlist_, ps.round_, ps.currentstep_, *state_);
