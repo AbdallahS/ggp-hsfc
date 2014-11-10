@@ -61,7 +61,7 @@ std::ostream& operator<<(std::ostream& os, const timespec &t)
 void run(const std::string& gdlfilename, unsigned int round_length)
 {
     std::cerr << "Loading GDL: " << gdlfilename << std::endl;
-    HSFC::Game game(boost::filesystem::path(gdlfilename.c_str()), false);
+    HSFC::Game game(boost::filesystem::path(gdlfilename.c_str()), true);
     std::cerr << "Play clock: " << round_length << " seconds" << std::endl;
     HSFC::State base_state(game);
     HSFC::JointGoal goals;
