@@ -351,7 +351,11 @@ State& State::operator=(const State& other)
 State::~State()
 {
     if (state_ != NULL)
+    {
         manager_->FreeGameState(state_);
+        delete state_;
+        state_ = NULL;
+    }
 }
 
 bool State::isTerminal() const

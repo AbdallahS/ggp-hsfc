@@ -78,8 +78,10 @@ void run(const std::string& gdlfilename, unsigned int round_length)
         while (!done)
         {
             HSFC::State state(base_state);
+//            base_state.legals();
             goals = state.playout();
             nummoves += state.internal().Round;
+
             ++numplayouts;
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
             timediff = timespec_diff(time1, time2);
