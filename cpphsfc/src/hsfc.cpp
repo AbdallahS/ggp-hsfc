@@ -353,6 +353,12 @@ State::~State()
     if (state_ != NULL)
     {
         manager_->FreeGameState(state_);
+
+        // Note: I don't know if it was intended that FreeGameState()
+        // delete's the state_ object itself rather than just internal
+        // pointers. In any case handling it here so I avoid modifying
+        // the libhsfc code.
+
         delete state_;
         state_ = NULL;
     }
