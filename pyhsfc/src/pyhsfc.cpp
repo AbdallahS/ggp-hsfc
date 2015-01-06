@@ -1,5 +1,3 @@
-
-
 #include <sstream>
 #include <list>
 #include <iterator>
@@ -27,11 +25,11 @@ namespace py = boost::python;
 
 /*****************************************************************************************
  * Support for passing on exceptions
- * Note: because HSFCException is derived from std::exception, trying to provide 
+ * Note: because HSFCException is derived from std::exception, trying to provide
  * separate translate() functions for each exception type doesn't work. The one for
  * std::exception was being triggered even when a more specific one existed. So instead
- * having a single translate function and use dynamic casting to tell which subclass 
- * we are dealing with. 
+ * having a single translate function and use dynamic casting to tell which subclass
+ * we are dealing with.
  *****************************************************************************************/
 
 struct PyHSFCException
@@ -46,7 +44,7 @@ void PyHSFCException::translate(const std::exception& e)
     {
         const HSFCValueError& t = dynamic_cast<const HSFCValueError&>(e);
         PyErr_SetString(PyExc_ValueError, e.what());
-        return;        
+        return;
     }
     catch (const std::bad_cast& e) { }
 
@@ -57,7 +55,7 @@ void PyHSFCException::translate(const std::exception& e)
         return;
     }
     catch (const std::bad_cast& e) { }
-    
+
     PyErr_SetString(PyExc_RuntimeError, e.what());
 }
 
@@ -69,10 +67,10 @@ void PyHSFCException::translate(const std::exception& e)
 struct PyPlayer
 {
     /* docstrings */
-    static const char* ds_class; 
+    static const char* ds_class;
 };
 
-const char* PyPlayer::ds_class = 
+const char* PyPlayer::ds_class =
 "Player class represents individual GDL roles. Instances of the Player class\n\
 are not created explicitly but are instead created through queries to Game\n\
 and State objects.\n\n\
@@ -85,10 +83,10 @@ Use the str(object) function to return a printable name of the player.";
 struct PyMove
 {
     /* docstrings */
-    static const char* ds_class;     
+    static const char* ds_class;
 };
 
-const char* PyMove::ds_class = 
+const char* PyMove::ds_class =
 "Move class represents an individual GDL action. Instances of the Move class are\n\
 not created explicitly but are instead created through queries to State objects.\n\n\
 Use the str(object) function to return a GDL formatted string of the action.";
@@ -103,40 +101,40 @@ class PyGame : public Game
     friend class PyState;
 public:
     /* docstrings */
-    static const char* ds_class; 
-    static const char* ds_players; 
+    static const char* ds_class;
+    static const char* ds_players;
     static const char* ds_num_players;
 
     /* A constructor substitute to work with python keyword arguments */
-    PyGame(const std::string& gdldescription, 
-           const std::string& gdlfilename, 
+    PyGame(const std::string& gdldescription,
+           const std::string& gdlfilename,
            bool use_gadelac);
 
     /* Returns the list of players */
     py::list players();
 };
 
-const char* PyGame::ds_class = 
+const char* PyGame::ds_class =
 "Game class represents GDL game instance. This is a finite state machine with each state\n\
 being a valid game state and joint moves the transitions between states.";
 
 const char* PyGame::ds_players = "Returns a list of the Player objects";
 
-const char* PyGame::ds_num_players = 
+const char* PyGame::ds_num_players =
 "Returns the number of players. This will be a little faster than returning the list of\n\
 players and then finding the length of the list.";
 
-PyGame::PyGame(const std::string& gdldescription, 
-               const std::string& gdlfilename, 
+PyGame::PyGame(const std::string& gdldescription,
+               const std::string& gdlfilename,
                bool usegadelac)
 {
     if (gdldescription.empty() && gdlfilename.empty())
-        throw HSFCValueError() 
-            << ErrorMsgInfo("No GDL file or description specified"); 
+        throw HSFCValueError()
+            << ErrorMsgInfo("No GDL file or description specified");
     if (!gdldescription.empty() && !gdlfilename.empty())
-        throw HSFCValueError() 
+        throw HSFCValueError()
             << ErrorMsgInfo("Cannot speficy both a GDL file and description");
-    if (!gdldescription.empty())        
+    if (!gdldescription.empty())
         Game::initialise(gdldescription, usegadelac);
     else
         Game::initialise(boost::filesystem::path(gdlfilename), usegadelac);
@@ -162,13 +160,13 @@ class PyState : public State
     friend class PyGame;
 public:
     /* docstrings */
-    static const char* ds_class; 
-    static const char* ds_is_terminal; 
-    static const char* ds_legals; 
-    static const char* ds_joints; 
-    static const char* ds_play; 
-    static const char* ds_playout; 
-    static const char* ds_goals; 
+    static const char* ds_class;
+    static const char* ds_is_terminal;
+    static const char* ds_legals;
+    static const char* ds_joints;
+    static const char* ds_play;
+    static const char* ds_playout;
+    static const char* ds_goals;
 
     py::dict legals();
     py::list joints();
@@ -179,25 +177,25 @@ public:
 
     PyState(PyGame& game);
     PyState(PyGame& game, const PortableState& ps);
-	PyState(const PyState& other);
+    PyState(const PyState& other);
 };
 
-const char* PyState::ds_class = 
+const char* PyState::ds_class =
 "State class represents a GDL game state. States are Game specific and are copyable.";
 
-const char* PyState::ds_is_terminal = 
+const char* PyState::ds_is_terminal =
 "Returns true if the state is a terminal game state.";
 
-const char* PyState::ds_legals = 
+const char* PyState::ds_legals =
 "Returns the dict of legal moves matching players to the list of their moves for a non-terminal state.";
 
-const char* PyState::ds_joints = 
+const char* PyState::ds_joints =
 "Return a list of joint moves, where each joint move is a dict from players to moves.";
 
-const char* PyState::ds_play = 
+const char* PyState::ds_play =
 "Execute a joint move of a move per player. Performs a transition to the next game state.";
 
-const char* PyState::ds_playout = 
+const char* PyState::ds_playout =
 "Perform a random playout to termination and return a dict of the goal scores for each player for the terminal state.";
 
 const char* PyState::ds_goals = "Returns the dict of the goal scores for each player for a terminal state.";
@@ -224,7 +222,7 @@ py::dict PyState::legals()
         {
             pylist.append(mv);
         }
-        pydict[pmvs.first] = pylist;        
+        pydict[pmvs.first] = pylist;
     }
     return pydict;
 }
@@ -255,7 +253,7 @@ py::dict PyState::goals()
     typedef std::pair<Player, unsigned int > pg_t;
     BOOST_FOREACH(const pg_t& pg, pgs)
     {
-        pydict[pg.first] = pg.second;        
+        pydict[pg.first] = pg.second;
     }
     return pydict;
 }
@@ -267,7 +265,7 @@ py::dict PyState::playout()
     typedef std::pair<Player, unsigned int > pg_t;
     BOOST_FOREACH(const pg_t& pg, pgs)
     {
-        pydict[pg.first] = pg.second;        
+        pydict[pg.first] = pg.second;
     }
     return pydict;
 }
@@ -293,17 +291,26 @@ void PyState::play2(const boost::python::list& mylist)
 
 /*****************************************************************************************
  * Support for python PortableState.
+ *
+ * BUG FIX 20150106: Need to define operator== and operator!= for
+ * PyPortableState. Trying to set the python __eq__ to
+ * PortableState::operator== doesn't seem to work. Maybe something to
+ * do with not being able to resolve the operator correctly without a
+ * cast and therefore therefore generating a default operator==.
  *****************************************************************************************/
 class PyPortableState : public PortableState
 {
 public:
    /* docstrings */
-    static const char* ds_class; 
+    static const char* ds_class;
 
     PyPortableState(const PyState& state);
+
+    bool operator==(const PyPortableState& other) const;
+    bool operator!=(const PyPortableState& other) const;
 };
 
-const char* PyPortableState::ds_class = 
+const char* PyPortableState::ds_class =
 "PortableState is a immutable representation of a State. Because it is immutable it is\n\
 hashable. Note: in C++ the PortableState is portable across multiple Game instances\n\
 (provided the instances were loaded with the identical GDL). These instances may be\n\
@@ -314,6 +321,21 @@ in a hashable form.";
 
 PyPortableState::PyPortableState(const PyState& state) : PortableState((const State&)state)
 { }
+
+bool PyPortableState::operator==(const PyPortableState& other) const
+{
+    const PortableState& pps1 = static_cast<const PortableState&>(*this);
+    const PortableState& pps2 = static_cast<const PortableState&>(other);
+    return pps1 == pps2;
+}
+
+bool PyPortableState::operator!=(const PyPortableState& other) const
+{
+    const PortableState& pps1 = static_cast<const PortableState&>(*this);
+    const PortableState& pps2 = static_cast<const PortableState&>(other);
+    return pps1 != pps2;
+}
+
 
 /*****************************************************************************************
  * Setup the python module
@@ -348,7 +370,7 @@ BOOST_PYTHON_MODULE(pyhsfc)
         ;
 
     py::class_<PyGame,boost::noncopyable>
-        ("Game", PyGame::ds_class, 
+        ("Game", PyGame::ds_class,
          py::init<const std::string&, const std::string&, bool>(
              (py::arg("gdl")=std::string(), py::arg("file")=std::string(), py::arg("gadelac")=false)))
         .def("players", &PyGame::players, PyGame::ds_players)
@@ -370,7 +392,7 @@ BOOST_PYTHON_MODULE(pyhsfc)
     py::class_<PyPortableState>("PortableState", PyPortableState::ds_class,
                               py::init<const PyState&>())
         .def("__hash__", &PortableState::hash_value)
-        .def("__eq__", &PortableState::operator==)
-        .def("__ne__", &PortableState::operator!=)
+        .def("__eq__", &PyPortableState::operator==)
+        .def("__ne__", &PyPortableState::operator!=)
         ;
 }

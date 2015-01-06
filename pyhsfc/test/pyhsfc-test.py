@@ -4,10 +4,10 @@ import unittest
 from pyhsfc import *
 
 class TictactoeTest(unittest.TestCase):
-    
+
     #-----------------------------
     # Run a playout from any (non-terminal) tictactoe
-    # game state, and ensure that someone is either a 
+    # game state, and ensure that someone is either a
     # winner or it is a 50-50 draw.
     #-----------------------------
     def playout_check(self, state, xplayer, oplayer):
@@ -39,7 +39,7 @@ class TictactoeTest(unittest.TestCase):
 
     def atest_load_gdldescription(self):
         gdldescription="""
-;;;; RULES  
+;;;; RULES
 
 (role xplayer)
 (role oplayer)
@@ -81,7 +81,7 @@ class TictactoeTest(unittest.TestCase):
 (<= terminal (line o))
 (<= terminal (not open))
 
-;;;; STRATS 
+;;;; STRATS
 
 (strat does 0)
 (strat goal 1)
@@ -99,7 +99,7 @@ class TictactoeTest(unittest.TestCase):
 (strat open 0)
 (strat row 0)
 
-;;;; PATHS  
+;;;; PATHS
 
 (arg does 0 oplayer)
 (arg does 0 xplayer)
@@ -271,20 +271,61 @@ class TictactoeTest(unittest.TestCase):
             step = step - 1
 
         # game has terminated so check for a valid result
-	# Tictactoe will terminate early only if there is a winner
-	# so test for this and also that a draw is 50/50.
+    # Tictactoe will terminate early only if there is a winner
+    # so test for this and also that a draw is 50/50.
         self.assertTrue(step < 5)
         results = state.goals()
         self.assertEqual(len(results), 2)
         if step > 1:
-            self.assertTrue(((results[xplayer] == 100) and (results[oplayer] == 0)) or 
+            self.assertTrue(((results[xplayer] == 100) and (results[oplayer] == 0)) or
                             ((results[oplayer] == 100) and (results[xplayer] == 0)))
         else:
-            self.assertTrue(((results[xplayer] == 100) and (results[oplayer] == 0)) or 
+            self.assertTrue(((results[xplayer] == 100) and (results[oplayer] == 0)) or
                             ((results[oplayer] == 100) and (results[xplayer] == 0)) or
                             ((results[xplayer] == 50) and (results[oplayer] == 50)))
 
 
+
+    #-----------------------------
+    # Some PortableState tests on tictactoe
+    #-----------------------------
+    def find_jm(self, state, player, x, y):
+        return next(jm for jm in state.joints() if str(jm[player]) == "(mark {} {})".format(x,y))
+
+    def test_tictactoe(self):
+        game = Game(file="./tictactoe.gdl")
+        self.assertEqual(len(game.players()), 2)
+        self.assertEqual(len(game.players()), game.num_players())
+
+        xplayer = next(r for r in game.players() if str(r) == "xplayer")
+        oplayer = next(r for r in game.players() if str(r) == "oplayer")
+        state1 = State(game)
+        state2 = State(game)
+        state3 = State(game)
+
+        state1.play(self.find_jm(state1, xplayer, 1, 1))
+        state1.play(self.find_jm(state1, oplayer, 3, 3))
+        state1.play(self.find_jm(state1, xplayer, 3, 1))
+        state1.play(self.find_jm(state1, oplayer, 1, 3))
+
+        state2.play(self.find_jm(state2, xplayer, 3, 1))
+        state2.play(self.find_jm(state2, oplayer, 1, 3))
+        state2.play(self.find_jm(state2, xplayer, 1, 1))
+        state2.play(self.find_jm(state2, oplayer, 3, 3))
+
+        state3.play(self.find_jm(state3, xplayer, 3, 1))
+        state3.play(self.find_jm(state3, oplayer, 1, 3))
+        state3.play(self.find_jm(state3, xplayer, 1, 1))
+
+        pstate1 = PortableState(state1)
+        pstate2 = PortableState(state2)
+        pstate3 = PortableState(state3)
+
+        self.assertEqual(pstate1.__hash__(), pstate2.__hash__())
+        self.assertTrue(pstate1 == pstate2)
+        self.assertTrue(pstate1 != pstate3)
+        self.assertFalse(pstate1 == pstate3)
+        self.assertFalse(pstate1 != pstate2)
 
 
 #-----------------------------
