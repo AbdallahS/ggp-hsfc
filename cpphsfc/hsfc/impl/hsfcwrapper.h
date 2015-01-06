@@ -29,13 +29,13 @@ private:
 
     // Because the hsfcGDLManager doesn't provide an easy way to get
     // the role names we need to jump through some hoops. Running
-    // PopulatePlayerNamesFromLegalMoves() is also important because 
+    // PopulatePlayerNamesFromLegalMoves() is also important because
     // the internals are not properly initialised until a state
     // has been created.
     std::vector<std::string> playernames_;
     void PopulatePlayerNamesFromLegalMoves();
 
-    void RunGadelac(const boost::filesystem::path& infile, 
+    void RunGadelac(const boost::filesystem::path& infile,
                     const boost::filesystem::path& outfile,
                     const std::string& extra_options = std::string());
 
@@ -47,26 +47,26 @@ public:
     void FreeGameState(hsfcState* GameState);
     void CopyGameState(hsfcState& Destination, const hsfcState& Source);
     void SetInitialGameState(hsfcState& GameState);
-    void GetLegalMoves(const hsfcState& GameState, 
+    void GetLegalMoves(const hsfcState& GameState,
                        std::vector<hsfcLegalMove>& LegalMove) const;
     void DoMove(hsfcState& GameState, const std::vector<hsfcLegalMove>& LegalMove);
     bool IsTerminal(const hsfcState& GameState) const;
     void GetGoalValues(const hsfcState& GameState, std::vector<int>& GoalValue) const;
     void PlayOut(hsfcState& GameState, std::vector<int>& GoalValue);
-    void PrintState(const hsfcState& GameState) const;
 
     /* Additional functions - note: capitalised first letters for class consistency. */
-    unsigned int NumPlayers() const;  
+    unsigned int NumPlayers() const;
     std::ostream& PrintPlayer(std::ostream& os, unsigned int roleid) const;
-    std::ostream& PrintMove(std::ostream& os, const hsfcLegalMove& legalmove) const;  
+    std::ostream& PrintMove(std::ostream& os, const hsfcLegalMove& legalmove) const;
+    std::ostream& PrintState(std::ostream& os, const hsfcState& GameState) const;
 
     // NOTE: the change of behaviour of the Initialise function compared to the underlying
-    // HSFC. Passing a string is now assumed to be a GDL description. To pass a filename 
+    // HSFC. Passing a string is now assumed to be a GDL description. To pass a filename
     // use boost::filesystem::path.
-    void Initialise(const std::string& gdldescription, 
+    void Initialise(const std::string& gdldescription,
                     const hsfcGDLParamaters& Paramaters,
                     bool usegadelac);
-    void Initialise(const boost::filesystem::path& gdlfilename, 
+    void Initialise(const boost::filesystem::path& gdlfilename,
                     const hsfcGDLParamaters& Paramaters,
                     bool usegadelac);
 
@@ -74,12 +74,12 @@ public:
     /*******************************************************************************
      * A semi-portable representation of a game state. Should be portable across any
      * HSFC instance that is loaded with the exact same GDL file.
-     *******************************************************************************/  
+     *******************************************************************************/
 
-    void GetStateData(const hsfcState& state, std::vector<std::pair<int,int> >& relationlist, 
+    void GetStateData(const hsfcState& state, std::vector<std::pair<int,int> >& relationlist,
                       int& round, int& currentstep) const;
-  
-    void SetStateData(const std::vector<std::pair<int,int> >& relationlist, int round, 
+
+    void SetStateData(const std::vector<std::pair<int,int> >& relationlist, int round,
                       int currentstep, hsfcState& state);
 };
 

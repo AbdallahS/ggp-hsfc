@@ -12,6 +12,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <set>
 #include <memory>
 #include <iterator>
 #include <algorithm>
@@ -24,6 +25,7 @@
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/map.hpp>
+#include <boost/serialization/set.hpp>
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/access.hpp>
 
@@ -58,7 +60,7 @@ private:
 
     int round_;
     int currentstep_;
-    std::vector<std::pair<int,int> > relationlist_;
+    std::set<std::pair<int,int> > relationset_;
     template<typename Archive>
     void serialize(Archive& ar, const unsigned int version);
 
@@ -71,7 +73,7 @@ void PortableState::serialize(Archive& ar, const unsigned int version)
 {
     ar & round_;
     ar & currentstep_;
-    ar & relationlist_;
+    ar & relationset_;
 }
 
 
@@ -86,7 +88,7 @@ public:
     PortablePlayer(const Player& player);
     PortablePlayer(const PortablePlayer& other);
     PortablePlayer& operator=(const PortablePlayer& other);
-    
+
     bool operator==(const PortablePlayer& other) const;
     bool operator!=(const PortablePlayer& other) const;
     bool operator<(const PortablePlayer& other) const;
@@ -96,11 +98,11 @@ public:
 private:
     friend class Player;
     friend class boost::serialization::access;
-    
+
 /* PortablePlayer default constructor is now public!
     // NOTE: 1) Need to make PortablePlayerMove and PortablePlayerGoal friends
     //          to allow the deserialization of these objects to work.
-    //          This is ugly and does in theory allow empty Portable objects to 
+    //          This is ugly and does in theory allow empty Portable objects to
     //          be created by a user (by way of the friend pair).
     //       2) cannot be a friend of a typedef. I think this has changed in C++11.
     friend class std::pair<PortablePlayer, unsigned int>;
@@ -138,7 +140,7 @@ public:
     PortableMove(const Move& move);
     PortableMove(const PortableMove& other);
     PortableMove& operator=(const PortableMove& other);
-    
+
     bool operator==(const PortableMove& other) const;
     bool operator!=(const PortableMove& other) const;
     bool operator<(const PortableMove& other) const;
@@ -151,7 +153,7 @@ private:
 
 /*
   PortableMove default constructor is now public!
-    // NOTE: 1) Need to make PortablePlayerMove a friend to allow the deserialization 
+    // NOTE: 1) Need to make PortablePlayerMove a friend to allow the deserialization
     //          of these objects to work. This is ugly and does in theory allow empty
     //          Portable objects to be created by a user (by way of the friend pair).
     //       2) cannot be a friend of a typedef. I think this has changed in C++11.
@@ -187,25 +189,25 @@ std::size_t hash_value(const PortableMove& pm); /* Can be used as a key in boost
  *
  *     Game game(<some_game>);
  *     std::vector<PortablePlayerMove> ppmoves;
- * 
+ *
  *     ....   // Assign to ppmoves;
  *
  *     std::vector<PlayerMove> pmoves;
- *     std::transform(ppmoves.begin(), ppmoves.end(), 
+ *     std::transform(ppmoves.begin(), ppmoves.end(),
  *                    std::back_inserter(pmoves), FromPortable(game));
  *
  * To convert in the opposite direction use ToPortable(). This is only strictly necessary
  * necessary for PortableJointMove and PortableJointGoal conversion, since in the other
- * cases the std::copy could be used. However, these other functions have been defined for 
+ * cases the std::copy could be used. However, these other functions have been defined for
  * conversion to all portable types for simplicity/completeness.
- * 
+ *
  *     std::transform(pmoves.begin(), pmoves.end(), std::back_inserter(ppmoves), ToPortable());
  *
- * NOTE: I think the value_type for PortableJointMove is: 
- *       std::pair<const PortablePlayer,PortableMove> This seems to be making conversion for 
+ * NOTE: I think the value_type for PortableJointMove is:
+ *       std::pair<const PortablePlayer,PortableMove> This seems to be making conversion for
  *       PortablePlayerMove (which is std::pair<PortablePlayer,PortableMove>) ambiguous. So
  *      explicitly add conversions for this. Doing the same for PortableJointGoal as well.
- * 
+ *
  *****************************************************************************************/
 
 struct FromPortable
@@ -222,7 +224,7 @@ public:
     Player operator()(const PortablePlayer& pp);
     Move operator()(const PortableMove& pm);
     State operator()(const PortableState& ps);
-    
+
 private:
     Game& game_;
 };
@@ -280,7 +282,7 @@ public:
     ToPortable(Game& game);
 
     PortableJointMove operator()(const JointMove& jm);
-    PortableJointGoal operator()(const JointGoal& jg);    
+    PortableJointGoal operator()(const JointGoal& jg);
     PortablePlayerMove operator()(const PlayerMove& ppm);
     PortablePlayerGoal operator()(const PlayerGoal& ppg);
     PortablePlayer operator()(const Player& pp);

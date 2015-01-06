@@ -36,5 +36,8 @@ target_link_libraries(simple_playout_from_root  -lcpphsfc ${Boost_LIBRARIES})
 add_executable(playout_fixed_time playout_fixed_time.cpp)
 target_link_libraries(playout_fixed_time  -lcpphsfc ${Boost_LIBRARIES})
 
+add_executable(playout_hsfc_size playout_hsfc_size.cpp)
+target_link_libraries(playout_hsfc_size  -lcpphsfc ${Boost_LIBRARIES})
+
 add_executable(play_to_termination play_to_termination.cpp)
 target_link_libraries(play_to_termination  -lcpphsfc ${Boost_LIBRARIES})

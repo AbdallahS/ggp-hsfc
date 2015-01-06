@@ -17,19 +17,22 @@ PortableState::PortableState() : round_(0), currentstep_(0)
 
 PortableState::PortableState(const State& state)
 {
-    state.manager_->GetStateData(*state.state_, relationlist_, round_, currentstep_);
+    std::vector<std::pair<int,int> > relationlist;
+    state.manager_->GetStateData(*state.state_, relationlist, round_, currentstep_);
+    std::copy(relationlist.begin(), relationlist.end(),
+              std::inserter(relationset_,relationset_.end()));
 }
 
 PortableState::PortableState(const PortableState& other) :
 round_(other.round_), currentstep_(other.currentstep_),
-relationlist_(other.relationlist_)
+relationset_(other.relationset_)
 { }
 
 PortableState& PortableState::operator=(const PortableState& other)
 {
     round_ = other.round_;
     currentstep_ = other.currentstep_;
-    relationlist_ = other.relationlist_;
+    relationset_ = other.relationset_;
     return *this;
 }
 
@@ -37,29 +40,27 @@ PortableState& PortableState::operator=(const PortableState& other)
 bool PortableState::operator==(const PortableState& other) const
 {
     return (round_ == other.round_ && currentstep_ == other.currentstep_ &&
-            relationlist_ == other.relationlist_);
+            relationset_ == other.relationset_);
 }
 
 bool PortableState::operator!=(const PortableState& other) const
 {
-    return (round_ != other.round_ || currentstep_ != other.currentstep_ ||
-            relationlist_ != other.relationlist_);
+    return !(*this == other);
 }
 
 bool PortableState::operator<(const PortableState& other) const
 {
     if (round_ != other.round_) return round_ < other.round_;
     if (currentstep_ != other.currentstep_) return currentstep_ < other.currentstep_;
-    return relationlist_ < other.relationlist_;
+    return relationset_ < other.relationset_;
 }
-
 
 std::size_t PortableState::hash_value() const
 {
     size_t seed = 0;
     boost::hash_combine(seed, round_);
     boost::hash_combine(seed, currentstep_);
-    boost::hash_combine(seed, relationlist_);
+    boost::hash_combine(seed, relationset_);
     return seed;
 }
 
@@ -119,12 +120,12 @@ std::size_t hash_value(const PortablePlayer& pp)
 PortableMove::PortableMove() : RoleIndex_(-1), RelationIndex_(-1), ID_(-1)
 { }
 
-PortableMove::PortableMove(const Move& move) : 
-    RoleIndex_(move.move_.RoleIndex), Text_(move.move_.Text), 
+PortableMove::PortableMove(const Move& move) :
+    RoleIndex_(move.move_.RoleIndex), Text_(move.move_.Text),
     RelationIndex_(move.move_.Tuple.RelationIndex), ID_(move.move_.Tuple.ID)
 { }
 
-PortableMove::PortableMove(const PortableMove& other) : 
+PortableMove::PortableMove(const PortableMove& other) :
     RoleIndex_(other.RoleIndex_), Text_(other.Text_),
     RelationIndex_(other.RelationIndex_), ID_(other.ID_)
 { }
@@ -164,7 +165,7 @@ std::size_t PortableMove::hash_value() const
     boost::hash_combine(seed, RoleIndex_);
     boost::hash_combine(seed, RelationIndex_);
     boost::hash_combine(seed, ID_);
-    boost::hash_combine(seed, Text_);   
+    boost::hash_combine(seed, Text_);
     return seed;
 }
 
@@ -174,4 +175,3 @@ std::size_t hash_value(const PortableMove& pm)
 }
 
 }; /* namespace HSFC */
-

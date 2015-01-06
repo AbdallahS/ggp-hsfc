@@ -43,7 +43,7 @@ PlayerMove pick_first(const std::vector<PlayerMove> moves, const std::string& pl
     BOOST_CHECK(false);
 }
 
-// Return the player 
+// Return the player
 Player get_player(const Game& game, const std::string& playername)
 {
   std::vector<Player> players = game.players();
@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE(send_state_across_game2)
     PortableState pstate1(state1);
     PortableState pstate1b(state1b);
     State state2(game1, pstate1);
-    
+
     BOOST_CHECK(state1.isTerminal() == state2.isTerminal());
     BOOST_CHECK(pstate1 == pstate1b);
 
@@ -151,26 +151,26 @@ BOOST_AUTO_TEST_CASE(send_players_across_games)
     boost::unordered_set<std::string> playernamest;
 
     // Setup the games and get the player and player names.
-    players1 = game1.players();    
-    players2 = game2.players();    
+    players1 = game1.players();
+    players2 = game2.players();
     BOOST_CHECK_EQUAL(players1.size(), players2.size());
     BOOST_FOREACH(const Player& p, players1)
     {
         playernames1.insert(p.tostring());
-    }   
+    }
     BOOST_FOREACH(const Player& p, players2)
     {
         playernames2.insert(p.tostring());
-    }   
+    }
     BOOST_CHECK(playernames1 == playernames2);
 
-    // Now do the important stuff. 
+    // Now do the important stuff.
     // Serialize a vector of PortableStates
-    std::copy(players1.begin(), players1.end(), 
+    std::copy(players1.begin(), players1.end(),
               std::inserter(pplayers1, pplayers1.begin()));
 
     BOOST_CHECK_EQUAL(players1.size(), pplayers1.size());
-    
+
     std::ostringstream oserialstream;
     boost::archive::text_oarchive oa(oserialstream);
     oa << pplayers1;
@@ -182,7 +182,7 @@ BOOST_AUTO_TEST_CASE(send_players_across_games)
 
     // Deserialize vector of PortableStates
 
-    std::transform(pplayerst.begin(), pplayerst.end(), 
+    std::transform(pplayerst.begin(), pplayerst.end(),
                    std::inserter(playerst, playerst.begin()),
                    FromPortable(game2));
 
@@ -191,7 +191,7 @@ BOOST_AUTO_TEST_CASE(send_players_across_games)
     BOOST_FOREACH(const Player& p, playerst)
     {
         playernamest.insert(p.tostring());
-    }   
+    }
 
     BOOST_CHECK(playernames2 == playernamest);
 }
@@ -225,15 +225,15 @@ BOOST_AUTO_TEST_CASE(send_moves_across_games)
     {
         moves1.push_back(pm.second);
         movenames1.insert(pm.second.tostring());
-    }   
+    }
     BOOST_FOREACH(const PlayerMove& pm, playermoves2)
     {
         movenames2.insert(pm.second.tostring());
-    }   
+    }
     BOOST_CHECK(movenames1 == movenames2);
 
     // Serialize a vector of portables
-    std::copy(moves1.begin(), moves1.end(), 
+    std::copy(moves1.begin(), moves1.end(),
               std::inserter(pmoves1, pmoves1.begin()));
     BOOST_CHECK_EQUAL(moves1.size(), pmoves1.size());
 
@@ -248,7 +248,7 @@ BOOST_AUTO_TEST_CASE(send_moves_across_games)
 
     // Deserialize vector of PortableStates
     std::transform(pmoves2.begin(), pmoves2.end(),
-                   std::inserter(moves2, moves2.begin()), 
+                   std::inserter(moves2, moves2.begin()),
                    FromPortable(game2));
 
     BOOST_CHECK_EQUAL(pmoves2.size(), moves2.size());
@@ -256,7 +256,7 @@ BOOST_AUTO_TEST_CASE(send_moves_across_games)
     BOOST_FOREACH(const Move& p, moves2)
     {
         movenamest.insert(p.tostring());
-    }   
+    }
 
     BOOST_CHECK(movenamest == movenames2);
 }
@@ -283,9 +283,9 @@ BOOST_AUTO_TEST_CASE(send_playermoves_across_games)
     state1.legals(std::back_inserter(playermoves1));
     state2.legals(std::back_inserter(playermoves2));
 
-    std::copy(playermoves1.begin(), playermoves1.end(), 
+    std::copy(playermoves1.begin(), playermoves1.end(),
               std::inserter(pplayermoves1, pplayermoves1.begin()));
-    std::copy(playermoves2.begin(), playermoves2.end(), 
+    std::copy(playermoves2.begin(), playermoves2.end(),
               std::inserter(pplayermoves2, pplayermoves2.begin()));
 
     BOOST_CHECK_EQUAL(playermoves1.size(), pplayermoves1.size());
@@ -325,12 +325,12 @@ BOOST_AUTO_TEST_CASE(send_playergoals_across_games)
 
     // Setup the games get the playergoals after a playout
     state1.playout(playergoals1);
-    BOOST_CHECK_EQUAL(playergoals1.size(), game1.numPlayers()); 
+    BOOST_CHECK_EQUAL(playergoals1.size(), game1.numPlayers());
 
-    std::copy(playergoals1.begin(), playergoals1.end(), 
+    std::copy(playergoals1.begin(), playergoals1.end(),
               std::inserter(pplayergoals1, pplayergoals1.begin()));
 
-    BOOST_CHECK_EQUAL(playergoals1.size(), pplayergoals1.size()); 
+    BOOST_CHECK_EQUAL(playergoals1.size(), pplayergoals1.size());
 
     std::ostringstream oserialstream;
     boost::archive::text_oarchive oa(oserialstream);
@@ -417,12 +417,12 @@ BOOST_AUTO_TEST_CASE(send_jointgoals_across_games)
 
     // Setup the games get the playergoals after a playout
     state1.playout(playergoals1);
-    BOOST_CHECK_EQUAL(playergoals1.size(), game1.numPlayers()); 
+    BOOST_CHECK_EQUAL(playergoals1.size(), game1.numPlayers());
 
-    std::copy(playergoals1.begin(), playergoals1.end(), 
+    std::copy(playergoals1.begin(), playergoals1.end(),
               std::inserter(pplayergoals1, pplayergoals1.begin()));
 
-    BOOST_CHECK_EQUAL(playergoals1.size(), pplayergoals1.size()); 
+    BOOST_CHECK_EQUAL(playergoals1.size(), pplayergoals1.size());
 
     std::ostringstream oserialstream;
     boost::archive::text_oarchive oa(oserialstream);
@@ -439,3 +439,95 @@ BOOST_AUTO_TEST_CASE(send_jointgoals_across_games)
     BOOST_CHECK_EQUAL(pplayergoalst.size(), playergoalst.size());
 }
 
+/****************************************************************
+ * Testing that PortableStates generated from different State objects
+ * that correspond to the same state (ie., the fluents should be the
+ * same).
+ ****************************************************************/
+
+PlayerMove get_playermove(const State& state,
+                          const std::string& player,
+                          const std::string& move)
+{
+    std::vector<PlayerMove> legs;
+    state.legals(std::back_inserter(legs));
+
+    BOOST_FOREACH(const PlayerMove& pm, legs)
+    {
+        std::string ply = pm.first.tostring();
+        std::string mv = pm.second.tostring();
+        if (ply == player && mv == move) return pm;
+    }
+    BOOST_CHECK(false);
+}
+
+BOOST_AUTO_TEST_CASE(generate_equiv_states)
+{
+    Game game1(boost::filesystem::path("./tictactoe.gdl"));
+    State state1(game1);
+    State state2(game1);
+    JointMove jm;
+    BOOST_CHECK(true);
+
+
+    // Player the moves (x,1,1), (o,3,3), (x,3,1), (o,1,3)
+
+    jm.insert(get_playermove(state1, "xplayer", "(mark 1 1)"));
+    jm.insert(get_playermove(state1, "oplayer", "noop"));
+    BOOST_CHECK_EQUAL(jm.size(),2);
+    state1.play(jm);
+    jm.clear();
+
+    jm.insert(get_playermove(state1, "oplayer", "(mark 3 3)"));
+    jm.insert(get_playermove(state1, "xplayer", "noop"));
+    BOOST_CHECK_EQUAL(jm.size(),2);
+    state1.play(jm);
+    jm.clear();
+
+    jm.insert(get_playermove(state1, "xplayer", "(mark 3 1)"));
+    jm.insert(get_playermove(state1, "oplayer", "noop"));
+    BOOST_CHECK_EQUAL(jm.size(),2);
+    state1.play(jm);
+    jm.clear();
+
+    jm.insert(get_playermove(state1, "oplayer", "(mark 1 3)"));
+    jm.insert(get_playermove(state1, "xplayer", "noop"));
+    BOOST_CHECK_EQUAL(jm.size(),2);
+    state1.play(jm);
+    jm.clear();
+
+    // Player the moves (x,3,1), (o,1,3), (x,1,1), (o,3,3)
+
+    jm.insert(get_playermove(state2, "xplayer", "(mark 3 1)"));
+    jm.insert(get_playermove(state2, "oplayer", "noop"));
+    BOOST_CHECK_EQUAL(jm.size(),2);
+    state2.play(jm);
+    jm.clear();
+
+    jm.insert(get_playermove(state2, "oplayer", "(mark 1 3)"));
+    jm.insert(get_playermove(state2, "xplayer", "noop"));
+    BOOST_CHECK_EQUAL(jm.size(),2);
+    state2.play(jm);
+    jm.clear();
+
+    jm.insert(get_playermove(state2, "xplayer", "(mark 1 1)"));
+    jm.insert(get_playermove(state2, "oplayer", "noop"));
+    BOOST_CHECK_EQUAL(jm.size(),2);
+    state2.play(jm);
+    jm.clear();
+
+    jm.insert(get_playermove(state2, "oplayer", "(mark 3 3)"));
+    jm.insert(get_playermove(state2, "xplayer", "noop"));
+    BOOST_CHECK_EQUAL(jm.size(),2);
+    state2.play(jm);
+    jm.clear();
+
+    PortableState pstate1(state1);
+    PortableState pstate2(state2);
+
+//    std::cout << "STATE1: " << std::endl << state1 << std::endl;
+//    std::cout << "STATE2: " << std::endl << state2 << std::endl;
+
+    // We want to now check that the pstates have the same fluents
+    BOOST_CHECK(pstate1 == pstate2);
+}

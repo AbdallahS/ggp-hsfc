@@ -40,13 +40,13 @@ else (GADELAC_PATH MATCHES "^\\s*$")
 endif (GADELAC_PATH MATCHES "^\\s*$")
 
 add_test(
-  NAME CppHSFCTest 
+  NAME CppHSFCTest
   WORKING_DIRECTORY "${hsfc_SOURCE_DIR}/testing"
   COMMAND cpphsfc-test "--log_level=test_suite"
 )
 
 add_test(
-  NAME CppHSFCPortable 
+  NAME CppHSFCPortable
   WORKING_DIRECTORY "${hsfc_SOURCE_DIR}/testing"
   COMMAND portable-test "--log_level=test_suite"
 )
@@ -58,7 +58,7 @@ add_test(
 )
 
 add_test(
-  NAME TermFormatConversionTest 
+  NAME TermFormatConversionTest
   COMMAND sexprtoflat-test "--log_level=test_suite"
 )
 

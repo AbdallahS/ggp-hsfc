@@ -33,7 +33,7 @@ namespace HSFC
 class Player
 {
 public:
-    Player(const Player& other);  
+    Player(const Player& other);
     Player(Game& game, const PortablePlayer& pp);
     Player& operator=(const Player& other);
 
@@ -51,14 +51,14 @@ private:
 
     boost::shared_ptr<const HSFCManager> manager_;
     unsigned int roleid_;
-    Player(boost::shared_ptr<const HSFCManager> manager, unsigned int roleid);  
+    Player(boost::shared_ptr<const HSFCManager> manager, unsigned int roleid);
 };
 
 std::size_t hash_value(const Player& player); /* can be a key in boost::unordered_*  */
 std::ostream& operator<<(std::ostream& os, const Player& player);
 
 /*****************************************************************************************
- * Move class. 
+ * Move class.
  * Note: To clear any ambiguity Move represents the move as independent from a player,
  * and NOT the move as taken by a player.
  *****************************************************************************************/
@@ -79,7 +79,7 @@ private:
     friend class State;
     friend class PortableMove;
     friend std::ostream& operator<<(std::ostream& os, const Move& move);
-  
+
     boost::shared_ptr<HSFCManager> manager_;
     hsfcLegalMove move_;
     Move(boost::shared_ptr<HSFCManager> manager, const hsfcLegalMove& move);
@@ -101,8 +101,8 @@ class Game
 public:
     // Game constructor that takes a string containing a GDL description
     // NOTE: 1) this is not a filename!.
-    //       2) Probably not necessary, but I provide a char* version 
-    //          to make sure a char* can't accidentally be converted 
+    //       2) Probably not necessary, but I provide a char* version
+    //          to make sure a char* can't accidentally be converted
     //          to a boost::filesystem::path.
     Game(const std::string& gdldescription, bool usegadelac = false);
     Game(const char* gdldescription, bool usegadelac = false);
@@ -135,8 +135,8 @@ protected:
 
 private:
     // make sure users can't copy construct.
-    Game(const Game& other);  
-    
+    Game(const Game& other);
+
     friend class State;
     friend class Player;
     friend class Move;
@@ -151,10 +151,10 @@ private:
 
 template<typename OutputIterator>
 void Game::players(OutputIterator dest) const
-{    
+{
     for (unsigned int i = 0; i < manager_->NumPlayers(); ++i)
     {
-        *dest++=Player(manager_, i); 
+        *dest++=Player(manager_, i);
     }
 }
 
@@ -173,7 +173,7 @@ public:
 
     bool isTerminal() const;
 
-    /* 
+    /*
      * Return the legal moves. Must be called only in non-terminal states.
      *
      * Will throw an exception if there is not at least one move per player.
@@ -184,7 +184,7 @@ public:
     boost::unordered_map<Player, std::vector<Move> > legals() const;
     std::vector<JointMove> joints() const;
 
-    /* 
+    /*
      * Return the goals. Must be called only in terminal states.
      *
      */
@@ -193,7 +193,7 @@ public:
 
     JointGoal goals() const;
 
-    /* 
+    /*
      * Return the goals after a playout. There must be exactly one move per player.
      */
     void playout(std::vector<PlayerGoal>& dest);
@@ -201,9 +201,9 @@ public:
     template<typename OutputIterator>
     void playout(OutputIterator dest);
     JointGoal playout();
-  
+
     /*
-     * Make a move. 
+     * Make a move.
      *
      */
     void play(const JointMove& moves);
@@ -212,9 +212,9 @@ public:
     template<typename Iterator>
     void play(Iterator begin, Iterator end);
 
-    
+
     /*
-     * For examining the internal state 
+     * For examining the internal state
      */
     const hsfcState& internal(){ return *state_; }
 
@@ -222,7 +222,9 @@ private:
     friend class PortableState;
 
     hsfcState* state_;
-    boost::shared_ptr<HSFCManager> manager_;  
+    boost::shared_ptr<HSFCManager> manager_;
+
+    friend std::ostream& operator<<(std::ostream& os, const State& state);
 
     void initialize();
 
@@ -232,9 +234,11 @@ private:
      * to check if some move is legal.
      */
     void get_legals(boost::unordered_map<Player, boost::unordered_set<Move> >& lgls) const;
-    void throw_on_illegal_move(const PlayerMove& pm, 
+    void throw_on_illegal_move(const PlayerMove& pm,
                                boost::unordered_map<Player, boost::unordered_set<Move> >& legals) const;
 };
+
+std::ostream& operator<<(std::ostream& os, const State& state);
 
 
 template<typename OutputIterator>
@@ -242,7 +246,7 @@ void State::legals(OutputIterator dest) const
 {
     boost::unordered_set<int> ok;
     std::vector<hsfcLegalMove> lms;
-    if (this->isTerminal()) 
+    if (this->isTerminal())
         throw HSFCValueError() << ErrorMsgInfo("Cannot cal legals() on a terminal state");
 
     manager_->GetLegalMoves(*state_, lms);
@@ -253,7 +257,7 @@ void State::legals(OutputIterator dest) const
     }
     if (ok.size() != manager_->NumPlayers())
     {
-        throw HSFCInternalError() 
+        throw HSFCInternalError()
             << ErrorMsgInfo("HSFC internal error: missing moves for some players");
     }
 }
@@ -267,14 +271,14 @@ void State::goals(OutputIterator dest) const
     manager_->GetGoalValues(*state_, vals);
     if (vals.size() != manager_->NumPlayers())
     {
-        throw HSFCInternalError() 
+        throw HSFCInternalError()
             << ErrorMsgInfo("HSFC internal error: no goal value for some players");
     }
-    
+
     for (unsigned int i = 0; i < vals.size(); ++i)
     {
         *dest++=PlayerGoal(Player(manager_, i), (unsigned int)vals[i]);
-    }    
+    }
 }
 
 template<typename OutputIterator>
@@ -286,13 +290,13 @@ void State::playout(OutputIterator dest)
     manager_->PlayOut(*state_, vals);
     if (vals.size() != manager_->NumPlayers())
     {
-        throw HSFCInternalError() 
+        throw HSFCInternalError()
             << ErrorMsgInfo("HSFC internal error: no goal value for some players");
     }
-    
+
     // Not sure if this is necessary, but added a test for termination
     // because it turns out that checking for termination does change
-    // some internal structures in the state. 
+    // some internal structures in the state.
     if (!this->isTerminal())
         throw HSFCInternalError() << ErrorMsgInfo("State is not terminal after a playout()");
 
@@ -323,10 +327,10 @@ void State::play(Iterator begin, Iterator end)
     }
     if (ok.size() != manager_->NumPlayers())
         throw HSFCValueError() << ErrorMsgInfo("Must be exactly one move per player");
-    manager_->DoMove(*state_, lms); 
+    manager_->DoMove(*state_, lms);
 
     initialize();
-}  
+}
 
 
 

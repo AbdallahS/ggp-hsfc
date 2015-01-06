@@ -18,26 +18,26 @@ namespace HSFC
 char const* HSFCException::what() const throw ()
 {
     if (const std::string* mi=boost::get_error_info<ErrorMsgInfo>(*this)) return mi->c_str();
-    return "Unknown HSFCException";        
+    return "Unknown HSFCException";
 }
 
 
 /*****************************************************************************************
  * Implementation of Player
  *****************************************************************************************/
-Player::Player(boost::shared_ptr<const HSFCManager> manager, unsigned int roleid): 
+Player::Player(boost::shared_ptr<const HSFCManager> manager, unsigned int roleid):
     manager_(manager), roleid_(roleid)
 { }
 
 Player::Player(const Player& other): manager_(other.manager_), roleid_(other.roleid_)
 { }
 
-Player::Player(Game& game, const PortablePlayer& pp) : 
+Player::Player(Game& game, const PortablePlayer& pp) :
     manager_(game.manager_), roleid_(pp.roleid_)
 {
     // Check that it is a valid roleid
     if (pp.roleid_ >= manager_->NumPlayers())
-        throw HSFCValueError() << 
+        throw HSFCValueError() <<
             ErrorMsgInfo("Cannot create a Player from unitialised PortablePlayer");
 
 }
@@ -93,7 +93,7 @@ std::ostream& operator<<(std::ostream& os, const Player& player)
  * Implementation of Move
  *********************************************************************************/
 
-Move::Move(boost::shared_ptr<HSFCManager> manager, const hsfcLegalMove& move): 
+Move::Move(boost::shared_ptr<HSFCManager> manager, const hsfcLegalMove& move):
     manager_(manager), move_(move)
 { }
 
@@ -105,7 +105,7 @@ Move::Move(Game& game, const PortableMove& pm) : manager_(game.manager_)
     // Some validity checks of the PortableMove object
     if (pm.RoleIndex_ < 0 || pm.RelationIndex_ < 0 ||
         pm.ID_ < 0 || pm.Text_.empty())
-        throw HSFCValueError() << 
+        throw HSFCValueError() <<
             ErrorMsgInfo("Cannot create a Move from an uintialised PortableMove");
 
     move_.RoleIndex = pm.RoleIndex_;
@@ -173,7 +173,7 @@ std::size_t hash_value(const Move& move)
 std::size_t hash_value(const JointMove& jmove) {
     size_t seed = 0;
     for (JointMove::const_iterator iter = jmove.begin(); iter != jmove.end(); iter++) {
-        boost::hash_combine(seed, *iter);        
+        boost::hash_combine(seed, *iter);
     }
     return seed;
 }
@@ -202,15 +202,15 @@ std::ostream& operator<<(std::ostream& os, const JointGoal& jgoal)
 /*****************************************************************************************
  * Implementation of Game
  *****************************************************************************************/
-Game::Game() 
-{ 
+Game::Game()
+{
     manager_ = boost::make_shared<HSFCManager>();
 }
 
-Game::Game(const Game& other) 
-{ 
+Game::Game(const Game& other)
+{
     manager_ = boost::make_shared<HSFCManager>();
-    throw HSFCInternalError() 
+    throw HSFCInternalError()
         << ErrorMsgInfo("Internal error: Illegal use of Game::Game() copy constructor");
 }
 
@@ -318,13 +318,15 @@ State::State(Game& game): manager_(game.manager_), state_(NULL)
 
 State::State(Game& game, const PortableState& ps): manager_(game.manager_), state_(NULL)
 {
-    if (ps.relationlist_.empty())
-        throw HSFCValueError() << 
+    if (ps.relationset_.empty())
+        throw HSFCValueError() <<
             ErrorMsgInfo("Cannot create a State from an empty PortableState");
 
     state_ = manager_->CreateGameState();
     manager_->SetInitialGameState(*state_);
-    manager_->SetStateData(ps.relationlist_, ps.round_, ps.currentstep_, *state_);
+
+    std::vector<std::pair<int,int> > relationlist(ps.relationset_.begin(), ps.relationset_.end());
+    manager_->SetStateData(relationlist, ps.round_, ps.currentstep_, *state_);
     this->initialize();
 }
 
@@ -339,7 +341,7 @@ State::State(const State& other) : manager_(other.manager_), state_(NULL)
 
 State& State::operator=(const State& other)
 {
-    if (manager_ != other.manager_) 
+    if (manager_ != other.manager_)
         throw HSFCValueError() << ErrorMsgInfo("Cannot assign to a State from a different game");
     manager_->SetInitialGameState(*state_);
     manager_->CopyGameState(*state_, *(other.state_));
@@ -374,7 +376,7 @@ boost::unordered_map<Player, std::vector<Move> > State::legals() const {
     legals(std::back_inserter(legalMoves));
 
     boost::unordered_map<Player, std::vector<Move> > result;
-  
+
     for(std::vector<PlayerMove>::iterator pm = legalMoves.begin(); pm != legalMoves.end(); pm++) {
         boost::unordered_map<Player, std::vector<Move> >::iterator iter_moves(result.find(pm->first));
         if(iter_moves == result.end()) {
@@ -439,7 +441,7 @@ void State::play(const JointMove& moves)
  ***********************************************************************/
 void State::get_legals(boost::unordered_map<Player, boost::unordered_set<Move> >& result) const
 {
-    typedef boost::unordered_map<Player, boost::unordered_set<Move> > tmp_t; 
+    typedef boost::unordered_map<Player, boost::unordered_set<Move> > tmp_t;
 
     result.clear();
     std::vector<PlayerMove> legalMoves;
@@ -456,10 +458,10 @@ void State::get_legals(boost::unordered_map<Player, boost::unordered_set<Move> >
     }
 }
 
-void State::throw_on_illegal_move(const PlayerMove& pm, 
+void State::throw_on_illegal_move(const PlayerMove& pm,
                                   boost::unordered_map<Player, boost::unordered_set<Move> >& legals) const
 {
-    typedef boost::unordered_map<Player, boost::unordered_set<Move> > tmp_t; 
+    typedef boost::unordered_map<Player, boost::unordered_set<Move> > tmp_t;
     const Player& p = pm.first;
     const Move& m = pm.second;
 
@@ -475,5 +477,10 @@ void State::throw_on_illegal_move(const PlayerMove& pm,
     }
 }
 
-}; /* namespace HSFC */
+std::ostream& operator<<(std::ostream& os, const State& state)
+{
+    return state.manager_->PrintState(os, *(state.state_));
+}
 
+
+}; /* namespace HSFC */
