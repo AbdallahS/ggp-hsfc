@@ -42,7 +42,7 @@ PlayerMove pick_first(const std::vector<PlayerMove> moves, const std::string& pl
     BOOST_CHECK(false);
 }
 
-// Return the player 
+// Return the player
 Player get_player(const Game& game, const std::string& playername)
 {
     std::vector<Player> players = game.players();
@@ -71,7 +71,7 @@ unsigned int get_num_moves(const State& state, const std::string& player)
  * Tictactoe specific functions.
  ****************************************************************/
 
-// Run a playout from any (non-terminal) tictactoe game state. 
+// Run a playout from any (non-terminal) tictactoe game state.
 // Someone either wins or it is a draw.
 void tictactoe_playout_check(const State &state)
 {
@@ -79,14 +79,14 @@ void tictactoe_playout_check(const State &state)
     State tmpstate(state);
     std::vector<PlayerGoal> results;
     tmpstate.playout(results);
-    bool haswinner = 
-        (results[0].second == 100 && results[1].second == 0) || 
+    bool haswinner =
+        (results[0].second == 100 && results[1].second == 0) ||
         (results[1].second == 100 && results[0].second == 0);
     if (!haswinner)
     {
         BOOST_CHECK(results[0].second == 50);
         BOOST_CHECK(results[1].second == 50);
-    }   
+    }
 }
 
 
@@ -247,8 +247,8 @@ struct playermovename_loader
 {
     playermovename_loader(boost::unordered_set<std::string>& m) : m_(m){};
     void operator()(const PlayerMove& o) const
-    { 
-        m_.insert(o.first.tostring() + o.second.tostring()); 
+    {
+        m_.insert(o.first.tostring() + o.second.tostring());
     }
     boost::unordered_set<std::string>& m_;
 };
@@ -267,7 +267,7 @@ BOOST_AUTO_TEST_CASE(game_construction)
 
     // Basic test that the games are different
     BOOST_CHECK(game1 != game2);
-    BOOST_CHECK(!(game1 == game2));   
+    BOOST_CHECK(!(game1 == game2));
 
     boost::unordered_set<std::string> tmpset1;
     boost::unordered_set<std::string> tmpset2;
@@ -276,14 +276,14 @@ BOOST_AUTO_TEST_CASE(game_construction)
     // (ie. have the same text strings)
     BOOST_CHECK(game1.numPlayers() > 0);
     BOOST_CHECK_EQUAL(game1.numPlayers(), game2.numPlayers());
-    
+
     game1.players(boost::make_function_output_iterator(playername_loader(tmpset1)));
-    game2.players(boost::make_function_output_iterator(playername_loader(tmpset2)));   
+    game2.players(boost::make_function_output_iterator(playername_loader(tmpset2)));
     BOOST_CHECK(tmpset1 == tmpset2);
 
     // Now check the moves from the initial game states.
-    tmpset1.clear(); 
-    tmpset2.clear(); 
+    tmpset1.clear();
+    tmpset2.clear();
     State state1(game1);
     State state2(game2);
 
@@ -294,7 +294,7 @@ BOOST_AUTO_TEST_CASE(game_construction)
 }
 
 /****************************************************************
- * 
+ *
  ****************************************************************/
 
 BOOST_AUTO_TEST_CASE(basic_game_tests)
@@ -338,7 +338,7 @@ BOOST_AUTO_TEST_CASE(state_functions)
 
     /* Test legals */
     std::vector<PlayerMove> legs;
-    state1.legals(std::back_inserter(legs));       
+    state1.legals(std::back_inserter(legs));
     BOOST_CHECK_EQUAL(legs.size(), 10);
 
     /* Test legals() */
@@ -379,7 +379,7 @@ BOOST_AUTO_TEST_CASE(state_functions)
 
     State state3(game, *pstate);
     BOOST_CHECK(!state3.isTerminal());
-    
+
     // Now test the serialisation of Portable state. Do the same test
     // as before but by taking the further step of (de-)serializing.
     std::ostringstream oserialstream;
@@ -387,7 +387,7 @@ BOOST_AUTO_TEST_CASE(state_functions)
     oa << pstate;
     std::string serialised(oserialstream.str());
     BOOST_TEST_MESSAGE(serialised);
-    
+
     std::istringstream iserialstream(serialised);
     boost::archive::text_iarchive ia(iserialstream);
 
@@ -406,7 +406,7 @@ BOOST_AUTO_TEST_CASE(state_functions)
 }
 
 /****************************************************************
- * Test that the move and player text generated for tictactoe 
+ * Test that the move and player text generated for tictactoe
  * are correct.
  ****************************************************************/
 
@@ -417,7 +417,7 @@ BOOST_AUTO_TEST_CASE(text_check)
     BOOST_CHECK(!state1.isTerminal());
 
     std::vector<PlayerMove> legs;
-    state1.legals(std::back_inserter(legs));       
+    state1.legals(std::back_inserter(legs));
 
     unsigned int count = 0;
     bool matchply = false;
@@ -455,15 +455,15 @@ BOOST_AUTO_TEST_CASE(tictactoe)
     unsigned int turn = 0;
     int step= 9;
     while (!state.isTerminal())
-    {       
+    {
         tictactoe_playout_check(state);
         BOOST_CHECK(!state.isTerminal());
         std::vector<PlayerMove> legs;
-        state.legals(std::back_inserter(legs));    
+        state.legals(std::back_inserter(legs));
         if (turn == 0)
         {
             BOOST_CHECK_EQUAL(count_player_moves(legs, "xplayer"), step);
-            BOOST_CHECK_EQUAL(count_player_moves(legs, "oplayer"), 1);          
+            BOOST_CHECK_EQUAL(count_player_moves(legs, "oplayer"), 1);
         }
         else
         {
@@ -491,8 +491,8 @@ BOOST_AUTO_TEST_CASE(tictactoe)
     JointGoal results2 = state.goals();
     BOOST_CHECK_EQUAL(results2.size(), 2);
 
-    bool haswinner = 
-        (results[0].second == 100 && results[1].second == 0) || 
+    bool haswinner =
+        (results[0].second == 100 && results[1].second == 0) ||
         (results[1].second == 100 && results[0].second == 0);
     if (step > 1) BOOST_CHECK(haswinner);
     if (!haswinner)
@@ -505,7 +505,7 @@ BOOST_AUTO_TEST_CASE(tictactoe)
 
 
 /****************************************************************
- * Test the state changes correctly even when we don't call 
+ * Test the state changes correctly even when we don't call
  * legals(). Deep in the HSFC a state is not valid until the
  * legal moves have been calculated by it. I hack around this by
  * calling legals() whenever a state is created/copied/assigned.
@@ -516,7 +516,7 @@ BOOST_AUTO_TEST_CASE(state_transition)
     Game game(boost::filesystem::path("./tictactoe.gdl"));
     State main_state(game);
 
-    /* Use a sequence of two joint moves as my test-case: jm1, jm2 */       
+    /* Use a sequence of two joint moves as my test-case: jm1, jm2 */
     std::vector<JointMove> tmp_jms = main_state.joints();
     BOOST_CHECK_EQUAL(tmp_jms.size(),9);
     JointMove jm1 = tmp_jms[0];
@@ -524,7 +524,7 @@ BOOST_AUTO_TEST_CASE(state_transition)
     tmp_jms = main_state.joints();
     BOOST_CHECK_EQUAL(tmp_jms.size(),8);
     JointMove jm2 = tmp_jms[0];
-   
+
     /* Now we use jm1 and jm2 to test various state transitions
        for states that were copied and assigned without calculating
        the legals in between play() calls. */
@@ -570,14 +570,14 @@ BOOST_AUTO_TEST_CASE(state_transition)
 /****************************************************************
  * Related to the issue that calculating the legal moves does itself
  * modify the internal structure of a State, similarly testing
- * for termination also modifies the internal structure of the 
+ * for termination also modifies the internal structure of the
  * State. As part of the fix for the legals moves we do test
- * for termination when creating/copying/assigning states as 
+ * for termination when creating/copying/assigning states as
  * well as updating the state after a joint move play(). However,
  * I wasn't testing for termination after a playout(). So
- * have now added a termination test that happens after playout() 
+ * have now added a termination test that happens after playout()
  * is call to ensure that the state is valid.
- * 
+ *
  ****************************************************************/
 
 BOOST_AUTO_TEST_CASE(state_transition_from_playout)
