@@ -1,6 +1,8 @@
 #include <iterator>
 #include <sstream>
 #include <cstring>
+#include <cassert>
+#include <boost/assert.hpp>
 #include <boost/variant/get.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/make_shared.hpp>
@@ -51,12 +53,14 @@ std::string Player::tostring() const
 
 bool Player::operator==(const Player& other) const
 {
+    BOOST_ASSERT_MSG(manager_ == other.manager_,
+                     "Player object created with different Game() instances");
     return roleid_ == other.roleid_;
 }
 
 bool Player::operator!=(const Player& other) const
 {
-    return roleid_ != other.roleid_;
+    return !(*this == other);
 }
 
 Player& Player::operator=(const Player& other)
@@ -136,12 +140,14 @@ bool operator!=(const hsfcLegalMove& a, const hsfcLegalMove& b)
 
 bool Move::operator==(const Move& other) const
 {
-    return (manager_ == other.manager_) && (move_ == other.move_);
+    BOOST_ASSERT_MSG(manager_ == other.manager_,
+                     "Move object created with different Game() instances");
+    return move_ == other.move_;
 }
 
 bool Move::operator!=(const Move& other) const
 {
-    return (manager_ != other.manager_) || (move_ != other.move_);
+    return !(*this == other);
 }
 
 Move& Move::operator=(const Move& other)

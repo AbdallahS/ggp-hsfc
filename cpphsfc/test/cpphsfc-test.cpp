@@ -597,3 +597,26 @@ BOOST_AUTO_TEST_CASE(state_transition_from_playout)
 
 }
 
+/* 
+
+Note: there is no easy way to test that an assertion is
+triggered. Would have to use Boost Assert and set an special handler
+to throw an exception on assertion failure rather than the default
+behaviour of calling std::abort(). Hence commenting out the code
+below.
+*/
+/*
+BOOST_AUTO_TEST_CASE(test_invalid_game_comparisions)
+{
+    Game game_a(g_gdl);
+    Game game_b(g_gdl);
+
+    std::vector<Player> players_a = game_a.players();
+    std::vector<Player> players_b = game_b.players();
+
+//    BOOST_CHECK(players_a == players_b, BoostAssertError);
+    BOOST_CHECK(players_a == players_b);
+
+}
+*/
+
