@@ -66,6 +66,24 @@ unsigned int get_num_moves(const State& state, const std::string& player)
     return 0;
 }
 
+// Count the number of moves that the player has in the state
+Move get_move(const State& state, const Player& player, const std::string& move)
+{
+    typedef boost::unordered_map<Player, std::vector<Move> > pmvs_t;
+    pmvs_t pmvs = state.legals();
+    pmvs_t::const_iterator it = pmvs.find(player);
+    BOOST_CHECK(it != pmvs.end());
+    BOOST_FOREACH(const Move& m, it->second)
+    {
+        if (m.tostring() == move)
+        {
+            return m;
+        }
+    }
+    BOOST_CHECK(false);
+}
+
+
 
 /****************************************************************
  * Tictactoe specific functions.
@@ -597,7 +615,56 @@ BOOST_AUTO_TEST_CASE(state_transition_from_playout)
 
 }
 
-/* 
+
+BOOST_AUTO_TEST_CASE(test_hashing)
+{
+    Game game(g_gdl);
+    State state(game);
+    Player xplayer = get_player(game, "xplayer");
+    Player oplayer = get_player(game, "oplayer");
+    BOOST_CHECK(xplayer.tostring() == "xplayer");
+    BOOST_CHECK(oplayer.tostring() == "oplayer");
+ 
+    Move xmark11 = get_move(state, xplayer, "(mark 1 1)");
+    Move xmark12 = get_move(state, xplayer, "(mark 1 2)");
+    Move xmark13 = get_move(state, xplayer, "(mark 1 3)");
+    Move onoop = get_move(state, oplayer, "noop");
+    BOOST_CHECK(xmark11.tostring() == "(mark 1 1)");
+    BOOST_CHECK(xmark12.tostring() == "(mark 1 2)");
+    BOOST_CHECK(xmark13.tostring() == "(mark 1 3)");
+    BOOST_CHECK(onoop.tostring() == "noop");
+
+    JointMove jm1 = JointMove();
+    jm1.insert(std::make_pair(xplayer, xmark11));
+    jm1.insert(std::make_pair(oplayer, onoop));
+    state.play(jm1);
+
+    Move omark12 = get_move(state, oplayer, "(mark 1 2)");
+    Move omark13 = get_move(state, oplayer, "(mark 1 3)");
+    Move xnoop = get_move(state, xplayer, "noop");
+    BOOST_CHECK(omark12.tostring() == "(mark 1 2)");
+    BOOST_CHECK(omark13.tostring() == "(mark 1 3)");
+    BOOST_CHECK(xnoop.tostring() == "noop");
+
+    JointMove jm2 = JointMove();
+    jm2.insert(std::make_pair(oplayer, omark12));
+    jm2.insert(std::make_pair(xplayer, xnoop));
+    state.play(jm2);
+
+    Move xmark13_2 = get_move(state, xplayer, "(mark 1 3)");
+    Move onoop_2 = get_move(state, oplayer, "noop");
+    BOOST_CHECK(xmark13_2.tostring() == "(mark 1 3)");
+    BOOST_CHECK(onoop_2.tostring() == "noop");
+
+    BOOST_CHECK(xmark13 == xmark13_2);
+    BOOST_CHECK(onoop == onoop_2);
+    BOOST_CHECK(hash_value(xmark13) == hash_value(xmark13_2));
+    BOOST_CHECK(hash_value(onoop) == hash_value(onoop_2));
+    BOOST_CHECK(boost::hash<Move>()(xmark13) == boost::hash<Move>()(xmark13_2));
+    BOOST_CHECK(boost::hash<Move>()(onoop) == boost::hash<Move>()(onoop_2));
+}
+
+/*
 
 Note: there is no easy way to test that an assertion is
 triggered. Would have to use Boost Assert and set an special handler
