@@ -2,6 +2,7 @@
 #include <sstream>
 #include <cstring>
 #include <cassert>
+#include <map>
 #include <boost/assert.hpp>
 #include <boost/variant/get.hpp>
 #include <boost/functional/hash.hpp>
@@ -61,6 +62,20 @@ bool Player::operator==(const Player& other) const
 bool Player::operator!=(const Player& other) const
 {
     return !(*this == other);
+}
+
+bool Player::operator<(const Player& other) const
+{
+    BOOST_ASSERT_MSG(manager_ == other.manager_,
+                     "Player object created with different Game() instances");
+    return roleid_ < other.roleid_;
+}
+
+bool Player::operator>(const Player& other) const
+{
+    BOOST_ASSERT_MSG(manager_ == other.manager_,
+                     "Player object created with different Game() instances");
+    return roleid_ > other.roleid_;
 }
 
 Player& Player::operator=(const Player& other)
@@ -177,11 +192,26 @@ std::size_t hash_value(const Move& move)
 }
 
 std::size_t hash_value(const JointMove& jmove) {
+    // Note: we need to guarantee the ordering so we generate an ordered map keyed
+    // by the Player (for which we have defined a < operator).
+    typedef std::map<const Player, JointMove::const_iterator> tmp_t;
+    tmp_t tmp;
+    for (JointMove::const_iterator iter = jmove.begin(); iter != jmove.end(); iter++) {
+        tmp[iter->first] = iter;
+    }
+
     size_t seed = 0;
+    for (tmp_t::iterator i = tmp.begin(); i != tmp.end(); i++)
+    {
+        boost::hash_combine(seed, *(i->second));
+    }
+    return seed;
+
+/*
     for (JointMove::const_iterator iter = jmove.begin(); iter != jmove.end(); iter++) {
         boost::hash_combine(seed, *iter);
     }
-    return seed;
+*/
 }
 
 std::ostream& operator<<(std::ostream& os, const Move& move)

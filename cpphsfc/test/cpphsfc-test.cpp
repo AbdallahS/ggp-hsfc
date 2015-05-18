@@ -616,6 +616,25 @@ BOOST_AUTO_TEST_CASE(state_transition_from_playout)
 }
 
 
+/*
+ * Even though two joint moves are equivalent they can have different
+ * ordering when iterated. This can be caused by a different hash
+ * bucket size.
+ */
+bool same_order(const JointMove& jm1, const JointMove& jm2)
+{
+    BOOST_CHECK(jm1 == jm2);
+
+    typedef JointMove::const_iterator tmp_t;
+    tmp_t iter1 = jm1.begin();
+    tmp_t iter2 = jm2.begin();
+    while (iter1 != jm1.end())
+    {
+        if (*iter1++ != *iter2++) return false;
+    }
+    return true;
+}
+
 BOOST_AUTO_TEST_CASE(test_hashing)
 {
     Game game(g_gdl);
@@ -624,7 +643,7 @@ BOOST_AUTO_TEST_CASE(test_hashing)
     Player oplayer = get_player(game, "oplayer");
     BOOST_CHECK(xplayer.tostring() == "xplayer");
     BOOST_CHECK(oplayer.tostring() == "oplayer");
- 
+
     Move xmark11 = get_move(state, xplayer, "(mark 1 1)");
     Move xmark12 = get_move(state, xplayer, "(mark 1 2)");
     Move xmark13 = get_move(state, xplayer, "(mark 1 3)");
@@ -634,10 +653,29 @@ BOOST_AUTO_TEST_CASE(test_hashing)
     BOOST_CHECK(xmark13.tostring() == "(mark 1 3)");
     BOOST_CHECK(onoop.tostring() == "noop");
 
-    JointMove jm1 = JointMove();
-    jm1.insert(std::make_pair(xplayer, xmark11));
+    JointMove jm1 = JointMove(1);
     jm1.insert(std::make_pair(oplayer, onoop));
-    state.play(jm1);
+    jm1.insert(std::make_pair(xplayer, xmark11));
+
+    unsigned int i = 10000;
+    bool tested_jm_hashing = false;
+    while (i < 10010)
+    {
+        JointMove jm2 = JointMove(i++);
+        jm2.insert(std::make_pair(xplayer, xmark11));
+        jm2.insert(std::make_pair(oplayer, onoop));
+        BOOST_CHECK(jm1.bucket_count() != jm2.bucket_count());
+        BOOST_CHECK(hash_value(jm1) == hash_value(jm2));
+        if (!same_order(jm1, jm2)) tested_jm_hashing = true;
+    }
+    BOOST_CHECK_MESSAGE(tested_jm_hashing,
+                       "Couldn't generate different iteration " <<
+                       "ordering for JointMove to test hashing");
+
+    JointMove jm3 = JointMove();
+    jm3.insert(std::make_pair(xplayer, xmark11));
+    jm3.insert(std::make_pair(oplayer, onoop));
+    state.play(jm3);
 
     Move omark12 = get_move(state, oplayer, "(mark 1 2)");
     Move omark13 = get_move(state, oplayer, "(mark 1 3)");
@@ -646,10 +684,10 @@ BOOST_AUTO_TEST_CASE(test_hashing)
     BOOST_CHECK(omark13.tostring() == "(mark 1 3)");
     BOOST_CHECK(xnoop.tostring() == "noop");
 
-    JointMove jm2 = JointMove();
-    jm2.insert(std::make_pair(oplayer, omark12));
-    jm2.insert(std::make_pair(xplayer, xnoop));
-    state.play(jm2);
+    JointMove jm4 = JointMove();
+    jm4.insert(std::make_pair(oplayer, omark12));
+    jm4.insert(std::make_pair(xplayer, xnoop));
+    state.play(jm4);
 
     Move xmark13_2 = get_move(state, xplayer, "(mark 1 3)");
     Move onoop_2 = get_move(state, oplayer, "noop");
@@ -663,6 +701,9 @@ BOOST_AUTO_TEST_CASE(test_hashing)
     BOOST_CHECK(boost::hash<Move>()(xmark13) == boost::hash<Move>()(xmark13_2));
     BOOST_CHECK(boost::hash<Move>()(onoop) == boost::hash<Move>()(onoop_2));
 }
+
+
+
 
 /*
 

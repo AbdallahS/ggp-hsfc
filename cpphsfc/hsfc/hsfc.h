@@ -39,6 +39,8 @@ public:
 
     bool operator==(const Player& other) const;
     bool operator!=(const Player& other) const;
+    bool operator<(const Player& other) const;
+    bool operator>(const Player& other) const;
 
     std::string tostring() const;
     std::size_t hash_value() const;
