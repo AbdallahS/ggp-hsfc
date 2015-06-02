@@ -74,6 +74,7 @@ struct print_flat : public boost::static_visitor<>
 			if (i < arity)  os_ << " ";
 			++i;
 		}
+        return os_;
 	}
 };
 

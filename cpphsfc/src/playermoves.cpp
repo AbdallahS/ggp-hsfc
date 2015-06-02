@@ -22,6 +22,7 @@ PlayerMoves& PlayerMoves::operator=(const PlayerMoves& other)
     viewPlayers.pms_ = other.viewPlayers.pms_;
     playermoves_ = other.playermoves_;
     players_ = other.players_;
+    return *this;
 }
 
 PlayerMoves::iterator PlayerMoves::begin() 

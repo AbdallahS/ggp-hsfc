@@ -154,7 +154,7 @@ void HSFCManager::DoMove(hsfcState& GameState, const std::vector<hsfcLegalMove>&
 
 bool HSFCManager::IsTerminal(const hsfcState& GameState) const
 {
-    internal_->IsTerminal(const_cast<hsfcState*>(&GameState));
+    return internal_->IsTerminal(const_cast<hsfcState*>(&GameState));
 }
 
 void HSFCManager::GetGoalValues(const hsfcState& GameState,

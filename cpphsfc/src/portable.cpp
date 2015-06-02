@@ -83,7 +83,7 @@ PortablePlayer::PortablePlayer(const PortablePlayer& other) : roleid_(other.role
 
 PortablePlayer& PortablePlayer::operator=(const PortablePlayer& other)
 {
-    roleid_ == other.roleid_;
+    roleid_ = other.roleid_;
     return *this;
 }
 
