@@ -40,6 +40,7 @@ PlayerMove pick_first(const std::vector<PlayerMove> moves, const std::string& pl
         if (pm.first.tostring() == player) return pm;
     }
     BOOST_CHECK(false);
+    throw std::string("To prevent clang compiler warning");
 }
 
 // Return the player
@@ -51,6 +52,7 @@ Player get_player(const Game& game, const std::string& playername)
         if (p.tostring() == playername) return p;
     }
     BOOST_CHECK(false);
+    throw std::string("To prevent clang compiler warning");
 }
 
 // Count the number of moves that the player has in the state
@@ -63,7 +65,7 @@ unsigned int get_num_moves(const State& state, const std::string& player)
         if (pm.first.tostring() == player) return pm.second.size();
     }
     BOOST_CHECK(false);
-    return 0;
+    throw std::string("To prevent clang compiler warning");
 }
 
 // Count the number of moves that the player has in the state
@@ -81,6 +83,7 @@ Move get_move(const State& state, const Player& player, const std::string& move)
         }
     }
     BOOST_CHECK(false);
+    throw std::string("To prevent clang compiler warning");
 }
 
 

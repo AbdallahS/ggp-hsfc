@@ -40,9 +40,10 @@ PlayerMove pick_first(const std::vector<PlayerMove> moves, const std::string& pl
         if (pm.first.tostring() == player) return pm;
     }
     BOOST_CHECK(false);
+    throw std::string("To prevent clang compiler warning");
 }
 
-// Return the player 
+// Return the player
 Player get_player(const Game& game, const std::string& playername)
 {
     std::vector<Player> players = game.players();
@@ -51,13 +52,14 @@ Player get_player(const Game& game, const std::string& playername)
         if (p.tostring() == playername) return p;
     }
     BOOST_CHECK(false);
+    throw std::string("To prevent clang compiler warning");
 }
 
 /****************************************************************
  * Tictactoe specific functions.
  ****************************************************************/
 
-// Run a playout from any (non-terminal) tictactoe game state. 
+// Run a playout from any (non-terminal) tictactoe game state.
 // Someone either wins or it is a draw.
 void tictactoe_playout_check(const State &state)
 {
@@ -65,14 +67,14 @@ void tictactoe_playout_check(const State &state)
     State tmpstate(state);
     std::vector<PlayerGoal> results;
     tmpstate.playout(results);
-    bool haswinner = 
-        (results[0].second == 100 && results[1].second == 0) || 
+    bool haswinner =
+        (results[0].second == 100 && results[1].second == 0) ||
         (results[1].second == 100 && results[0].second == 0);
     if (!haswinner)
     {
         BOOST_CHECK(results[0].second == 50);
         BOOST_CHECK(results[1].second == 50);
-    }   
+    }
 }
 
 
@@ -280,8 +282,8 @@ struct playermovename_loader
 {
     playermovename_loader(boost::unordered_set<std::string>& m) : m_(m){};
     void operator()(const PlayerMove& o) const
-    { 
-        m_.insert(o.first.tostring() + o.second.tostring()); 
+    {
+        m_.insert(o.first.tostring() + o.second.tostring());
     }
     boost::unordered_set<std::string>& m_;
 };
@@ -294,7 +296,7 @@ struct playermovename_loader
 
 BOOST_AUTO_TEST_CASE(game_construction)
 {
-    Game game1(g_gdl1);  
+    Game game1(g_gdl1);
     std::cout << "Non-gadelac loaded ok" << std::endl;
     Game game2(g_gdl2, true);  
     std::cout << "Gadelac loaded ok" << std::endl;

@@ -42,6 +42,7 @@ PlayerMove pick_first(const std::vector<PlayerMove> moves, const std::string& pl
         if (pm.first.tostring() == player) return pm;
     }
     BOOST_CHECK(false);
+    throw std::string("To prevent clang compiler warning");
 }
 
 // Return the player
@@ -53,6 +54,7 @@ Player get_player(const Game& game, const std::string& playername)
         if (p.tostring() == playername) return p;
     }
     BOOST_CHECK(false);
+    throw std::string("To prevent clang compiler warning");
 }
 
 /****************************************************************

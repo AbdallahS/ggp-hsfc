@@ -49,9 +49,10 @@ PlayerMove pick_first(const std::vector<PlayerMove> moves, const std::string& pl
         if (pm.first.tostring() == player) return pm;
     }
     BOOST_CHECK(false);
+    throw std::string("To prevent clang compiler warning");
 }
 
-// Return the player 
+// Return the player
 Player get_player(const Game& game, const std::string& playername)
 {
     std::vector<Player> players = game.players();
@@ -60,6 +61,7 @@ Player get_player(const Game& game, const std::string& playername)
         if (p.tostring() == playername) return p;
     }
     BOOST_CHECK(false);
+    throw std::string("To prevent clang compiler warning");
 }
 
 // Count the number of moves that the player has in the state
@@ -80,7 +82,7 @@ unsigned int get_num_moves(const State& state, const std::string& player)
  * Tictactoe specific functions.
  ****************************************************************/
 
-// Run a playout from any (non-terminal) tictactoe game state. 
+// Run a playout from any (non-terminal) tictactoe game state.
 // Someone either wins or it is a draw.
 void tictactoe_playout_check(const State &state,
                              std::vector<PlayerGoal>& results)
@@ -90,23 +92,23 @@ void tictactoe_playout_check(const State &state,
     results.clear();
     tmpstate.playout(results);
     BOOST_CHECK_EQUAL(results.size(), 2);
-    bool haswinner = 
-        (results[0].second == 100 && results[1].second == 0) || 
+    bool haswinner =
+        (results[0].second == 100 && results[1].second == 0) ||
         (results[1].second == 100 && results[0].second == 0);
     if (!haswinner)
     {
         BOOST_CHECK(results[0].second == 50);
         BOOST_CHECK(results[1].second == 50);
-    }   
+    }
 }
 
 /****************************************************************
  * Breakthrough specific functions.
  ****************************************************************/
 
-// Run a playout from any (non-terminal) tictactoe game state. 
+// Run a playout from any (non-terminal) tictactoe game state.
 // Someone either wins or it is a draw.
-void breakthrough_playout_check(const State &state, 
+void breakthrough_playout_check(const State &state,
                                 std::vector<PlayerGoal>& results)
 {
     BOOST_CHECK(!state.isTerminal());
@@ -114,7 +116,7 @@ void breakthrough_playout_check(const State &state,
     results.clear();
     tmpstate.playout(results);
     BOOST_CHECK_EQUAL(results.size(), 2);
-    BOOST_CHECK((results[0].second == 100 && results[1].second == 0) || 
+    BOOST_CHECK((results[0].second == 100 && results[1].second == 0) ||
                 (results[1].second == 100 && results[0].second == 0));
 }
 
@@ -136,8 +138,8 @@ struct playermovename_loader
 {
     playermovename_loader(boost::unordered_set<std::string>& m) : m_(m){};
     void operator()(const PlayerMove& o) const
-    { 
-        m_.insert(o.first.tostring() + o.second.tostring()); 
+    {
+        m_.insert(o.first.tostring() + o.second.tostring());
     }
     boost::unordered_set<std::string>& m_;
 };
@@ -168,7 +170,7 @@ BOOST_AUTO_TEST_CASE(tictactoe_test)
             results[pgi->first].push_back(pgi->second);
         }
     }
-    
+
     boost::unordered_map<Player, std::vector<unsigned int> >::iterator curr = results.begin();
     while (curr != results.end())
     {
@@ -178,7 +180,7 @@ BOOST_AUTO_TEST_CASE(tictactoe_test)
         for(std::vector<unsigned int>::iterator i = scores.begin(); i != scores.end(); ++i)
         {
             sum += *i;
-        }       
+        }
         ++curr;
         average[p] = (float)sum/(float)scores.size();
     }
@@ -217,7 +219,7 @@ BOOST_AUTO_TEST_CASE(breakthrough_test)
             results[pgi->first].push_back(pgi->second);
         }
     }
-    
+
     boost::unordered_map<Player, std::vector<unsigned int> >::iterator curr = results.begin();
     while (curr != results.end())
     {
@@ -227,7 +229,7 @@ BOOST_AUTO_TEST_CASE(breakthrough_test)
         for(std::vector<unsigned int>::iterator i = scores.begin(); i != scores.end(); ++i)
         {
             sum += *i;
-        }       
+        }
         ++curr;
         average[p] = (float)sum/(float)scores.size();
     }
