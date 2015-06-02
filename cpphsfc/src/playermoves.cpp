@@ -13,7 +13,7 @@ namespace HSFC
 PlayerMoves::PlayerMoves() : viewPlayers(this)
 { }
 
-PlayerMoves::PlayerMoves(const PlayerMoves& other) : 
+PlayerMoves::PlayerMoves(const PlayerMoves& other) :
     viewPlayers(this), playermoves_(other.playermoves_), players_(other.players_)
 { }
 
@@ -25,17 +25,17 @@ PlayerMoves& PlayerMoves::operator=(const PlayerMoves& other)
     return *this;
 }
 
-PlayerMoves::iterator PlayerMoves::begin() 
+PlayerMoves::iterator PlayerMoves::begin()
 {
     return playermoves_.begin();
 }
 
-PlayerMoves::iterator PlayerMoves::end() 
+PlayerMoves::iterator PlayerMoves::end()
 {
     return playermoves_.end();
 }
 
-PlayerMoves::const_iterator PlayerMoves::begin() const 
+PlayerMoves::const_iterator PlayerMoves::begin() const
 {
     return playermoves_.begin();
 }
@@ -58,34 +58,34 @@ PlayerMoves::iterator PlayerMoves::insert(PlayerMoves::const_iterator posn, cons
 }
 
 void PlayerMoves::clear()
-{ 
+{
     players_.clear();
     playermoves_.clear();
 }
 
-bool PlayerMoves::empty() const 
-{ 
-    return playermoves_.empty(); 
+bool PlayerMoves::empty() const
+{
+    return playermoves_.empty();
 }
 
-PlayerMoves::size_type PlayerMoves::size() const 
-{ 
-    return playermoves_.size(); 
+PlayerMoves::size_type PlayerMoves::size() const
+{
+    return playermoves_.size();
 }
 
 /***************************************************************************************
- * 
+ *
  ***************************************************************************************/
 
 PlayerMoves::ViewPlayers::ViewPlayers(PlayerMoves* pms) : pms_(pms)
 { }
 
-PlayerMoves::ViewPlayers::iterator PlayerMoves::ViewPlayers::begin() 
+PlayerMoves::ViewPlayers::iterator PlayerMoves::ViewPlayers::begin()
 {
     return pms_->players_.begin();
 }
 
-PlayerMoves::ViewPlayers::iterator PlayerMoves::ViewPlayers::end() 
+PlayerMoves::ViewPlayers::iterator PlayerMoves::ViewPlayers::end()
 {
     return pms_->players_.end();
 }
@@ -122,25 +122,25 @@ PlayerMoves::ViewPlayers::size_type PlayerMoves::ViewPlayers::size() const
 
 
 /***************************************************************************************
- * 
+ *
  ***************************************************************************************/
 
-PlayerMoves::ViewMovesByPlayer::ViewMovesByPlayer(PlayerMoves& pms, const Player& p) 
+PlayerMoves::ViewMovesByPlayer::ViewMovesByPlayer(PlayerMoves& pms, const Player& p)
 {
     boost::tie(begin_, end_) = pms.playermoves_.equal_range(p);
 }
 
-PlayerMoves::ViewMovesByPlayer::iterator PlayerMoves::ViewMovesByPlayer::begin() 
+PlayerMoves::ViewMovesByPlayer::iterator PlayerMoves::ViewMovesByPlayer::begin()
 {
     return boost::make_transform_iterator(begin_, PlayerMoves::PlayerMoveToMove());
 }
 
-PlayerMoves::ViewMovesByPlayer::iterator PlayerMoves::ViewMovesByPlayer::end() 
+PlayerMoves::ViewMovesByPlayer::iterator PlayerMoves::ViewMovesByPlayer::end()
 {
     return boost::make_transform_iterator(end_, PlayerMoves::PlayerMoveToMove());
 }
 
-PlayerMoves::ViewMovesByPlayer::const_iterator PlayerMoves::ViewMovesByPlayer::begin() const 
+PlayerMoves::ViewMovesByPlayer::const_iterator PlayerMoves::ViewMovesByPlayer::begin() const
 {
     return boost::make_transform_iterator(begin_, PlayerMoves::PlayerMoveToMove());
 }

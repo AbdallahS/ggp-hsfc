@@ -65,7 +65,7 @@ struct print_flat : public boost::static_visitor<>
 
 	std::ostream& print(const SubTerms& ts)
 	{
-		unsigned int i = 0; 
+		unsigned int i = 0;
 		unsigned int arity = ts.children_.size()-1;
 		BOOST_FOREACH(const Term& t, ts.children_)
 		{
@@ -157,7 +157,7 @@ struct SimpleTermParser : public _qi::grammar<Iterator, std::string()>
 	_qi::rule<Iterator, std::string()> simple_;
 
 	SimpleTermParser() : SimpleTermParser::base_type(simple_, "Simple term")
-	{		
+	{
 		simple_ %= _qi::lexeme[+(_qi::char_ - (_qi::char_("/()") | _qi::space))];
 	}
 };
@@ -176,17 +176,17 @@ struct SexprParser : public _qi::grammar<Iterator, Term(),  _ascii::space_type>
 	{
         stmt_ %= simpleterm_ | cmplxstmt_;
         cmplxstmt_ %= '(' > *stmt_ > ')';
-        
+
 	}
 };
 
- template<typename Iterator> 
+ template<typename Iterator>
 void parse_sexpr(Iterator first, Iterator last, Term& result)
 {
 	Iterator begin = first;
 	static SexprParser<Iterator> sexpparser;
     bool success;
-    try 
+    try
     {
         success = _qi::phrase_parse(first, last, sexpparser, _ascii::space, result);
     } catch (std::exception& e)
@@ -224,11 +224,11 @@ struct FlatStack
 
 void FlatStack::operator()(const LabelArity& la)
 {
-    if (stack_.empty() && !first_) 
+    if (stack_.empty() && !first_)
         throw HSFCException() << ErrorMsgInfo("Parsing error");
     first_ = false;
     if (stack_.empty())
-    {        
+    {
         if (la.arity_ == 0){ t_ = Term(la.label_); }
         else
         {
@@ -253,8 +253,8 @@ void FlatStack::operator()(const LabelArity& la)
             if (stack_.empty()) break;
             const element_t& tmp_top = stack_.back();
             const SubTerms& tmp_subterms = tmp_top.get<0>();
-            int tmp_st_size = tmp_top.get<1>();            
-            if (tmp_subterms.children_.size() < tmp_st_size) break;                
+            int tmp_st_size = tmp_top.get<1>();
+            if (tmp_subterms.children_.size() < tmp_st_size) break;
             stack_.pop_back();
         }
     }
@@ -286,11 +286,11 @@ template<typename Iterator>
 bool parse_flat(Iterator& first, Iterator last, Term& term)
 {
     try
-    {        
+    {
         std::vector<LabelArity> labels;
         FlatSubParser<Iterator> fsp;
-        bool success = 
-            _qi::phrase_parse(first, last, 
+        bool success =
+            _qi::phrase_parse(first, last,
                               +(fsp[_phoenix::push_back(_phoenix::ref(labels), _qi::_1)])
                               , _ascii::space);
         if (!success) return false;
@@ -299,7 +299,7 @@ bool parse_flat(Iterator& first, Iterator last, Term& term)
         return true;
     } catch (HSFCException)
     {
-        return false; 
+        return false;
     }
 }
 
@@ -315,7 +315,7 @@ void parse_flat(const std::string& flat, Term& term)
 		ss << "Failed to parse S-expression: ";
 		while (begin != last) ss<< *begin++;
 		throw HSFCException() << ErrorMsgInfo(ss.str());
-	}		
+	}
 }
 
 
