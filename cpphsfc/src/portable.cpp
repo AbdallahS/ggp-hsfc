@@ -17,10 +17,7 @@ PortableState::PortableState() : round_(0), currentstep_(0)
 
 PortableState::PortableState(const State& state)
 {
-    std::vector<std::pair<int,int> > relationlist;
-    state.manager_->GetStateData(*state.state_, relationlist, round_, currentstep_);
-    std::copy(relationlist.begin(), relationlist.end(),
-              std::inserter(relationset_,relationset_.end()));
+    state.manager_->GetStateData(*state.state_, relationset_, round_, currentstep_);
 }
 
 PortableState::PortableState(const PortableState& other) :

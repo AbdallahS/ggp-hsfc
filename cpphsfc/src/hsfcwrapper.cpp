@@ -168,6 +168,12 @@ void HSFCManager::PlayOut(hsfcState& GameState, std::vector<int>& GoalValue)
     internal_->PlayOut(&GameState, GoalValue);
 }
 
+void HSFCManager::DisplayState(const hsfcState& GameState) const
+{
+    hsfcStateManager* sm = const_cast<hsfcStateManager*>(internal_->StateManager);
+    sm->PrintRelations(const_cast<hsfcState*>(&GameState), true);
+}
+
 std::ostream& HSFCManager::PrintState(std::ostream& os, const hsfcState& GameState) const
 {
     hsfcStateManager* sm = const_cast<hsfcStateManager*>(internal_->StateManager);
@@ -325,8 +331,9 @@ std::ostream& HSFCManager::PrintMove(std::ostream& os, const hsfcLegalMove& lega
     }
 }
 
+
 void HSFCManager::GetStateData(const hsfcState& state,
-                               std::vector<std::pair<int,int> >& relationlist,
+                               std::set<std::pair<int,int> >& relationset,
                                int& round, int& currentstep) const
 {
     hsfcStateManager* sm = const_cast<hsfcStateManager*>(internal_->StateManager);
@@ -337,15 +344,23 @@ void HSFCManager::GetStateData(const hsfcState& state,
     {
         if (sm->Schema->Relation[i]->Fact != hsfcFactPermanent)
         {
-            for (int j=0; j < ts.NumRelations[i] && j<=32; ++j)
+// FIXUP: 20150603
+// Need to ask Michael S why he has the j <= 32 test in his code in
+// hsfcStateManager::PrintRelations() function. I have copied what he
+// did here but I don't think it is correct. Tere are games states
+// such as the initial state of nineboardtictactoe where having this
+// limit breaks the transfer of the correct state information.
+
+            // for (int j=0; j < ts.NumRelations[i] && j<=32; ++j)
+            for (int j=0; j < ts.NumRelations[i]; ++j)
             {
-                relationlist.push_back(std::make_pair(i, ts.RelationID[i][j]));
+                relationset.insert(std::make_pair(i, ts.RelationID[i][j]));
             }
         }
     }
 }
 
-void HSFCManager::SetStateData(const std::vector<std::pair<int,int> >& relationlist,
+void HSFCManager::SetStateData(const std::set<std::pair<int,int> >& relationset,
                                int round, int currentstep,
                                hsfcState& state)
 {
@@ -354,7 +369,7 @@ void HSFCManager::SetStateData(const std::vector<std::pair<int,int> >& relationl
     state.Round = round;
     state.CurrentStep = currentstep;
     typedef std::pair<int,int> ipair_t;
-    BOOST_FOREACH(const ipair_t& pr, relationlist)
+    BOOST_FOREACH(const ipair_t& pr, relationset)
     {
         hsfcTuple tuple;
         tuple.RelationIndex = pr.first;

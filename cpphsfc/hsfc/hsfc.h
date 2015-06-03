@@ -230,7 +230,6 @@ private:
 
     void initialize();
 
-
     /*
      * Internal format to return the legals in a structure that is easy
      * to check if some move is legal.

@@ -58,7 +58,10 @@ public:
     unsigned int NumPlayers() const;
     std::ostream& PrintPlayer(std::ostream& os, unsigned int roleid) const;
     std::ostream& PrintMove(std::ostream& os, const hsfcLegalMove& legalmove) const;
+
+    // These are debugging functions. Don't use them except for debugging code.
     std::ostream& PrintState(std::ostream& os, const hsfcState& GameState) const;
+    void DisplayState(const hsfcState& GameState) const;
 
     // NOTE: the change of behaviour of the Initialise function compared to the underlying
     // HSFC. Passing a string is now assumed to be a GDL description. To pass a filename
@@ -76,10 +79,10 @@ public:
      * HSFC instance that is loaded with the exact same GDL file.
      *******************************************************************************/
 
-    void GetStateData(const hsfcState& state, std::vector<std::pair<int,int> >& relationlist,
+    void GetStateData(const hsfcState& state, std::set<std::pair<int,int> >& relationset,
                       int& round, int& currentstep) const;
 
-    void SetStateData(const std::vector<std::pair<int,int> >& relationlist, int round,
+    void SetStateData(const std::set<std::pair<int,int> >& relationset, int round,
                       int currentstep, hsfcState& state);
 };
 

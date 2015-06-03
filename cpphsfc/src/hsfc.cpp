@@ -336,7 +336,8 @@ bool Game::operator!=(const Game& other) const
  * whenever I run Play().
  *****************************************************************************************/
 void State::initialize(){
-    // Hack to calculate legal moves so that the state will now be in a good state.
+
+    // Hack to calculate legal moves so that the state will now be in a good "state".
     if (!isTerminal()) {
         std::vector<PlayerMove> legalMoves;
         legals(std::back_inserter(legalMoves));
@@ -360,9 +361,13 @@ State::State(Game& game, const PortableState& ps): manager_(game.manager_), stat
 
     state_ = manager_->CreateGameState();
     manager_->SetInitialGameState(*state_);
+    this->initialize();
 
+/*
     std::vector<std::pair<int,int> > relationlist(ps.relationset_.begin(), ps.relationset_.end());
     manager_->SetStateData(relationlist, ps.round_, ps.currentstep_, *state_);
+*/
+    manager_->SetStateData(ps.relationset_, ps.round_, ps.currentstep_, *state_);
     this->initialize();
 }
 
