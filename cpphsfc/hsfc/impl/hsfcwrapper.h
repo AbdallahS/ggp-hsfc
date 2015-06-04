@@ -14,7 +14,14 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/filesystem.hpp>
 
+#ifndef HSFC2
+#warning "WHY AM I HERE"
 #include <hsfc/impl/hsfcAPI.h>
+#else
+#include <hsfc/impl/hsfcEngine.h>
+typedef hsfcEngine hsfcGDLManager;
+typedef hsfcParameters hsfcGDLParamaters;
+#endif
 
 namespace HSFC
 {

@@ -5,15 +5,17 @@ project(libhsfc)
 # Building
 #---------------------------------------------------
 
-set(LIBHSFC_SRC 
-  src/hsfcAPI.cpp
-  src/hsfcEngine.cpp  
-  src/hsfcGDL.cpp  
-  src/hsfcGrinder.cpp  
-  src/hsfcLexicon.cpp  
-  src/hsfcSchema.cpp  
+set(LIBHSFC_SRC
+  src/hsfcDomain.cpp
+  src/hsfcEngine.cpp
+  src/hsfcGDL.cpp
+  src/hsfcIO.cpp
+  src/hsfcLexicon.cpp
+  src/hsfcRule.cpp
+  src/hsfcSchema.cpp
+  src/hsfcSCL.cpp
   src/hsfcState.cpp
-  src/kpWFT.cpp
+  src/hsfcWFT.cpp
 )
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
@@ -37,15 +39,18 @@ set_target_properties(hsfc_shobj PROPERTIES COMPILE_FLAGS "-fPIC")
 #---------------------------------------------------
 
 set(LIBHSFC_HEADERS
-  hsfcAPI.h
+  hsfcDefinition.h
+  hsfcDomain.h
   hsfcEngine.h
   hsfcGDL.h
-  hsfcGrinder.h
+  hsfcIO.h
   hsfcLexicon.h
+  hsfcRule.h
   hsfcSchema.h
+  hsfcSCL.h
   hsfcState.h
-  kpWFT.h
-)  
+  hsfcWFT.h
+)
 
 set(HDR_ORIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBHSFC_PATCHED_HEADERS_DIR "${CMAKE_CURRENT_BINARY_DIR}/patched_headers")

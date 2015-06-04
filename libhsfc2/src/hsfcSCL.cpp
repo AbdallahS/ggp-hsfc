@@ -713,7 +713,7 @@ bool hsfcSCL::Normalise() {
 	// Check each statement in each rule; not the output 
 	for (unsigned int i = 0; i < this->Rule.size(); i++) {
 
-		this->Lexicon->IO->FormatToLog(3, true, "    Rule %d\n", i, NULL);
+		this->Lexicon->IO->FormatToLog(3, true, "    Rule %d\n", i);
 
 		for (unsigned int j = 1; j < this->Rule[i]->Term.size(); j++) {
 

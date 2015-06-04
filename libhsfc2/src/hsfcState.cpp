@@ -89,27 +89,27 @@ bool hsfcStateManager::SetSchema(hsfcSchema* Schema){
 	for (unsigned int i = 1; i < this->Schema->RelationSchema.size(); i++) {
 		if (this->Lexicon->Match(this->Schema->RelationSchema[i]->NameID, "role/1")) {
 			this->RoleRelationIndex = i;
-			this->Lexicon->IO->FormatToLog(3, true, "    RoleRelationIndex = %d\n", i, NULL);
+			this->Lexicon->IO->FormatToLog(3, true, "    RoleRelationIndex = %d\n", i);
 		}
 		if (this->Lexicon->Match(this->Schema->RelationSchema[i]->NameID, "terminal/0")) {
 			this->TerminalRelationIndex = i;
-			this->Lexicon->IO->FormatToLog(3, true, "    TerminalRelationIndex = %d\n", i, NULL);
+			this->Lexicon->IO->FormatToLog(3, true, "    TerminalRelationIndex = %d\n", i);
 		}
 		if (this->Lexicon->Match(this->Schema->RelationSchema[i]->NameID, "goal/2")) {
 			this->GoalRelationIndex = i;
-			this->Lexicon->IO->FormatToLog(3, true, "    GoalRelationIndex = %d\n", i, NULL);
+			this->Lexicon->IO->FormatToLog(3, true, "    GoalRelationIndex = %d\n", i);
 		}
 		if (this->Lexicon->Match(this->Schema->RelationSchema[i]->NameID, "legal/2")) {
 			this->LegalRelationIndex = i;
-			this->Lexicon->IO->FormatToLog(3, true, "    LegalRelationIndex = %d\n", i, NULL);
+			this->Lexicon->IO->FormatToLog(3, true, "    LegalRelationIndex = %d\n", i);
 		}
 		if (this->Lexicon->Match(this->Schema->RelationSchema[i]->NameID, "does/2")) {
 			this->DoesRelationIndex = i;
-			this->Lexicon->IO->FormatToLog(3, true, "    DoesRelationIndex = %d\n", i, NULL);
+			this->Lexicon->IO->FormatToLog(3, true, "    DoesRelationIndex = %d\n", i);
 		}
 		if (this->Lexicon->Match(this->Schema->RelationSchema[i]->NameID, "sees/2")) {
 			this->SeesRelationIndex = i;
-			this->Lexicon->IO->FormatToLog(3, true, "    SeesRelationIndex = %d\n", i, NULL);
+			this->Lexicon->IO->FormatToLog(3, true, "    SeesRelationIndex = %d\n", i);
 		}
 		if (this->Lexicon->PartialMatch(this->Schema->RelationSchema[i]->NameID, "next:")) {
 			this->NoNextRelation++;
@@ -126,7 +126,7 @@ bool hsfcStateManager::SetSchema(hsfcSchema* Schema){
 	for (unsigned int i = 1; i < this->Schema->RelationSchema.size(); i++) {
 		if (this->Lexicon->PartialMatch(this->Schema->RelationSchema[i]->NameID, "next:")) {
 			NextRelationIndex[Index] = i;
-			this->Lexicon->IO->FormatToLog(3, true, "    NextRelationIndex = %d\n", i, NULL);
+			this->Lexicon->IO->FormatToLog(3, true, "    NextRelationIndex = %d\n", i);
 			Index++;
 		}
 	}
@@ -273,7 +273,7 @@ bool hsfcStateManager::SetSchema(hsfcSchema* Schema){
 		}
 	}
 
-	this->Lexicon->IO->FormatToLog(3, true, "  State Size = %d\n", this->StateSize, NULL);
+	this->Lexicon->IO->FormatToLog(3, true, "  State Size = %d\n", this->StateSize);
 	this->Lexicon->IO->WriteToLog(2, true, "succeeded\n");
 
 	return true;
@@ -760,7 +760,7 @@ void hsfcStateManager::PrintRelations(hsfcState* State, bool ShowRigids) {
 					delete[] KIF;
 				}
 				if ((this->Schema->RelationSchema[i]->Fact != hsfcFactRigid) && (State->NumRelations[i] > 128)) {
-					this->Lexicon->IO->FormatToLog(0, false, "Count = %d\n", State->NumRelations[i], NULL);
+					this->Lexicon->IO->FormatToLog(0, false, "Count = %d\n", State->NumRelations[i]);
 				}
 			}
 

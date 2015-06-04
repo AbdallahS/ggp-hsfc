@@ -275,7 +275,7 @@ void hsfcRule::CreateLookupTable() {
 			this->PreConditionLookupSize[PreConditionIndex] = 1;
 			this->LookupSize += this->PreConditionLookupSize[PreConditionIndex];
 			this->PreConditionLookup[PreConditionIndex] = new unsigned int[this->PreConditionLookupSize[PreConditionIndex]];
-			this->Lexicon->IO->FormatToLog(3, true, "PreCondition %d   Size = 1\n", PreConditionIndex, NULL);
+			this->Lexicon->IO->FormatToLog(3, true, "PreCondition %d   Size = 1\n", PreConditionIndex);
 
 			// Calculate the value; out of range returns false 
 			if (this->CalculateValue(this->PreConditionCalculator[PreConditionIndex])) {
@@ -290,7 +290,7 @@ void hsfcRule::CreateLookupTable() {
 					if (this->PreConditionLookup[PreConditionIndex][j] >= 0) Count++;
 					this->Lexicon->IO->FormatToLog(0, true, "    %5d: %5d\n", j, this->PreConditionLookup[PreConditionIndex][j]);
 				}
-				this->Lexicon->IO->FormatToLog(0, true, "    Count = %d\n", Count, NULL);
+				this->Lexicon->IO->FormatToLog(0, true, "    Count = %d\n", Count);
 			}
 
 			PreConditionIndex++;
@@ -306,7 +306,7 @@ void hsfcRule::CreateLookupTable() {
 		this->ResultLookupSize = 1;
 		this->LookupSize += this->ResultLookupSize;
 		this->ResultLookup = new unsigned int[this->ResultLookupSize];
-		this->Lexicon->IO->FormatToLog(3, true, "Result   Size = %d\n", this->ResultLookupSize, NULL);
+		this->Lexicon->IO->FormatToLog(3, true, "Result   Size = %d\n", this->ResultLookupSize);
 
 		// Calculate the value; out of range returns false 
 		if (this->CalculateValue(this->ResultCalculator)) {
@@ -322,10 +322,10 @@ void hsfcRule::CreateLookupTable() {
 				if (this->ResultLookup[j] >= 0) Count++;
 				this->Lexicon->IO->FormatToLog(0, true, "    %5d: %5d\n", j, this->ResultLookup[j]);
 			}
-			this->Lexicon->IO->FormatToLog(0, true, "    Count = %d\n", Count, NULL);
+			this->Lexicon->IO->FormatToLog(0, true, "    Count = %d\n", Count);
 		}
 
-		this->Lexicon->IO->FormatToLog(3, true, "Lookup Size = %d\n", this->LookupSize * sizeof(int), NULL);
+		this->Lexicon->IO->FormatToLog(3, true, "Lookup Size = %d\n", this->LookupSize * sizeof(int));
 
 		return;
 
@@ -420,7 +420,7 @@ void hsfcRule::CreateLookupTable() {
 		if (this->Lexicon->IO->Parameters->LogDetail > 3) {
 			for (unsigned int i = 0; i < this->InputLookupSize[InputIndex]; i++) 
 				this->Lexicon->IO->FormatToLog(0, true, "    %5d: %5d\n", i, this->InputLookup[InputIndex][i]);
-			this->Lexicon->IO->FormatToLog(0, true, "    Unique = %d\n", this->MaxInputLookup[InputIndex] + 1, NULL);
+			this->Lexicon->IO->FormatToLog(0, true, "    Unique = %d\n", this->MaxInputLookup[InputIndex] + 1);
 		}
 
 	}
@@ -555,22 +555,22 @@ void hsfcRule::CreateLookupTable() {
 				if (this->ConditionLookup[i][j] >= 0) Count++;
 				this->Lexicon->IO->FormatToLog(0, true, "    %5d: %5d\n", j, this->ConditionLookup[i][j]);
 			}
-			this->Lexicon->IO->FormatToLog(0, true, "    Count = %d\n", Count, NULL);
+			this->Lexicon->IO->FormatToLog(0, true, "    Count = %d\n", Count);
 		}
 	}
 
 	// Print the result table
-	this->Lexicon->IO->FormatToLog(3, true, "Result   Size = %d\n", this->ResultLookupSize, NULL);
+	this->Lexicon->IO->FormatToLog(3, true, "Result   Size = %d\n", this->ResultLookupSize);
 	if (this->Lexicon->IO->Parameters->LogDetail > 3) {
 		Count = 0;
 		for (unsigned int j = 0; j < this->ResultLookupSize; j++) {
 			if (this->ResultLookup[j] >= 0) Count++;
 			this->Lexicon->IO->FormatToLog(0, true, "    %5d: %5d\n", j, this->ResultLookup[j]);
 		}
-		this->Lexicon->IO->FormatToLog(0, true, "    Count = %d\n", Count, NULL);
+		this->Lexicon->IO->FormatToLog(0, true, "    Count = %d\n", Count);
 	}
 
-	this->Lexicon->IO->FormatToLog(3, true, "Lookup Size = %d bytes\n", this->LookupSize * sizeof(int), NULL);
+	this->Lexicon->IO->FormatToLog(3, true, "Lookup Size = %d bytes\n", this->LookupSize * sizeof(int));
 
 	// Cleanup
 	delete[] LookupValue;
@@ -1324,7 +1324,7 @@ void hsfcRule::PrintCalculator(hsfcCalculator& Calculator, bool ResetVariables){
 	
 	// Print the terms
 	for (unsigned int i = 0; i < Calculator.TermSize; i++) {
-		this->Lexicon->IO->FormatToLog(0, false, "%d", i, NULL);
+		this->Lexicon->IO->FormatToLog(0, false, "%d", i);
 		if (Calculator.Term[i].Index == 0) {
 			if (Calculator.Term[i].ID == 0) {
 				this->Lexicon->IO->FormatToLog(0, false, "\t%-18s", "?");
@@ -1871,7 +1871,7 @@ void hsfcStratum::CreateLookupTables() {
 	// Create lookup tables for each rule
 	for (unsigned int i = 0; i < this->Rule.size(); i++) {
 
-		this->Lexicon->IO->FormatToLog(3, true, "      Rule %d\n", i, NULL);
+		this->Lexicon->IO->FormatToLog(3, true, "      Rule %d\n", i);
 
 		// Set the rule properties
 		this->Rule[i]->LookupSize = 0;
@@ -1954,7 +1954,7 @@ void hsfcStratum::Print(){
 
 	// Free the resources
 	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-		this->Lexicon->IO->FormatToLog(0, true, "\nRule %d\n", i, NULL);
+		this->Lexicon->IO->FormatToLog(0, true, "\nRule %d\n", i);
 		this->Rule[i]->Print(true);
 	}
 
@@ -2283,7 +2283,7 @@ void hsfcRulesEngine::ChooseRandomMoves(hsfcState* State) {
 	for (unsigned int i = 0; i < NumRoles; i++) {
 		// Is there a move to make
 		if (NumMoves[i] == 0) {
-			this->Lexicon->IO->FormatToLog(0, false, "Error: No moves for role %d\n", i, NULL);
+			this->Lexicon->IO->FormatToLog(0, false, "Error: No moves for role %d\n", i);
 		}
 		// Make the chosen move
 		this->StateManager->AddRelation(State, Move[i]);
@@ -2305,7 +2305,7 @@ void hsfcRulesEngine::Print() {
 
 	// Print the strats
 	for (unsigned int i = 0; i < this->Stratum.size(); i++) {
-		this->Lexicon->IO->FormatToLog(0, true, "\nStratum %d\n", i, NULL);
+		this->Lexicon->IO->FormatToLog(0, true, "\nStratum %d\n", i);
 		this->Stratum[i]->Print();
 	}
 	
@@ -2388,7 +2388,7 @@ void hsfcRulesEngine::SetStratumProperties(){
 	// Print the steps
 	if (this->Lexicon->IO->Parameters->LogDetail > 2) {
 		for (unsigned int i = 0; i < 6; i++) {
-			this->Lexicon->IO->FormatToLog(3, true, "    Step %d", i, NULL);
+			this->Lexicon->IO->FormatToLog(3, true, "    Step %d", i);
 			this->Lexicon->IO->FormatToLog(3, true, "    %d to %d\n", this->FirstStratumIndex[i], this->LastStratumIndex[i]);
 		}
 	}
@@ -2497,7 +2497,7 @@ void hsfcRulesEngine::CreateLookupTables() {
 		// Initialise the lookup size
 		this->Stratum[i]->LookupSize = 0;
 
-		this->Lexicon->IO->FormatToLog(3, true, "    Stratum %d\n", i, NULL);
+		this->Lexicon->IO->FormatToLog(3, true, "    Stratum %d\n", i);
 		this->Stratum[i]->CreateLookupTables();
 
 		// Calculate the lookup size
@@ -2505,7 +2505,7 @@ void hsfcRulesEngine::CreateLookupTables() {
 
 	}
 
-	this->Lexicon->IO->FormatToLog(2, true, "  Total Lookup size = %d bytes\n", this->LookupSize, NULL);
+	this->Lexicon->IO->FormatToLog(2, true, "  Total Lookup size = %d bytes\n", this->LookupSize);
 
 }
 

@@ -297,7 +297,7 @@ void hsfcRelationSchema::Print(){
 
 	this->Lexicon->IO->FormatToLog(0, false, "%s\n", this->Lexicon->Text(this->NameID));
 	for (unsigned int i = 0; i < this->DomainSchema.size(); i++) {
-		this->Lexicon->IO->FormatToLog(0, false, "     %2d:", i, NULL);
+		this->Lexicon->IO->FormatToLog(0, false, "     %2d:", i);
 		this->DomainSchema[i]->Print();
 	}
 
@@ -364,7 +364,7 @@ void hsfcRuleRelationSchema::Print(){
 			this->Lexicon->IO->FormatToLog(0, false, "'%s'  ", this->Lexicon->Text(this->TermSchema[i].NameID));
 		}
 		if (this->TermSchema[i].Type == hsfcTypeVariable) {
-			this->Lexicon->IO->FormatToLog(0, false, "?%02d  ", this->TermSchema[i].VariableIndex, NULL);
+			this->Lexicon->IO->FormatToLog(0, false, "?%02d  ", this->TermSchema[i].VariableIndex);
 		}
 	}
 	this->Lexicon->IO->WriteToLog(0, false, "\n");
@@ -422,7 +422,7 @@ void hsfcRuleSchema::Print(){
 
 	this->Lexicon->IO->FormatToLog(0, false, "%s\n", "Variables");
 	for (unsigned int i = 0; i < this->VariableSchema.size(); i++) {
-		this->Lexicon->IO->FormatToLog(0, false, "   %02d:", i, NULL);
+		this->Lexicon->IO->FormatToLog(0, false, "   %02d:", i);
 		this->VariableSchema[i]->Print();
 	}
 
@@ -496,7 +496,7 @@ void hsfcStratumSchema::Initialise(hsfcSCLStratum* SCLStratum){
 void hsfcStratumSchema::Print(){
 
 	for (unsigned int i = 0; i < this->RuleSchema.size(); i++) {
-		this->Lexicon->IO->FormatToLog(0, false, "\nRule %d\n", i, NULL);
+		this->Lexicon->IO->FormatToLog(0, false, "\nRule %d\n", i);
 		this->RuleSchema[i]->Print();
 	}
 	this->Lexicon->IO->WriteToLog(0, false, "\n-------------------------------\n");
@@ -643,7 +643,7 @@ void hsfcSchema::Print(){
 	this->Lexicon->IO->WriteToLog(0, false, "\n--- Relation Schema ---\n");
 
 	for (unsigned int i = 1; i < this->RelationSchema.size(); i++) {
-		this->Lexicon->IO->FormatToLog(0, false, "\n%3d ", i, NULL);
+		this->Lexicon->IO->FormatToLog(0, false, "\n%3d ", i);
 		this->RelationSchema[i]->Print();
 	}
 

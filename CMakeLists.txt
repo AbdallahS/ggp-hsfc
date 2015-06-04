@@ -26,6 +26,7 @@ set(HSFC2 1)
 # Add options whether to use HSFC2
 # -----------------------------------------------------------------
 if (HSFC2)
+  add_definitions(-DHSFC2)
   message(WARNING "Selecting HSFC v2: this is highly experimental")
   add_subdirectory(libhsfc2)           # Build the base libhsfc2
 else()

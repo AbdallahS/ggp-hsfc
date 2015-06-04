@@ -440,7 +440,7 @@ void hsfcWFT::ReadFile(const char* FileName, const char* CommentPrefix) {
     // Find the filesize
     fseek(InputFile, 0, SEEK_END);
     FileSize = ftell(InputFile);
-	this->Lexicon->IO->FormatToLog(2, true, "File size = %d\n", FileSize, NULL);
+	this->Lexicon->IO->FormatToLog(2, true, "File size = %d\n", FileSize);
     rewind(InputFile);
 
     // Load the file into memory
@@ -458,7 +458,7 @@ void hsfcWFT::ReadFile(const char* FileName, const char* CommentPrefix) {
 
 	Script[Length] = 0;
 	fclose(InputFile);
-	this->Lexicon->IO->FormatToLog(2, true, "%d bytes read\n", Length, NULL);
+	this->Lexicon->IO->FormatToLog(2, true, "%d bytes read\n", Length);
 
 	// Load the script
 	this->Load(Script, CommentPrefix);

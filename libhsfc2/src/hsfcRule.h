@@ -176,6 +176,6 @@ private:
 	hsfcDomainManager* DomainManager;
 	hsfcState* State;
 	hsfcSchema* Schema;
-	vector<vector<int>> Step;
+	vector<vector<int> > Step;
 
 };

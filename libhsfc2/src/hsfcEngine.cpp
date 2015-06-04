@@ -592,7 +592,7 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 	// Calculate statistics
 	this->Lexicon->IO->WriteToLog(1, true, "Game Statistics\n");
 	this->Lexicon->IO->LogIndent = 4;
-	this->Lexicon->IO->FormatToLog(1, true, "From %d Playouts\n", Count, NULL);
+	this->Lexicon->IO->FormatToLog(1, true, "From %d Playouts\n", Count);
 	this->Lexicon->IO->FormatToLog(1, true, "  Games Per Second %.3f\n", GamesPerSecond);
 	Average = SumRounds / (double)Count;
 	StdDev = sqrt((SumRounds2 / (double)Count) - (Average * Average));
@@ -676,9 +676,9 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 	this->Lexicon->IO->LogIndent = 2;
 	this->Lexicon->IO->WriteToLog(1, true, "Game Tree\n");
 	this->Lexicon->IO->WriteToLog(1, true, "  Tree Nodes\n");
-	this->Lexicon->IO->FormatToLog(1, true, "    Depth 1 = %d\n", Node1Count, NULL);
-	this->Lexicon->IO->FormatToLog(1, true, "    Depth 2 = %d\n", Node2Count, NULL);
-	this->Lexicon->IO->FormatToLog(1, true, "    Depth 3 = %d\n", Node3Count, NULL);
+	this->Lexicon->IO->FormatToLog(1, true, "    Depth 1 = %d\n", Node1Count);
+	this->Lexicon->IO->FormatToLog(1, true, "    Depth 2 = %d\n", Node2Count);
+	this->Lexicon->IO->FormatToLog(1, true, "    Depth 3 = %d\n", Node3Count);
 
 	// Clean up the objects
 	this->FreeGameState(GameState);
@@ -848,7 +848,7 @@ bool hsfcEngine::ReadFile(const char* FileName, char** Script) {
     // Find the filesize
     fseek(InputFile, 0, SEEK_END);
     FileSize = ftell(InputFile);
-	this->Lexicon->IO->FormatToLog(2, true, "File size = %d\n", FileSize, NULL);
+	this->Lexicon->IO->FormatToLog(2, true, "File size = %d\n", FileSize);
     rewind(InputFile);
 
     // Load the file into memory
@@ -877,7 +877,7 @@ bool hsfcEngine::ReadFile(const char* FileName, char** Script) {
 
 	(*Script)[Length] = 0;
 	fclose(InputFile);
-	this->Lexicon->IO->FormatToLog(2, true, "%d bytes read\n", Length, NULL);
+	this->Lexicon->IO->FormatToLog(2, true, "%d bytes read\n", Length);
 
 	return true;
 

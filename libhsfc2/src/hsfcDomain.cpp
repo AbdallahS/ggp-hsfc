@@ -525,7 +525,7 @@ void hsfcDomainManager::Print() {
 	for (unsigned int i = 1; i < this->DomainSize; i++) {
 		this->Lexicon->IO->FormatToLog(2, true, "\n%s\n", this->Lexicon->Text(this->Domain[i].NameID));
 		for (unsigned int j = 0; j < this->Domain[i].Arity; j++) {
-			this->Lexicon->IO->FormatToLog(2, true, "Argument %d\n", j, NULL);
+			this->Lexicon->IO->FormatToLog(2, true, "Argument %d\n", j);
 			for (unsigned int k = 0; k < this->Domain[i].RecordSize[j]; k++) {
 				this->Lexicon->IO->FormatToLog(2, true, "%4d:%4d.", k, this->Domain[i].Record[j][k].Relation.Index); 
 				this->Lexicon->IO->FormatToLog(2, true, "%4d%6d\n", this->Domain[i].Record[j][k].Relation.ID, this->Domain[i].Record[j][k].IndexBase); 
