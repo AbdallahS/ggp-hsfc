@@ -238,6 +238,51 @@ std::string g_nineboardttt=" \
 (arg row/4 3 x/0) \
 ";
 
+
+std::string g_nineboardttt2=" \
+(init (control xPlayer)) \
+(role oPlayer) \
+(role xPlayer) \
+(index 1) \
+(index 2) \
+(index 3) \
+(<= (legal xPlayer noop) (true (control oPlayer))) \
+(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) firstMove (emptyCell ?i ?j ?k ?l)) \
+(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) (true (currentBoard ?i ?j)) (emptyCell ?i ?j ?k ?l)) \
+(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) currentBoardClosed (emptyCell ?i ?j ?k ?l)) \
+(<= (legal oPlayer noop) (true (control xPlayer))) \
+(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) firstMove (emptyCell ?i ?j ?k ?l)) \
+(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) (true (currentBoard ?i ?j)) (emptyCell ?i ?j ?k ?l)) \
+(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) currentBoardClosed (emptyCell ?i ?j ?k ?l)) \
+(<= (next (mark ?i ?j ?k ?l ?mark)) (does ?player (play ?i ?j ?k ?l ?mark))) \
+(<= (next (mark ?i ?j ?k ?l ?mark)) (true (mark ?i ?j ?k ?l ?mark))) \
+(<= (next (currentBoard ?k ?l)) (does ?player (play ?i ?j ?k ?l ?mark))) \
+(<= (next (control xPlayer)) (true (control oPlayer))) \
+(<= (next (control oPlayer)) (true (control xPlayer))) \
+(<= (goal xPlayer 0) (not (line x)) (not (line o)) open) \
+(<= (goal xPlayer 100) (line x)) \
+(<= (goal xPlayer 50) (not (line x)) (not (line o)) (not open)) \
+(<= (goal xPlayer 0) (line o)) \
+(<= (goal oPlayer 0) (not (line x)) (not (line o)) open) \
+(<= (goal oPlayer 100) (line o)) \
+(<= (goal oPlayer 50) (not (line x)) (not (line o)) (not open)) \
+(<= (goal oPlayer 0) (line x)) \
+(<= terminal (line x)) \
+(<= terminal (line o)) \
+(<= terminal (not open)) \
+(<= (row ?i ?j ?k ?mark) (true (mark ?i ?j ?k 1 ?mark)) (true (mark ?i ?j ?k 2 ?mark)) (true (mark ?i ?j ?k 3 ?mark))) \
+(<= (col ?i ?j ?k ?mark) (true (mark ?i ?j 1 ?k ?mark)) (true (mark ?i ?j 2 ?k ?mark)) (true (mark ?i ?j 3 ?k ?mark))) \
+(<= (diag ?i ?j ?mark) (true (mark ?i ?j 1 1 ?mark)) (true (mark ?i ?j 2 2 ?mark)) (true (mark ?i ?j 3 3 ?mark))) \
+(<= (diag ?i ?j ?mark) (true (mark ?i ?j 1 3 ?mark)) (true (mark ?i ?j 2 2 ?mark)) (true (mark ?i ?j 3 1 ?mark))) \
+(<= (line ?mark) (index ?i) (index ?j) (index ?k) (row ?i ?j ?k ?mark)) \
+(<= (line ?mark) (index ?i) (index ?j) (index ?k) (col ?i ?j ?k ?mark)) \
+(<= (line ?mark) (index ?i) (index ?j) (diag ?i ?j ?mark)) \
+(<= (emptyCell ?i ?j ?k ?l) (index ?i) (index ?j) (index ?k) (index ?l) (not (true (mark ?i ?j ?k ?l x))) (not (true (mark ?i ?j ?k ?l o)))) \
+(<= open (emptyCell ?i ?j ?k ?l)) \
+(<= currentBoardClosed (true (currentBoard ?i ?j)) (not (emptyCell ?i ?j 1 1)) (not (emptyCell ?i ?j 1 2)) (not (emptyCell ?i ?j 1 3)) (not (emptyCell ?i ?j 2 1)) (not (emptyCell ?i ?j 2 2)) (not (emptyCell ?i ?j 2 3)) (not (emptyCell ?i ?j 3 1)) (not (emptyCell ?i ?j 3 2)) (not (emptyCell ?i ?j 3 3))) \
+(<= firstMove (not (true (currentBoard 1 1))) (not (true (currentBoard 1 2))) (not (true (currentBoard 1 3))) (not (true (currentBoard 2 1))) (not (true (currentBoard 2 2))) (not (true (currentBoard 2 3))) (not (true (currentBoard 3 1))) (not (true (currentBoard 3 2))) (not (true (currentBoard 3 3)))) \
+";
+
 std::string g_ttt=" \
 ;;;; RULES \
  \
@@ -428,8 +473,8 @@ Player get_player(const Game& game, const std::string& playername)
 
 BOOST_AUTO_TEST_CASE(send_initial_state_across_game)
 {
-    Game game1(g_nineboardttt);
-    Game game2(g_nineboardttt);
+    Game game1(g_nineboardttt2);
+    Game game2(g_nineboardttt2);
     const State& state1a = game1.initState();
     State state1b(game1);
     state1b.playout();

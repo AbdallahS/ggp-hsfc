@@ -19,6 +19,9 @@
 
 using namespace HSFC;
 
+// Declare the tictactoe gdl. Defined at the end of the file.
+extern const char* g_tictactoe;
+
 /****************************************************************
  * General support functions
  ****************************************************************/
@@ -86,7 +89,7 @@ void tictactoe_playout_check(const State &state)
 
 BOOST_AUTO_TEST_CASE(playermoves_basics)
 {
-    Game game(boost::filesystem::path("./tictactoe.gdl"));
+    Game game(g_tictactoe);
     State state(game);
     boost::unordered_set<PlayerMove> moveset1;
     boost::unordered_set<PlayerMove> moveset2;
@@ -130,7 +133,7 @@ BOOST_AUTO_TEST_CASE(playermoves_basics)
 
 BOOST_AUTO_TEST_CASE(playermoves_viewplayers)
 {
-    Game game(boost::filesystem::path("./tictactoe.gdl"));
+    Game game(g_tictactoe);
     State state(game);
     boost::unordered_set<Player> playerset1;
     boost::unordered_set<Player> playerset2;
@@ -162,7 +165,7 @@ BOOST_AUTO_TEST_CASE(playermoves_viewplayers)
 
 BOOST_AUTO_TEST_CASE(playermoves_viewmovesbyplayer)
 {
-    Game game(boost::filesystem::path("./tictactoe.gdl"));
+    Game game(g_tictactoe);
     State state(game);
     boost::unordered_set<Player> playerset1;
     PlayerMoves playermoves1;
@@ -210,7 +213,7 @@ BOOST_AUTO_TEST_CASE(playermoves_viewmovesbyplayer)
 
 BOOST_AUTO_TEST_CASE(playermoves_illegalplay)
 {
-    Game game(boost::filesystem::path("./tictactoe.gdl"));
+    Game game(g_tictactoe);
     State state(game);
     std::vector<JointMove> jms = state.joints();
     BOOST_CHECK(jms.size() > 0);
@@ -220,3 +223,147 @@ BOOST_AUTO_TEST_CASE(playermoves_illegalplay)
     // Playing the move again should throw an exception
     BOOST_CHECK_THROW(state.play(jms[0]), HSFCValueError);
 }
+
+/****************************************************************
+ * The GDL variables
+ ****************************************************************/
+
+const char* g_tictactoe = " \
+;;;; RULES   \
+ \
+(role xplayer) \
+(role oplayer) \
+(init (cell 1 1 b)) \
+(init (cell 1 2 b)) \
+(init (cell 1 3 b)) \
+(init (cell 2 1 b)) \
+(init (cell 2 2 b)) \
+(init (cell 2 3 b)) \
+(init (cell 3 1 b)) \
+(init (cell 3 2 b)) \
+(init (cell 3 3 b)) \
+(init (control xplayer)) \
+(<= (next (cell ?m ?n x)) (does xplayer (mark ?m ?n)) (true (cell ?m ?n b))) \
+(<= (next (cell ?m ?n o)) (does oplayer (mark ?m ?n)) (true (cell ?m ?n b))) \
+(<= (next (cell ?m ?n ?w)) (true (cell ?m ?n ?w)) (distinct ?w b)) \
+(<= (next (cell ?m ?n b)) (does ?w (mark ?j ?k)) (true (cell ?m ?n b)) (distinct ?m ?j)) \
+(<= (next (cell ?m ?n b)) (does ?w (mark ?j ?k)) (true (cell ?m ?n b)) (distinct ?n ?k)) \
+(<= (next (control xplayer)) (true (control oplayer))) \
+(<= (next (control oplayer)) (true (control xplayer))) \
+(<= (row ?m ?x) (true (cell ?m 1 ?x)) (true (cell ?m 2 ?x)) (true (cell ?m 3 ?x))) \
+(<= (column ?n ?x) (true (cell 1 ?n ?x)) (true (cell 2 ?n ?x)) (true (cell 3 ?n ?x))) \
+(<= (diagonal ?x) (true (cell 1 1 ?x)) (true (cell 2 2 ?x)) (true (cell 3 3 ?x))) \
+(<= (diagonal ?x) (true (cell 1 3 ?x)) (true (cell 2 2 ?x)) (true (cell 3 1 ?x))) \
+(<= (line ?x) (row ?m ?x)) \
+(<= (line ?x) (column ?m ?x)) \
+(<= (line ?x) (diagonal ?x)) \
+(<= open (true (cell ?m ?n b))) \
+(<= (legal ?w (mark ?x ?y)) (true (cell ?x ?y b)) (true (control ?w))) \
+(<= (legal xplayer noop) (true (control oplayer))) \
+(<= (legal oplayer noop) (true (control xplayer))) \
+(<= (goal xplayer 100) (line x)) \
+(<= (goal xplayer 50) (not (line x)) (not (line o)) (not open)) \
+(<= (goal xplayer 0) (line o)) \
+(<= (goal oplayer 100) (line o)) \
+(<= (goal oplayer 50) (not (line x)) (not (line o)) (not open)) \
+(<= (goal oplayer 0) (line x)) \
+(<= terminal (line x)) \
+(<= terminal (line o)) \
+(<= terminal (not open)) \
+ \
+;;;; STRATS  \
+ \
+(strat does 0) \
+(strat goal 1) \
+(strat init 0) \
+(strat legal 0) \
+(strat next 0) \
+(strat role 0) \
+(strat terminal 1) \
+(strat true 0) \
+(strat cell 0) \
+(strat column 0) \
+(strat control 0) \
+(strat diagonal 0) \
+(strat line 0) \
+(strat open 0) \
+(strat row 0) \
+ \
+;;;; PATHS   \
+ \
+(arg does/2 0 oplayer/0) \
+(arg does/2 0 xplayer/0) \
+(arg does/2 1 mark/2 0 1/0) \
+(arg does/2 1 mark/2 0 2/0) \
+(arg does/2 1 mark/2 0 3/0) \
+(arg does/2 1 mark/2 1 1/0) \
+(arg does/2 1 mark/2 1 2/0) \
+(arg does/2 1 mark/2 1 3/0) \
+(arg does/2 1 noop/0) \
+(arg goal/2 0 oplayer/0) \
+(arg goal/2 0 xplayer/0) \
+(arg goal/2 1 0/0) \
+(arg goal/2 1 100/0) \
+(arg goal/2 1 50/0) \
+(arg init/1 0 cell/3 0 1/0) \
+(arg init/1 0 cell/3 0 2/0) \
+(arg init/1 0 cell/3 0 3/0) \
+(arg init/1 0 cell/3 1 1/0) \
+(arg init/1 0 cell/3 1 2/0) \
+(arg init/1 0 cell/3 1 3/0) \
+(arg init/1 0 cell/3 2 b/0) \
+(arg init/1 0 control/1 0 xplayer/0) \
+(arg legal/2 0 oplayer/0) \
+(arg legal/2 0 xplayer/0) \
+(arg legal/2 1 mark/2 0 1/0) \
+(arg legal/2 1 mark/2 0 2/0) \
+(arg legal/2 1 mark/2 0 3/0) \
+(arg legal/2 1 mark/2 1 1/0) \
+(arg legal/2 1 mark/2 1 2/0) \
+(arg legal/2 1 mark/2 1 3/0) \
+(arg legal/2 1 noop/0) \
+(arg next/1 0 cell/3 0 1/0) \
+(arg next/1 0 cell/3 0 2/0) \
+(arg next/1 0 cell/3 0 3/0) \
+(arg next/1 0 cell/3 1 1/0) \
+(arg next/1 0 cell/3 1 2/0) \
+(arg next/1 0 cell/3 1 3/0) \
+(arg next/1 0 cell/3 2 b/0) \
+(arg next/1 0 cell/3 2 o/0) \
+(arg next/1 0 cell/3 2 x/0) \
+(arg next/1 0 control/1 0 oplayer/0) \
+(arg next/1 0 control/1 0 xplayer/0) \
+(arg role/1 0 oplayer/0) \
+(arg role/1 0 xplayer/0) \
+(arg terminal/0) \
+(arg true/1 0 cell/3 0 1/0) \
+(arg true/1 0 cell/3 0 2/0) \
+(arg true/1 0 cell/3 0 3/0) \
+(arg true/1 0 cell/3 1 1/0) \
+(arg true/1 0 cell/3 1 2/0) \
+(arg true/1 0 cell/3 1 3/0) \
+(arg true/1 0 cell/3 2 b/0) \
+(arg true/1 0 cell/3 2 o/0) \
+(arg true/1 0 cell/3 2 x/0) \
+(arg true/1 0 control/1 0 oplayer/0) \
+(arg true/1 0 control/1 0 xplayer/0) \
+(arg column/2 0 1/0) \
+(arg column/2 0 2/0) \
+(arg column/2 0 3/0) \
+(arg column/2 1 b/0) \
+(arg column/2 1 o/0) \
+(arg column/2 1 x/0) \
+(arg diagonal/1 0 b/0) \
+(arg diagonal/1 0 o/0) \
+(arg diagonal/1 0 x/0) \
+(arg line/1 0 b/0) \
+(arg line/1 0 o/0) \
+(arg line/1 0 x/0) \
+(arg open/0) \
+(arg row/2 0 1/0) \
+(arg row/2 0 2/0) \
+(arg row/2 0 3/0) \
+(arg row/2 1 b/0) \
+(arg row/2 1 o/0) \
+(arg row/2 1 x/0) \
+";

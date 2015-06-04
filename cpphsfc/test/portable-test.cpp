@@ -18,12 +18,16 @@
 
 using namespace HSFC;
 
+// Declare the tictactoe gdl. Defined at the end of the file.
+extern const char* g_tictactoe;
+
 /****************************************************************
  * Suport functions
  ****************************************************************/
 
 // Count the number of moves that are legal for the given player
-unsigned int count_player_moves(const std::vector<PlayerMove> moves, const std::string& player)
+unsigned int count_player_moves(const std::vector<PlayerMove> moves, 
+                                const std::string& player)
 {
     unsigned int count = 0;
     BOOST_FOREACH(const PlayerMove& pm, moves)
@@ -65,7 +69,7 @@ Player get_player(const Game& game, const std::string& playername)
 
 BOOST_AUTO_TEST_CASE(send_terminal_state_across_game1)
 {
-    Game game1(boost::filesystem::path("./tictactoe.gdl"));
+    Game game1(g_tictactoe);
     State state1(game1);
     state1.playout();
     BOOST_CHECK(state1.isTerminal());
@@ -79,7 +83,7 @@ BOOST_AUTO_TEST_CASE(send_terminal_state_across_game1)
     boost::archive::text_iarchive ia(iserialstream);
 
 
-    Game game2(boost::filesystem::path("./tictactoe.gdl"));
+    Game game2(g_tictactoe);
     boost::shared_ptr<PortableState> pstate2;
     ia >> pstate2;
     State state2(game2, *pstate2);
@@ -89,7 +93,7 @@ BOOST_AUTO_TEST_CASE(send_terminal_state_across_game1)
 
 BOOST_AUTO_TEST_CASE(send_state_across_game1)
 {
-    Game game1(boost::filesystem::path("./tictactoe.gdl"));
+    Game game1(g_tictactoe);
     State state1(game1);
     BOOST_CHECK(!state1.isTerminal());
     boost::shared_ptr<PortableState> pstate1(new PortableState(state1));
@@ -102,7 +106,7 @@ BOOST_AUTO_TEST_CASE(send_state_across_game1)
     boost::archive::text_iarchive ia(iserialstream);
 
 
-    Game game2(boost::filesystem::path("./tictactoe.gdl"));
+    Game game2(g_tictactoe);
     boost::shared_ptr<PortableState> pstate2;
     ia >> pstate2;
     State state2(game2, *pstate2);
@@ -115,7 +119,7 @@ BOOST_AUTO_TEST_CASE(send_state_across_game1)
  ****************************************************************/
 BOOST_AUTO_TEST_CASE(send_state_across_game2)
 {
-    Game game1(boost::filesystem::path("./tictactoe.gdl"));
+    Game game1(g_tictactoe);
     State state1(game1);
     State state1b(game1);
     PortableState pstate1(state1);
@@ -141,8 +145,8 @@ BOOST_AUTO_TEST_CASE(send_state_across_game2)
 
 BOOST_AUTO_TEST_CASE(send_players_across_games)
 {
-    Game game1(boost::filesystem::path("./tictactoe.gdl"));
-    Game game2(boost::filesystem::path("./tictactoe.gdl"));
+    Game game1(g_tictactoe);
+    Game game2(g_tictactoe);
     std::vector<Player> players1;
     std::vector<Player> players2;
     std::vector<Player> playerst;
@@ -206,8 +210,8 @@ BOOST_AUTO_TEST_CASE(send_players_across_games)
 
 BOOST_AUTO_TEST_CASE(send_moves_across_games)
 {
-    Game game1(boost::filesystem::path("./tictactoe.gdl"));
-    Game game2(boost::filesystem::path("./tictactoe.gdl"));
+    Game game1(g_tictactoe);
+    Game game2(g_tictactoe);
     State state1(game1);
     State state2(game2);
     std::vector<PlayerMove> playermoves1;
@@ -270,8 +274,8 @@ BOOST_AUTO_TEST_CASE(send_moves_across_games)
 
 BOOST_AUTO_TEST_CASE(send_playermoves_across_games)
 {
-    Game game1(boost::filesystem::path("./tictactoe.gdl"));
-    Game game2(boost::filesystem::path("./tictactoe.gdl"));
+    Game game1(g_tictactoe);
+    Game game2(g_tictactoe);
     State state1(game1);
     State state2(game2);
     std::vector<PlayerMove> playermoves1;
@@ -316,8 +320,8 @@ BOOST_AUTO_TEST_CASE(send_playermoves_across_games)
 
 BOOST_AUTO_TEST_CASE(send_playergoals_across_games)
 {
-    Game game1(boost::filesystem::path("./tictactoe.gdl"));
-    Game game2(boost::filesystem::path("./tictactoe.gdl"));
+    Game game1(g_tictactoe);
+    Game game2(g_tictactoe);
     State state1(game1);
     State state2(game2);
     std::vector<PlayerGoal> playergoals1;
@@ -361,8 +365,8 @@ BOOST_AUTO_TEST_CASE(send_playergoals_across_games)
 
 BOOST_AUTO_TEST_CASE(send_jointmove_across_games)
 {
-    Game game1(boost::filesystem::path("./tictactoe.gdl"));
-    Game game2(boost::filesystem::path("./tictactoe.gdl"));
+    Game game1(g_tictactoe);
+    Game game2(g_tictactoe);
     State state1(game1);
     State state2(game2);
     std::vector<JointMove> jointmoves1;
@@ -408,8 +412,8 @@ BOOST_AUTO_TEST_CASE(send_jointmove_across_games)
 
 BOOST_AUTO_TEST_CASE(send_jointgoals_across_games)
 {
-    Game game1(boost::filesystem::path("./tictactoe.gdl"));
-    Game game2(boost::filesystem::path("./tictactoe.gdl"));
+    Game game1(g_tictactoe);
+    Game game2(g_tictactoe);
     State state1(game1);
     State state2(game2);
     std::vector<PlayerGoal> playergoals1;
@@ -466,7 +470,7 @@ PlayerMove get_playermove(const State& state,
 
 BOOST_AUTO_TEST_CASE(generate_equiv_states)
 {
-    Game game1(boost::filesystem::path("./tictactoe.gdl"));
+    Game game1(g_tictactoe);
     State state1(game1);
     State state2(game1);
     JointMove jm;
@@ -534,3 +538,147 @@ BOOST_AUTO_TEST_CASE(generate_equiv_states)
     // We want to now check that the pstates have the same fluents
     BOOST_CHECK(pstate1 == pstate2);
 }
+
+/****************************************************************
+ * The GDL variables
+ ****************************************************************/
+
+const char* g_tictactoe = " \
+;;;; RULES   \
+ \
+(role xplayer) \
+(role oplayer) \
+(init (cell 1 1 b)) \
+(init (cell 1 2 b)) \
+(init (cell 1 3 b)) \
+(init (cell 2 1 b)) \
+(init (cell 2 2 b)) \
+(init (cell 2 3 b)) \
+(init (cell 3 1 b)) \
+(init (cell 3 2 b)) \
+(init (cell 3 3 b)) \
+(init (control xplayer)) \
+(<= (next (cell ?m ?n x)) (does xplayer (mark ?m ?n)) (true (cell ?m ?n b))) \
+(<= (next (cell ?m ?n o)) (does oplayer (mark ?m ?n)) (true (cell ?m ?n b))) \
+(<= (next (cell ?m ?n ?w)) (true (cell ?m ?n ?w)) (distinct ?w b)) \
+(<= (next (cell ?m ?n b)) (does ?w (mark ?j ?k)) (true (cell ?m ?n b)) (distinct ?m ?j)) \
+(<= (next (cell ?m ?n b)) (does ?w (mark ?j ?k)) (true (cell ?m ?n b)) (distinct ?n ?k)) \
+(<= (next (control xplayer)) (true (control oplayer))) \
+(<= (next (control oplayer)) (true (control xplayer))) \
+(<= (row ?m ?x) (true (cell ?m 1 ?x)) (true (cell ?m 2 ?x)) (true (cell ?m 3 ?x))) \
+(<= (column ?n ?x) (true (cell 1 ?n ?x)) (true (cell 2 ?n ?x)) (true (cell 3 ?n ?x))) \
+(<= (diagonal ?x) (true (cell 1 1 ?x)) (true (cell 2 2 ?x)) (true (cell 3 3 ?x))) \
+(<= (diagonal ?x) (true (cell 1 3 ?x)) (true (cell 2 2 ?x)) (true (cell 3 1 ?x))) \
+(<= (line ?x) (row ?m ?x)) \
+(<= (line ?x) (column ?m ?x)) \
+(<= (line ?x) (diagonal ?x)) \
+(<= open (true (cell ?m ?n b))) \
+(<= (legal ?w (mark ?x ?y)) (true (cell ?x ?y b)) (true (control ?w))) \
+(<= (legal xplayer noop) (true (control oplayer))) \
+(<= (legal oplayer noop) (true (control xplayer))) \
+(<= (goal xplayer 100) (line x)) \
+(<= (goal xplayer 50) (not (line x)) (not (line o)) (not open)) \
+(<= (goal xplayer 0) (line o)) \
+(<= (goal oplayer 100) (line o)) \
+(<= (goal oplayer 50) (not (line x)) (not (line o)) (not open)) \
+(<= (goal oplayer 0) (line x)) \
+(<= terminal (line x)) \
+(<= terminal (line o)) \
+(<= terminal (not open)) \
+ \
+;;;; STRATS  \
+ \
+(strat does 0) \
+(strat goal 1) \
+(strat init 0) \
+(strat legal 0) \
+(strat next 0) \
+(strat role 0) \
+(strat terminal 1) \
+(strat true 0) \
+(strat cell 0) \
+(strat column 0) \
+(strat control 0) \
+(strat diagonal 0) \
+(strat line 0) \
+(strat open 0) \
+(strat row 0) \
+ \
+;;;; PATHS   \
+ \
+(arg does/2 0 oplayer/0) \
+(arg does/2 0 xplayer/0) \
+(arg does/2 1 mark/2 0 1/0) \
+(arg does/2 1 mark/2 0 2/0) \
+(arg does/2 1 mark/2 0 3/0) \
+(arg does/2 1 mark/2 1 1/0) \
+(arg does/2 1 mark/2 1 2/0) \
+(arg does/2 1 mark/2 1 3/0) \
+(arg does/2 1 noop/0) \
+(arg goal/2 0 oplayer/0) \
+(arg goal/2 0 xplayer/0) \
+(arg goal/2 1 0/0) \
+(arg goal/2 1 100/0) \
+(arg goal/2 1 50/0) \
+(arg init/1 0 cell/3 0 1/0) \
+(arg init/1 0 cell/3 0 2/0) \
+(arg init/1 0 cell/3 0 3/0) \
+(arg init/1 0 cell/3 1 1/0) \
+(arg init/1 0 cell/3 1 2/0) \
+(arg init/1 0 cell/3 1 3/0) \
+(arg init/1 0 cell/3 2 b/0) \
+(arg init/1 0 control/1 0 xplayer/0) \
+(arg legal/2 0 oplayer/0) \
+(arg legal/2 0 xplayer/0) \
+(arg legal/2 1 mark/2 0 1/0) \
+(arg legal/2 1 mark/2 0 2/0) \
+(arg legal/2 1 mark/2 0 3/0) \
+(arg legal/2 1 mark/2 1 1/0) \
+(arg legal/2 1 mark/2 1 2/0) \
+(arg legal/2 1 mark/2 1 3/0) \
+(arg legal/2 1 noop/0) \
+(arg next/1 0 cell/3 0 1/0) \
+(arg next/1 0 cell/3 0 2/0) \
+(arg next/1 0 cell/3 0 3/0) \
+(arg next/1 0 cell/3 1 1/0) \
+(arg next/1 0 cell/3 1 2/0) \
+(arg next/1 0 cell/3 1 3/0) \
+(arg next/1 0 cell/3 2 b/0) \
+(arg next/1 0 cell/3 2 o/0) \
+(arg next/1 0 cell/3 2 x/0) \
+(arg next/1 0 control/1 0 oplayer/0) \
+(arg next/1 0 control/1 0 xplayer/0) \
+(arg role/1 0 oplayer/0) \
+(arg role/1 0 xplayer/0) \
+(arg terminal/0) \
+(arg true/1 0 cell/3 0 1/0) \
+(arg true/1 0 cell/3 0 2/0) \
+(arg true/1 0 cell/3 0 3/0) \
+(arg true/1 0 cell/3 1 1/0) \
+(arg true/1 0 cell/3 1 2/0) \
+(arg true/1 0 cell/3 1 3/0) \
+(arg true/1 0 cell/3 2 b/0) \
+(arg true/1 0 cell/3 2 o/0) \
+(arg true/1 0 cell/3 2 x/0) \
+(arg true/1 0 control/1 0 oplayer/0) \
+(arg true/1 0 control/1 0 xplayer/0) \
+(arg column/2 0 1/0) \
+(arg column/2 0 2/0) \
+(arg column/2 0 3/0) \
+(arg column/2 1 b/0) \
+(arg column/2 1 o/0) \
+(arg column/2 1 x/0) \
+(arg diagonal/1 0 b/0) \
+(arg diagonal/1 0 o/0) \
+(arg diagonal/1 0 x/0) \
+(arg line/1 0 b/0) \
+(arg line/1 0 o/0) \
+(arg line/1 0 x/0) \
+(arg open/0) \
+(arg row/2 0 1/0) \
+(arg row/2 0 2/0) \
+(arg row/2 0 3/0) \
+(arg row/2 1 b/0) \
+(arg row/2 1 o/0) \
+(arg row/2 1 x/0) \
+";
