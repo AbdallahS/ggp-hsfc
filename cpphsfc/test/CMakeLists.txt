@@ -30,9 +30,13 @@ target_link_libraries(playermoves-test cpphsfc_static ${Boost_LIBRARIES})
 
 # Search for gadelac
 execute_process(COMMAND which gadelac OUTPUT_VARIABLE GADELAC_PATH)
-if (GADELAC_PATH MATCHES "^\\s*$")
-  message("Gadelac does not appear to be present. Will skip the tests of gadelac integration")
-else (GADELAC_PATH MATCHES "^\\s*$")
+if (HSFC2 OR GADELAC_PATH MATCHES "^\\s*$")
+  if (HSFC2)
+    message("Using HSFC v2 so no need for gadelac integration testing")
+  else()
+    message("Gadelac does not appear to be present. Will skip the tests of gadelac integration")
+  endif()
+else ()
   message("Found Gadelac in the PATH. Enabling Gadelac integration tests")
 
   add_executable(gadelac-integration-test gadelac-integration-test.cpp)
@@ -40,7 +44,7 @@ else (GADELAC_PATH MATCHES "^\\s*$")
 
   add_executable(statistical-test statistical-test.cpp)
   target_link_libraries(statistical-test cpphsfc_static ${Boost_LIBRARIES})
-endif (GADELAC_PATH MATCHES "^\\s*$")
+endif ()
 
 add_test(
   NAME CppHSFCTest
