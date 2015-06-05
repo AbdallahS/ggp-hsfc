@@ -26,6 +26,108 @@
 
 using namespace HSFC;
 
+extern std::string g_nineboardttt;
+extern std::string g_nineboardttt2;
+extern std::string g_ttt;
+
+
+
+
+/****************************************************************
+ * Suport functions
+ ****************************************************************/
+
+// Count the number of moves that are legal for the given player
+unsigned int count_player_moves(const std::vector<PlayerMove> moves, const std::string& player)
+{
+    unsigned int count = 0;
+    BOOST_FOREACH(const PlayerMove& pm, moves)
+    {
+        if (pm.first.tostring() == player) ++count;
+    }
+    return count;
+}
+
+// Pick the first available move for the given player
+PlayerMove pick_first(const std::vector<PlayerMove> moves, const std::string& player)
+{
+    BOOST_FOREACH(const PlayerMove& pm, moves)
+    {
+        if (pm.first.tostring() == player) return pm;
+    }
+    BOOST_CHECK(false);
+    throw std::string("To prevent clang compiler warning");
+}
+
+// Return the player
+Player get_player(const Game& game, const std::string& playername)
+{
+  std::vector<Player> players = game.players();
+    BOOST_FOREACH(const Player& p, players)
+    {
+        if (p.tostring() == playername) return p;
+    }
+    BOOST_CHECK(false);
+    throw std::string("To prevent clang compiler warning");
+}
+
+/****************************************************************
+ * Testing that PortableState works across games. Load 2 games.
+ * For a state in game 1 playout (so it is in a terminal state).
+ * Then serialise and deserialise this into a state in game 2
+ * and check that it is in a terminal state.
+ ****************************************************************/
+
+BOOST_AUTO_TEST_CASE(send_initial_state_across_game)
+{
+    Game game1(g_nineboardttt);
+    Game game2(g_nineboardttt);
+    const State& state1a = game1.initState();
+    State state1b(game1);
+    state1b.playout();
+    BOOST_CHECK(!state1a.isTerminal());
+    BOOST_CHECK(state1b.isTerminal());
+
+    boost::shared_ptr<PortableState> pstate1a(new PortableState(state1a));
+    boost::shared_ptr<PortableState> pstate1b(new PortableState(state1b));
+    boost::shared_ptr<PortableState> pstate2a;
+    boost::shared_ptr<PortableState> pstate2b;
+
+    State state2a(game1, *pstate1a);
+
+    // Transfer the initial state (pstate1a -> pstate2a)
+    std::ostringstream oserialstream1;
+    boost::archive::text_oarchive oa1(oserialstream1);
+    oa1 << pstate1a;
+    std::string serialised1(oserialstream1.str());
+
+    std::istringstream iserialstream1(serialised1);
+    boost::archive::text_iarchive ia1(iserialstream1);
+    ia1 >> pstate2a;
+
+    // Transfer the terminal state (pstate1b -> pstate2b)
+    std::ostringstream oserialstream2;
+    boost::archive::text_oarchive oa2(oserialstream2);
+    oa2 << pstate1b;
+    std::string serialised2(oserialstream2.str());
+
+    std::istringstream iserialstream2(serialised2);
+    boost::archive::text_iarchive ia2(iserialstream2);
+    ia2 >> pstate2b;
+
+    // Check the the serialization works
+    BOOST_CHECK(*pstate1a == *pstate2a);
+    BOOST_CHECK(*pstate1b == *pstate2b);
+
+    State state2b(game2, *pstate1b);
+
+    // Check that the terminal status is the same
+    BOOST_CHECK(!state2a.isTerminal());
+    BOOST_CHECK(state2b.isTerminal());
+
+}
+
+
 /****************************************************************
  * Nine board tictictoe GDL. Note: it has already been converted
  * using gadelac so that we don't need to rely on gadelac being
@@ -238,7 +340,6 @@ std::string g_nineboardttt=" \
 (arg row/4 3 x/0) \
 ";
 
-
 std::string g_nineboardttt2=" \
 (init (control xPlayer)) \
 (role oPlayer) \
@@ -422,100 +523,3 @@ std::string g_ttt=" \
 (arg row/2 1 o/0) \
 (arg row/2 1 x/0) \
 ";
-
-
-
-
-/****************************************************************
- * Suport functions
- ****************************************************************/
-
-// Count the number of moves that are legal for the given player
-unsigned int count_player_moves(const std::vector<PlayerMove> moves, const std::string& player)
-{
-    unsigned int count = 0;
-    BOOST_FOREACH(const PlayerMove& pm, moves)
-    {
-        if (pm.first.tostring() == player) ++count;
-    }
-    return count;
-}
-
-// Pick the first available move for the given player
-PlayerMove pick_first(const std::vector<PlayerMove> moves, const std::string& player)
-{
-    BOOST_FOREACH(const PlayerMove& pm, moves)
-    {
-        if (pm.first.tostring() == player) return pm;
-    }
-    BOOST_CHECK(false);
-    throw std::string("To prevent clang compiler warning");
-}
-
-// Return the player
-Player get_player(const Game& game, const std::string& playername)
-{
-  std::vector<Player> players = game.players();
-    BOOST_FOREACH(const Player& p, players)
-    {
-        if (p.tostring() == playername) return p;
-    }
-    BOOST_CHECK(false);
-    throw std::string("To prevent clang compiler warning");
-}
-
-/****************************************************************
- * Testing that PortableState works across games. Load 2 games.
- * For a state in game 1 playout (so it is in a terminal state).
- * Then serialise and deserialise this into a state in game 2
- * and check that it is in a terminal state.
- ****************************************************************/
-
-BOOST_AUTO_TEST_CASE(send_initial_state_across_game)
-{
-    Game game1(g_nineboardttt2);
-    Game game2(g_nineboardttt2);
-    const State& state1a = game1.initState();
-    State state1b(game1);
-    state1b.playout();
-    BOOST_CHECK(!state1a.isTerminal());
-    BOOST_CHECK(state1b.isTerminal());
-
-    boost::shared_ptr<PortableState> pstate1a(new PortableState(state1a));
-    boost::shared_ptr<PortableState> pstate1b(new PortableState(state1b));
-    boost::shared_ptr<PortableState> pstate2a;
-    boost::shared_ptr<PortableState> pstate2b;
-
-    State state2a(game1, *pstate1a);
-
-    // Transfer the initial state (pstate1a -> pstate2a)
-    std::ostringstream oserialstream1;
-    boost::archive::text_oarchive oa1(oserialstream1);
-    oa1 << pstate1a;
-    std::string serialised1(oserialstream1.str());
-
-    std::istringstream iserialstream1(serialised1);
-    boost::archive::text_iarchive ia1(iserialstream1);
-    ia1 >> pstate2a;
-
-    // Transfer the terminal state (pstate1b -> pstate2b)
-    std::ostringstream oserialstream2;
-    boost::archive::text_oarchive oa2(oserialstream2);
-    oa2 << pstate1b;
-    std::string serialised2(oserialstream2.str());
-
-    std::istringstream iserialstream2(serialised2);
-    boost::archive::text_iarchive ia2(iserialstream2);
-    ia2 >> pstate2b;
-
-    // Check the the serialization works
-    BOOST_CHECK(*pstate1a == *pstate2a);
-    BOOST_CHECK(*pstate1b == *pstate2b);
-
-    State state2b(game2, *pstate1b);
-
-    // Check that the terminal status is the same
-    BOOST_CHECK(!state2a.isTerminal());
-    BOOST_CHECK(state2b.isTerminal());
-
-}

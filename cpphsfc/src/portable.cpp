@@ -119,7 +119,7 @@ PortableMove::PortableMove() : RoleIndex_(-1), RelationIndex_(-1), ID_(-1)
 
 PortableMove::PortableMove(const Move& move) :
     RoleIndex_(move.move_.RoleIndex), Text_(move.move_.Text),
-#ifndef HSFC2
+#if HSFC_VERSION == 1
     RelationIndex_(move.move_.Tuple.RelationIndex),
 #else
     RelationIndex_(move.move_.Tuple.Index),

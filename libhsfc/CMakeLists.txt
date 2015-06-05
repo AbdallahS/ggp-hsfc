@@ -5,13 +5,13 @@ project(libhsfc)
 # Building
 #---------------------------------------------------
 
-set(LIBHSFC_SRC 
+set(LIBHSFC_SRC
   src/hsfcAPI.cpp
-  src/hsfcEngine.cpp  
-  src/hsfcGDL.cpp  
-  src/hsfcGrinder.cpp  
-  src/hsfcLexicon.cpp  
-  src/hsfcSchema.cpp  
+  src/hsfcEngine.cpp
+  src/hsfcGDL.cpp
+  src/hsfcGrinder.cpp
+  src/hsfcLexicon.cpp
+  src/hsfcSchema.cpp
   src/hsfcState.cpp
   src/kpWFT.cpp
 )
@@ -45,7 +45,7 @@ set(LIBHSFC_HEADERS
   hsfcSchema.h
   hsfcState.h
   kpWFT.h
-)  
+)
 
 set(HDR_ORIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBHSFC_PATCHED_HEADERS_DIR "${CMAKE_CURRENT_BINARY_DIR}/patched_headers")
@@ -62,12 +62,22 @@ foreach(hdrfile ${LIBHSFC_HEADERS})
 endforeach(hdrfile)
 add_custom_target(patched_libhsfc_headers ALL DEPENDS ${LIBHSFC_PATCHED_HEADERS})
 
+# Run the script to generate a header file with the hsfc version number
+set(HSFC_VERSION_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/write_libhsfc_version.py")
+set(HSFC_VERSION_FILE "${HDR_DEST_DIR}/hsfc_version.h")
+add_custom_command(
+  OUTPUT "${HSFC_VERSION_FILE}"
+  COMMAND python "${HSFC_VERSION_SCRIPT}" "${HSFC_VERSION_FILE}" "${HSFC_VERSION}"
+)
+add_custom_target(write_hsfc_version ALL DEPENDS ${HSFC_VERSION_FILE})
+
 #---------------------------------------------------
 # Installation
 #---------------------------------------------------
 
 #FILE(GLOB incfiles "${HDR_DEST_DIR}/*.h")
 INSTALL(FILES ${LIBHSFC_PATCHED_HEADERS} DESTINATION include/hsfc/impl)
+INSTALL(FILES ${HSFC_VERSION_FILE} DESTINATION include/hsfc/impl)
 #INSTALL(TARGETS hsfc_shared LIBRARY DESTINATION lib)
 #INSTALL(TARGETS hsfc_static ARCHIVE DESTINATION lib)
 

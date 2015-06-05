@@ -45,7 +45,6 @@ enable_testing()
 
 add_test(
   NAME PyHSFCTest
-  WORKING_DIRECTORY "${hsfc_SOURCE_DIR}/testing"
   COMMAND python "${PROJECT_SOURCE_DIR}/test/pyhsfc-test.py"
 )
 set_tests_properties(PyHSFCTest PROPERTIES ENVIRONMENT "PYTHONPATH=PYTHONPATH:${PROJECT_BINARY_DIR}")

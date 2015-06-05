@@ -16,10 +16,14 @@
 
 using namespace std;
 
+namespace HSFC { class HSFCManager; };
+
 //=============================================================================
 // CLASS: hsfcStateManager
 //=============================================================================
 class hsfcStateManager {
+
+    friend class HSFC::HSFCManager;
 
 public:
 	hsfcStateManager(hsfcLexicon* Lexicon, hsfcDomainManager* DomainManager);

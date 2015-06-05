@@ -130,7 +130,7 @@ Move::Move(Game& game, const PortableMove& pm) : manager_(game.manager_)
     move_.RoleIndex = pm.RoleIndex_;
     strcpy(move_.Text, pm.Text_.c_str());
 
-#ifndef HSFC2
+#if HSFC_VERSION == 1
     move_.Tuple.RelationIndex = pm.RelationIndex_;
 #else
     move_.Tuple.Index = pm.RelationIndex_;
@@ -148,8 +148,8 @@ std::string Move::tostring() const
 bool operator==(const hsfcLegalMove& a, const hsfcLegalMove& b)
 {
     return (a.RoleIndex == b.RoleIndex &&
+#if HSFC_VERSION == 1
             strcmp(a.Text, b.Text) == 0 &&
-#ifndef HSFC2
             a.Tuple.RelationIndex == b.Tuple.RelationIndex &&
 #else
             a.Tuple.Index == b.Tuple.Index &&
@@ -190,7 +190,7 @@ std::size_t Move::hash_value() const
     size_t seed = 0;
     boost::hash_combine(seed, manager_.get());
     boost::hash_combine(seed, move_.RoleIndex);
-#ifndef HSFC2
+#if HSFC_VERSION == 1
     boost::hash_combine(seed, move_.Tuple.RelationIndex);
 #else
     boost::hash_combine(seed, move_.Tuple.Index);
@@ -305,7 +305,7 @@ void Game::initInternals(hsfcGDLParamaters& params)
     // Note: not really sure what are sane options here so copying
     // from Michael's example code.
 
-#ifndef HSFC2
+#if HSFC_VERSION == 1
     params.ReadGDLOnly = false;      // Validate the GDL without creating the schema
     params.SchemaOnly = false;      // Validate the GDL & Schema without grounding the rules
     params.MaxRelationSize = 1000000;  // Max bytes per relation for high speed storage

@@ -1,44 +1,13 @@
 #!/usr/bin/env python
 
+import tempfile
 import unittest
 from pyhsfc import *
 
-class TictactoeTest(unittest.TestCase):
-
-    #-----------------------------
-    # Run a playout from any (non-terminal) tictactoe
-    # game state, and ensure that someone is either a
-    # winner or it is a 50-50 draw.
-    #-----------------------------
-    def playout_check(self, state, xplayer, oplayer):
-        if state.is_terminal(): return
-        tmpstate = State(state)
-        results = tmpstate.playout()
-        self.assertEqual(len(results),2)
-        if results[xplayer] == 100:
-            self.assertEqual(results[oplayer], 0)
-        elif results[xplayer] == 0:
-            self.assertEqual(results[oplayer], 100)
-        else:
-            self.assertEqual(results[xplayer], 50)
-            self.assertEqual(results[oplayer], 50)
-
-
-    #-----------------------------
-    # check that the legal moves match the joint moves
-    #-----------------------------
-    def check_joints_match_legals(self, joints, legals):
-        for jm in joints:
-            for (p,m) in jm.iteritems():
-                mvs = legals[p]
-                self.assertTrue(m in mvs)
-
-    #-----------------------------
-    # Load a GDL description
-    #-----------------------------
-
-    def atest_load_gdldescription(self):
-        gdldescription="""
+#-------------------------------------------------------------
+#
+#-------------------------------------------------------------
+g_ttt="""
 ;;;; RULES
 
 (role xplayer)
@@ -209,7 +178,48 @@ class TictactoeTest(unittest.TestCase):
 (domain_s x )
 (domain_s xplayer )
 """
-        game = Game(gdl=gdldescription)
+
+#----------------------------------------------------------
+#
+#----------------------------------------------------------
+
+class TictactoeTest(unittest.TestCase):
+
+    #-----------------------------
+    # Run a playout from any (non-terminal) tictactoe
+    # game state, and ensure that someone is either a
+    # winner or it is a 50-50 draw.
+    #-----------------------------
+    def playout_check(self, state, xplayer, oplayer):
+        if state.is_terminal(): return
+        tmpstate = State(state)
+        results = tmpstate.playout()
+        self.assertEqual(len(results),2)
+        if results[xplayer] == 100:
+            self.assertEqual(results[oplayer], 0)
+        elif results[xplayer] == 0:
+            self.assertEqual(results[oplayer], 100)
+        else:
+            self.assertEqual(results[xplayer], 50)
+            self.assertEqual(results[oplayer], 50)
+
+
+    #-----------------------------
+    # check that the legal moves match the joint moves
+    #-----------------------------
+    def check_joints_match_legals(self, joints, legals):
+        for jm in joints:
+            for (p,m) in jm.iteritems():
+                mvs = legals[p]
+                self.assertTrue(m in mvs)
+
+    #-----------------------------
+    # Load a GDL description
+    #-----------------------------
+
+    def atest_load_gdldescription(self):
+        global g_ttt
+        game = Game(gdl=g_ttt)
         players = game.Players()
         self.assertEqual(len(players), 2)
 
@@ -227,8 +237,13 @@ class TictactoeTest(unittest.TestCase):
     # random playouts from each game state.
     #-----------------------------
 
-    def test_tictactoe(self):
-        game = Game(file="./tictactoe.gdl")
+    def atest_tictactoe(self):
+        global g_ttt
+        tf = tempfile.NamedTemporaryFile()
+        tf.write(g_ttt)
+
+        game = Game(gdl=g_ttt)
+#        game = Game(file=tf.name)
         self.assertEqual(len(game.players()), 2)
         self.assertEqual(len(game.players()), game.num_players())
 
@@ -293,7 +308,8 @@ class TictactoeTest(unittest.TestCase):
         return next(jm for jm in state.joints() if str(jm[player]) == "(mark {} {})".format(x,y))
 
     def test_tictactoe(self):
-        game = Game(file="./tictactoe.gdl")
+        global g_ttt
+        game = Game(gdl=g_ttt)
         self.assertEqual(len(game.players()), 2)
         self.assertEqual(len(game.players()), game.num_players())
 

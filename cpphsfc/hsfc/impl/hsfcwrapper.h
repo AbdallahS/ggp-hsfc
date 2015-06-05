@@ -14,8 +14,10 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/filesystem.hpp>
 
-#ifndef HSFC2
-#warning "WHY AM I HERE"
+// hsfc_version file sets the HSFC_VERSION #define
+#include <hsfc/impl/hsfc_version.h>
+
+#if HSFC_VERSION == 1
 #include <hsfc/impl/hsfcAPI.h>
 #else
 #include <hsfc/impl/hsfcEngine.h>

@@ -13,7 +13,6 @@
 #include <boost/unordered_set.hpp>
 #include <boost/function_output_iterator.hpp>
 #include <hsfc/hsfc.h>
-#include <hsfc/portable.h>
 
 using namespace HSFC;
 
@@ -31,7 +30,8 @@ extern const char* g_breakthrough;
  ****************************************************************/
 
 // Count the number of moves that are legal for the given player
-unsigned int count_player_moves(const std::vector<PlayerMove> moves, const std::string& player)
+unsigned int count_player_moves(const std::vector<PlayerMove> moves,
+                                const std::string& player)
 {
     unsigned int count = 0;
     BOOST_FOREACH(const PlayerMove& pm, moves)
@@ -161,7 +161,8 @@ BOOST_AUTO_TEST_CASE(tictactoe_test)
         std::vector<PlayerGoal> result;
         State state2(game);
         tictactoe_playout_check(state2, result);
-        for (std::vector<PlayerGoal>::const_iterator pgi = result.begin(); pgi != result.end(); ++pgi)
+        for (std::vector<PlayerGoal>::const_iterator pgi = result.begin();
+             pgi != result.end(); ++pgi)
         {
             if (results.find(pgi->first) == results.end())
             {
@@ -177,7 +178,8 @@ BOOST_AUTO_TEST_CASE(tictactoe_test)
         Player p = curr->first;
         std::vector<unsigned int>& scores = curr->second;
         unsigned int sum = 0;
-        for(std::vector<unsigned int>::iterator i = scores.begin(); i != scores.end(); ++i)
+        for(std::vector<unsigned int>::iterator i = scores.begin();
+            i != scores.end(); ++i)
         {
             sum += *i;
         }
@@ -188,7 +190,8 @@ BOOST_AUTO_TEST_CASE(tictactoe_test)
     // Sum of the averages should equal 100.
     float sum_ave = 0.0;
     std::cout << "Tictactoe average scores from 1000 playouts: ";
-    for (boost::unordered_map<Player, float>::iterator i = average.begin(); i != average.end(); ++i)
+    for (boost::unordered_map<Player, float>::iterator i = average.begin();
+         i != average.end(); ++i)
     {
         std::cout << (i->first).tostring() << "=" << i->second << " ";
         sum_ave += i->second;
@@ -210,7 +213,8 @@ BOOST_AUTO_TEST_CASE(breakthrough_test)
         std::vector<PlayerGoal> result;
         State state2(game);
         breakthrough_playout_check(state2, result);
-        for (std::vector<PlayerGoal>::const_iterator pgi = result.begin(); pgi != result.end(); ++pgi)
+        for (std::vector<PlayerGoal>::const_iterator pgi = result.begin();
+             pgi != result.end(); ++pgi)
         {
             if (results.find(pgi->first) == results.end())
             {
@@ -226,7 +230,8 @@ BOOST_AUTO_TEST_CASE(breakthrough_test)
         Player p = curr->first;
         std::vector<unsigned int>& scores = curr->second;
         unsigned int sum = 0;
-        for(std::vector<unsigned int>::iterator i = scores.begin(); i != scores.end(); ++i)
+        for(std::vector<unsigned int>::iterator i = scores.begin();
+            i != scores.end(); ++i)
         {
             sum += *i;
         }
@@ -237,7 +242,8 @@ BOOST_AUTO_TEST_CASE(breakthrough_test)
     // Sum of the averages should equal 100.
     float sum_ave = 0.0;
     std::cout << "Breakthrough average scores from 1000 playouts: ";
-    for (boost::unordered_map<Player, float>::iterator i = average.begin(); i != average.end(); ++i)
+    for (boost::unordered_map<Player, float>::iterator i = average.begin();
+         i != average.end(); ++i)
     {
         std::cout << (i->first).tostring() << "=" << i->second << " ";
         sum_ave += i->second;

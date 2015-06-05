@@ -67,6 +67,15 @@ foreach(hdrfile ${LIBHSFC_HEADERS})
 endforeach(hdrfile)
 add_custom_target(patched_libhsfc_headers ALL DEPENDS ${LIBHSFC_PATCHED_HEADERS})
 
+# Run the script to generate a header file with the hsfc version number
+set(HSFC_VERSION_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/write_libhsfc_version.py")
+set(HSFC_VERSION_FILE "${HDR_DEST_DIR}/hsfc_version.h")
+add_custom_command(
+  OUTPUT "${HSFC_VERSION_FILE}"
+  COMMAND python "${HSFC_VERSION_SCRIPT}" "${HSFC_VERSION_FILE}" "${HSFC_VERSION}"
+)
+add_custom_target(write_hsfc_version ALL DEPENDS ${HSFC_VERSION_FILE})
+
 #---------------------------------------------------
 # Installation
 #---------------------------------------------------

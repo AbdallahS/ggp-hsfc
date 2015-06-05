@@ -16,10 +16,16 @@
 
 using namespace std;
 
+
+namespace HSFC { class HSFCManager; };
+
+
 //=============================================================================
 // CLASS: hsfcEngine
 //=============================================================================
 class hsfcEngine {
+
+    friend class HSFC::HSFCManager;
 
 public:
 	hsfcEngine(void);
