@@ -11,6 +11,82 @@
 using namespace std;
 
 //=============================================================================
+// CLASS: hsfcStatistic
+//=============================================================================
+
+//-----------------------------------------------------------------------------
+// Constructor
+//-----------------------------------------------------------------------------
+hsfcStatistic::hsfcStatistic(void) {
+
+
+}
+
+//-----------------------------------------------------------------------------
+// Destructor
+//-----------------------------------------------------------------------------
+hsfcStatistic::~hsfcStatistic(void) {
+
+
+}
+
+//-----------------------------------------------------------------------------
+// Initialise
+//-----------------------------------------------------------------------------
+void hsfcStatistic::Initialise() {
+
+	this->Count = 0;
+	this->Sum = 0;
+	this->Sum2 = 0;
+
+}
+
+//-----------------------------------------------------------------------------
+// AddObservation
+//-----------------------------------------------------------------------------
+void hsfcStatistic::AddObservation(double Value) {
+
+	this->Count++;
+	this->Sum += Value;
+	this->Sum2 += Value * Value;
+
+}
+
+//-----------------------------------------------------------------------------
+// Average
+//-----------------------------------------------------------------------------
+double hsfcStatistic::Average() {
+
+	double Result;
+
+	Result = 0;
+	if (this->Count > 0) {
+		Result = this->Sum / this->Count;
+	}
+
+	return Result;
+
+}
+
+//-----------------------------------------------------------------------------
+// StdDev
+//-----------------------------------------------------------------------------
+double hsfcStatistic::StdDev() {
+
+	double Result;
+
+	Result = 0;
+	if (this->Count > 0) {
+		Result = sqrt((this->Sum2 / Count) - (this->Average() * this->Average()));
+	}
+
+	return Result;
+
+}
+
+	
+	
+//=============================================================================
 // CLASS: hsfcLexicon
 //=============================================================================
 
@@ -36,15 +112,16 @@ hsfcLexicon::~hsfcLexicon(void) {
 //-----------------------------------------------------------------------------
 // Initialise
 //-----------------------------------------------------------------------------
-void hsfcLexicon::Initialise() {
+void hsfcLexicon::Initialise(hsfcParameters* Parameters) {
 
 	// Create interface
 	if (this->IO == NULL) this->IO = new hsfcIO();
-	this->IO->Initialise();
+	this->IO->Initialise(Parameters);
 
 	// Reset the terms
 	this->Term.clear();
 	this->TermIndex.clear();
+	this->UniqueNum = 0;
 
 	// Reset the relation names
 	this->RelationName.clear();
@@ -162,6 +239,28 @@ unsigned int hsfcLexicon::GDLIndex(unsigned int ID) {
 	delete[] Text;
 
 	return Result;
+
+}
+
+//-----------------------------------------------------------------------------
+// NewRigidNameID
+//-----------------------------------------------------------------------------
+unsigned int hsfcLexicon::NewRigidNameID(int Arity) {
+
+	char Predicate[32];
+	unsigned int NameID;
+
+	// Create the text
+	sprintf(Predicate, "hsfcRigid%03d/%d", this->UniqueNum, Arity);
+	this->UniqueNum++;
+
+	// Register the name
+	NameID = this->Index(Predicate);
+
+	// Register the relation
+	//this->RelationIndex(Predicate, true);
+
+	return NameID;
 
 }
 
@@ -542,6 +641,7 @@ unsigned int hsfcLexicon::AddName(const char* Value) {
 	// Append the term at the end
 	this->RelationName.push_back(Value);
 	this->RelationNameID.push_back(0);
+	this->RelationIsRigid.push_back(false);
 
 	// Index the new term
 	Index = this->RelationName.size() - 1;

@@ -25,13 +25,15 @@ public:
 	hsfcIO(void);
 	~hsfcIO(void);
 
-	void Initialise();
+	void Initialise(hsfcParameters* Parameters);
 	void WriteToLog(int DetailLevel, bool Indent, const char* Text);
 	void FormatToLog(int DetailLevel, bool Indent, const char* Format, const char* Arg1);
 	void FormatToLog(int DetailLevel, bool Indent, const char* Format, const char* Arg1, const char* Arg2);
 	void FormatToLog(int DetailLevel, bool Indent, const char* Format, const int Arg1, const char* Arg2);
 	void FormatToLog(int DetailLevel, bool Indent, const char* Format, const int Arg1, const int Arg2);
 	void FormatToLog(int DetailLevel, bool Indent, const char* Format, const double Arg1);
+	void FormatToLog(int DetailLevel, bool Indent, const char* Format, const unsigned int Arg1);
+	void FormatToLog(int DetailLevel, bool Indent, const char* Format, const int Arg1);
 
 	hsfcParameters* Parameters;
 	unsigned int LogIndent;

@@ -19,7 +19,6 @@ using namespace std;
 //-----------------------------------------------------------------------------
 hsfcIO::hsfcIO(void) {
 
-	this->Parameters = NULL;
 
 }
 
@@ -28,36 +27,33 @@ hsfcIO::hsfcIO(void) {
 //-----------------------------------------------------------------------------
 hsfcIO::~hsfcIO(void) {
 
-	// Free everything
-	if (this->Parameters != NULL) delete this->Parameters;
 
 }
 
 //-----------------------------------------------------------------------------
 // Initialise
 //-----------------------------------------------------------------------------
-void hsfcIO::Initialise() {
+void hsfcIO::Initialise(hsfcParameters* Parameters) {
 
-	// Create the Parameters
-	if (this->Parameters == NULL) this->Parameters = new hsfcParameters;
+	// Set the parameters
+	this->Parameters = Parameters;
 
-	// Set the default values
-	this->Parameters->LogFileName = NULL;
-	this->LogIndent = 0;
-	this->Parameters->LogDetail = 1;
-		// 0 - Silent
-		// 1 - Basic progress messages
-		// 2 -  + Detail messages
-		// 3 -  + Debug messages
-		// 4 -  + Full Audit
+	// Set initial values
+	this->Parameters->TimeBuildLookup = 0;
+	this->Parameters->TimeBuildSchema = 0;
+	this->Parameters->TimeOptimise = 0;
+	this->Parameters->StateSize = 0;
+	this->Parameters->TotalLookupSize = 0;
+	this->Parameters->AveRounds = 0;
+	this->Parameters->StDevRounds = 0;
+	this->Parameters->AveScore0 = 0;
+	this->Parameters->StDevScore0 = 0;
+	this->Parameters->GamesPerSec = 0;
+	this->Parameters->Playouts = 0;
+	this->Parameters->TreeNodes1 = 0;
+	this->Parameters->TreeNodes2 = 0;
+	this->Parameters->TreeNodes3 = 0;
 
-	this->Parameters->MaxRelationSize = 1000000;
-	this->Parameters->MaxReferenceSize = 100000000;
-	this->Parameters->MaxStateSize = 100000000;
-
-	this->Parameters->LowSpeedOnly = false;
-	this->Parameters->SCLOnly = false;
-	this->Parameters->SchemaOnly = false;
 
 }
 
@@ -203,6 +199,52 @@ void hsfcIO::FormatToLog(int DetailLevel, bool Indent, const char* Format, const
 
 //--- Overload ----------------------------------------------------------------
 void hsfcIO::FormatToLog(int DetailLevel, bool Indent, const char* Format, const double Arg1) {
+
+	char Text[1024];
+	int MaxLength;
+
+	// Should we write this
+	if (DetailLevel > this->Parameters->LogDetail) return;
+
+	// Are we likely to overrun
+	MaxLength = 1;
+	if (Format != NULL) MaxLength += strlen(Format);
+	MaxLength += 16;
+	if (MaxLength > 1022) return;
+
+	// Create a line of text
+	sprintf(Text, Format, Arg1);
+
+	// Write to the log
+	this->WriteToLog(DetailLevel, Indent, Text);
+
+}
+
+//--- Overload ----------------------------------------------------------------
+void hsfcIO::FormatToLog(int DetailLevel, bool Indent, const char* Format, const unsigned int Arg1) {
+
+	char Text[1024];
+	int MaxLength;
+
+	// Should we write this
+	if (DetailLevel > this->Parameters->LogDetail) return;
+
+	// Are we likely to overrun
+	MaxLength = 1;
+	if (Format != NULL) MaxLength += strlen(Format);
+	MaxLength += 16;
+	if (MaxLength > 1022) return;
+
+	// Create a line of text
+	sprintf(Text, Format, Arg1);
+
+	// Write to the log
+	this->WriteToLog(DetailLevel, Indent, Text);
+
+}
+
+//--- Overload ----------------------------------------------------------------
+void hsfcIO::FormatToLog(int DetailLevel, bool Indent, const char* Format, const int Arg1) {
 
 	char Text[1024];
 	int MaxLength;

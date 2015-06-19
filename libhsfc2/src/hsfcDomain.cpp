@@ -117,8 +117,6 @@ bool hsfcDomainManager::BuildDomains(hsfcSchema* Schema) {
 	bool Finished;
 	int BuildCount;
 	unsigned int RelationIndex;
-	unsigned int IndexBase;
-	float SizeCheck;
 
 	this->Lexicon->IO->WriteToLog(2, true, "Building Domain Data ...\n");
 
@@ -159,44 +157,7 @@ bool hsfcDomainManager::BuildDomains(hsfcSchema* Schema) {
 
 			// Build the domains
 			BuildCount++;
-			this->Domain[i].IDCount = 1;
-			for (unsigned int j = 0; j < Schema->RelationSchema[i]->DomainSchema.size(); j++) {
-				// Check every term in the domain
-				IndexBase = 0;
-				for (unsigned int k = 0; k < Schema->RelationSchema[i]->DomainSchema[j]->Term.size(); k++) {
-					this->Domain[i].Record[j][k].Relation.Index = Schema->RelationSchema[i]->DomainSchema[j]->Term[k].Index;
-					this->Domain[i].Record[j][k].Relation.ID = Schema->RelationSchema[i]->DomainSchema[j]->Term[k].ID;
-					this->Domain[i].Record[j][k].IndexBase = IndexBase;
-					// Calculate the size of the domain
-					if (Schema->RelationSchema[i]->DomainSchema[j]->Term[k].Index == 0) {
-						IndexBase++;
-					} else {
-						RelationIndex = Schema->RelationSchema[i]->DomainSchema[j]->Term[k].Index;
-						IndexBase += this->Domain[RelationIndex].IDCount;
-					}
-					// Check the size of the domain
-					if (IndexBase > MAX_DOMAIN_SIZE) {
-						this->Lexicon->IO->WriteToLog(0, false, "Error: exceeded maximum domain size in hsfcDomainManager::BuildDomains\n");
-						return false; 
-					}
-				}
-				// Was the domain empty
-				if (IndexBase == 0) {
-					this->Lexicon->IO->FormatToLog(0, false, "Error: empty domain in '%s' in hsfcDomainManager::BuildDomains\n", this->Lexicon->Text(Schema->RelationSchema[i]->NameID));
-					return false; 
-				}
-				// Calculate the size of the relation
-				this->Domain[i].Size[j] = IndexBase;
-				SizeCheck = (float)this->Domain[i].IDCount;
-				SizeCheck = SizeCheck * (float)IndexBase;
-				if (SizeCheck == MAX_RELATION_SIZE) {
-					this->Lexicon->IO->WriteToLog(0, false, "Error: exceeded maximum relation size in hsfcDomainManager::BuildDomains\n");
-					return false; 
-				}
-				this->Domain[i].IDCount = this->Domain[i].IDCount * IndexBase;
-
-			}
-			this->Domain[i].Complete = true;
+			if (!this->BuildDomain(Schema->RelationSchema[i], i)) return false;
 
 		}
 
@@ -216,6 +177,118 @@ bool hsfcDomainManager::BuildDomains(hsfcSchema* Schema) {
 }
 
 //-----------------------------------------------------------------------------
+// BuildDomain
+//-----------------------------------------------------------------------------
+bool hsfcDomainManager::BuildDomain(hsfcRelationSchema* RelationSchema, unsigned int Index) {
+
+	unsigned int IndexBase;
+	unsigned int RelationIndex;
+	float SizeCheck;
+
+	// Build the domain
+	this->Domain[Index].IDCount = 1;
+	for (unsigned int j = 0; j < RelationSchema->DomainSchema.size(); j++) {
+		// Check every term in the domain
+		IndexBase = 0;
+		for (unsigned int k = 0; k < RelationSchema->DomainSchema[j]->Term.size(); k++) {
+			this->Domain[Index].Record[j][k].Relation.Index = RelationSchema->DomainSchema[j]->Term[k].Index;
+			this->Domain[Index].Record[j][k].Relation.ID = RelationSchema->DomainSchema[j]->Term[k].ID;
+			this->Domain[Index].Record[j][k].IndexBase = IndexBase;
+			// Calculate the size of the domain
+			if (RelationSchema->DomainSchema[j]->Term[k].Index == 0) {
+				IndexBase++;
+			} else {
+				RelationIndex = RelationSchema->DomainSchema[j]->Term[k].Index;
+				IndexBase += this->Domain[RelationIndex].IDCount;
+			}
+			// Check the size of the domain
+			if (IndexBase > MAX_DOMAIN_SIZE) {
+				this->Lexicon->IO->WriteToLog(0, false, "Error: exceeded maximum domain size in hsfcDomainManager::BuildDomains\n");
+				return false; 
+			}
+		}
+		// Was the domain empty
+		if (IndexBase == 0) {
+			this->Lexicon->IO->FormatToLog(0, false, "Error: empty domain in '%s' in hsfcDomainManager::BuildDomains\n", this->Lexicon->Text(RelationSchema->NameID));
+			return false; 
+		}
+		// Calculate the size of the relation
+		this->Domain[Index].Size[j] = IndexBase;
+		SizeCheck = (float)this->Domain[Index].IDCount;
+		SizeCheck = SizeCheck * (float)IndexBase;
+		if (SizeCheck == MAX_RELATION_SIZE) {
+			this->Lexicon->IO->WriteToLog(0, false, "Error: exceeded maximum relation size in hsfcDomainManager::BuildDomains\n");
+			return false; 
+		}
+		this->Domain[Index].IDCount = this->Domain[Index].IDCount * IndexBase;
+
+	}
+	this->Domain[Index].Complete = true;
+
+	return true;
+
+
+}
+
+//-----------------------------------------------------------------------------
+// BuildDomain
+//-----------------------------------------------------------------------------
+bool hsfcDomainManager::RebuildRigidDomain(hsfcRelationSchema* RelationSchema, unsigned int Index) {
+
+	unsigned int IndexBase;
+	unsigned int RelationIndex;
+	float SizeCheck;
+
+	// Reset the domain records
+	for (unsigned int j = 0; j < RelationSchema->DomainSchema.size(); j++) {
+		delete[] this->Domain[Index].Record[j];
+		this->Domain[Index].Record[j] = new hsfcDomainRecord[RelationSchema->DomainSchema[j]->Term.size()];
+		this->Domain[Index].RecordSize[j] = RelationSchema->DomainSchema[j]->Term.size();
+		this->Domain[Index].Size[j] = RelationSchema->DomainSchema[j]->Term.size();
+	}
+	
+	IndexBase = 0;
+
+	// No compression, no sorting, no checking for duplicates
+	// Build the domain
+	for (unsigned int j = 0; j < RelationSchema->DomainSchema.size(); j++) {
+		// Check every term in the domain
+		IndexBase = 0;
+		for (unsigned int k = 0; k < RelationSchema->DomainSchema[j]->Term.size(); k++) {
+			this->Domain[Index].Record[j][k].Relation.Index = RelationSchema->DomainSchema[j]->Term[k].Index;
+			this->Domain[Index].Record[j][k].Relation.ID = RelationSchema->DomainSchema[j]->Term[k].ID;
+			this->Domain[Index].Record[j][k].IndexBase = IndexBase;
+			// Calculate the size of the domain
+			IndexBase++;
+			// Check the size of the domain
+			if (IndexBase > MAX_DOMAIN_SIZE) {
+				this->Lexicon->IO->WriteToLog(0, false, "Error: exceeded maximum domain size in hsfcDomainManager::BuildDomains\n");
+				return false; 
+			}
+		}
+		// Was the domain empty
+		if (IndexBase == 0) {
+			this->Lexicon->IO->FormatToLog(0, false, "Error: empty domain in '%s' in hsfcDomainManager::BuildDomains\n", this->Lexicon->Text(RelationSchema->NameID));
+			return false; 
+		}
+
+	}
+
+	// Integrity Check
+	if (IndexBase != this->Domain[Index].Size[0]) {
+		this->Lexicon->IO->FormatToLog(0, false, "Error: bad count in hsfcDomainManager::BuildDomains\n", this->Lexicon->Text(RelationSchema->NameID));
+		return false; 
+	}
+
+	// Calculate the size of the relation
+	this->Domain[Index].IDCount = this->Domain[Index].Size[0];
+	this->Domain[Index].Complete = true;
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
 // TermsToID
 //-----------------------------------------------------------------------------
 bool hsfcDomainManager::TermsToID(int RelationIndex, hsfcTuple Term[], unsigned int& ID) {
@@ -231,6 +304,28 @@ bool hsfcDomainManager::TermsToID(int RelationIndex, hsfcTuple Term[], unsigned 
 	// For speed; there is no error checking
 	// Term.size == Relation.Arity
 	// The first term contains the predicate
+
+	ID = 0;
+
+	// Is this relation rigid
+	if (this->Domain[RelationIndex].Rigid) {
+		// Not sorted, so check every record
+		for (unsigned int i = 0; i < this->Domain[RelationIndex].IDCount; i++) {
+			// Check that every term matches
+			for (unsigned int j = 0; j < this->Domain[RelationIndex].Arity; j++) {
+				if (Term[j+1].Index != this->Domain[RelationIndex].Record[j][i].Relation.Index) goto NextEntry;
+				if (Term[j+1].ID != this->Domain[RelationIndex].Record[j][i].Relation.ID) goto NextEntry;
+			}
+			// Must be a match
+			ID = i;
+			return true;
+NextEntry:;
+		}
+
+		// Never found
+		return false;
+
+	}
 
 	// Initialise the result
 	Result = 0;
@@ -309,6 +404,18 @@ bool hsfcDomainManager::IDToTerms(int RelationIndex, hsfcTuple Term[], unsigned 
 
 	Term[0].ID = this->Domain[RelationIndex].NameID;
 	Term[0].Index = 0;
+
+	// Is this relation rigid
+	if (this->Domain[RelationIndex].Rigid) {
+		// Is it a valid Id
+		if (ID >= this->Domain[RelationIndex].IDCount) return false;
+		// Just look it up
+		for (unsigned int i = 0; i < this->Domain[RelationIndex].Arity; i++) {
+			Term[i+1].Index = this->Domain[RelationIndex].Record[i][ID].Relation.Index;
+			Term[i+1].ID = this->Domain[RelationIndex].Record[i][ID].Relation.ID;
+		}
+		return true;
+	}
 
 	// Initialise the result
 	Factor = ID;
@@ -524,11 +631,27 @@ void hsfcDomainManager::Print() {
 	// Print the domain information
 	for (unsigned int i = 1; i < this->DomainSize; i++) {
 		this->Lexicon->IO->FormatToLog(2, true, "\n%s\n", this->Lexicon->Text(this->Domain[i].NameID));
-		for (unsigned int j = 0; j < this->Domain[i].Arity; j++) {
-			this->Lexicon->IO->FormatToLog(2, true, "Argument %d\n", j);
-			for (unsigned int k = 0; k < this->Domain[i].RecordSize[j]; k++) {
-				this->Lexicon->IO->FormatToLog(2, true, "%4d:%4d.", k, this->Domain[i].Record[j][k].Relation.Index); 
-				this->Lexicon->IO->FormatToLog(2, true, "%4d%6d\n", this->Domain[i].Record[j][k].Relation.ID, this->Domain[i].Record[j][k].IndexBase); 
+		if (this->Domain[i].Rigid) {
+			for (unsigned int k = 0; k < this->Domain[i].RecordSize[0]; k++) {
+				this->Lexicon->IO->FormatToLog(2, true, "%4d:", k); 
+				for (unsigned int j = 0; j < this->Domain[i].Arity; j++) {
+					this->Lexicon->IO->FormatToLog(2, false, "\t%4d.%d", this->Domain[i].Record[j][k].Relation.Index, this->Domain[i].Record[j][k].Relation.ID); 
+				}
+				this->Lexicon->IO->FormatToLog(2, false, "%s", "\n"); 
+			}
+		} else {
+			for (unsigned int j = 0; j < this->Domain[i].Arity; j++) {
+				this->Lexicon->IO->FormatToLog(2, true, "Argument %d\n", j);
+				for (unsigned int k = 0; k < this->Domain[i].RecordSize[j]; k++) {
+					this->Lexicon->IO->FormatToLog(2, true, "%4d:", k); 
+					this->Lexicon->IO->FormatToLog(2, true, "%4d.%d", this->Domain[i].Record[j][k].Relation.Index, this->Domain[i].Record[j][k].Relation.ID); 
+					this->Lexicon->IO->FormatToLog(2, true, "\t%6d", this->Domain[i].Record[j][k].IndexBase); 
+					if (this->Domain[i].Record[j][k].Relation.Index == 0) {
+						this->Lexicon->IO->FormatToLog(2, true, "  %s\n", this->Lexicon->Text(this->Domain[i].Record[j][k].Relation.ID)); 
+					} else {
+						this->Lexicon->IO->FormatToLog(2, true, "  %s\n", this->Lexicon->Relation(this->Domain[i].Record[j][k].Relation.Index)); 
+					}
+				}
 			}
 		}
 		this->Lexicon->IO->WriteToLog(2, true, "------------------------------------\n");

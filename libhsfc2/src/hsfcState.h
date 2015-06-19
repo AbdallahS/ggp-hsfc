@@ -45,6 +45,7 @@ public:
 	bool RelationExists(hsfcState* State, hsfcTuple& Tuple);
 	void PrintRelations(hsfcState* State, bool ShowRigids);
 
+	void CreateRigids(hsfcState* State);
 	void CreatePermanents(hsfcState* State);
 
 	//bool CalculateStateSize();
@@ -77,8 +78,12 @@ private:
 	hsfcDomainManager* DomainManager;
 	hsfcSchema* Schema;
 
-	unsigned int NumRelationLists;
+	vector<hsfcTuple> FullPermanent;
+	vector<hsfcTuple> PartPermanent;
+	vector<hsfcTuple> Initial;
+	vector<hsfcReference> Next;
 
+	unsigned int NumRelationLists;
 	unsigned int StateSize;
 
 };

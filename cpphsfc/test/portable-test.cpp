@@ -214,6 +214,8 @@ BOOST_AUTO_TEST_CASE(send_moves_across_games)
     Game game2(g_tictactoe);
     State state1(game1);
     State state2(game2);
+    BOOST_CHECK(state1.isTerminal() == state2.isTerminal());
+
     std::vector<PlayerMove> playermoves1;
     std::vector<PlayerMove> playermoves2;
     std::vector<Move> moves1;
@@ -249,6 +251,7 @@ BOOST_AUTO_TEST_CASE(send_moves_across_games)
     std::string serialised(oserialstream.str());
     std::istringstream iserialstream(serialised);
     boost::archive::text_iarchive ia(iserialstream);
+
     ia >> pmoves2;
     BOOST_CHECK_EQUAL(pmoves1.size(), pmoves2.size());
 

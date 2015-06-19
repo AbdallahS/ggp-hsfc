@@ -23,7 +23,7 @@ project(hsfc)
 
 # Set a default HSFC_VERSION
 if(NOT HSFC_VERSION)
-set(HSFC_VERSION 1)
+set(HSFC_VERSION 2)
 endif()
 
 #-----------------------------------------------------------------

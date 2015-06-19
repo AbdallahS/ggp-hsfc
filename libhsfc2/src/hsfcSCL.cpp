@@ -44,6 +44,7 @@ void hsfcSCLAtom::Initialise() {
 	this->NameID = 0;
 	this->Not = false;
 	this->Distinct = false;
+	this->Cursor = 0;
 
 }
 
@@ -129,14 +130,14 @@ void hsfcSCLAtom::SetQualifiedName(unsigned int ParentNameID, unsigned int Argum
 	// Is it a state relation or an embedded relation
 	if (ParentNameID == 0) {
 		QualifiedName = new char[strlen(this->Lexicon->Text(this->PredicateIndex)) + 12];
-		sprintf(QualifiedName, "%s/%d", this->Lexicon->Text(this->PredicateIndex), this->Term.size());
+		sprintf(QualifiedName, "%s/%lu", this->Lexicon->Text(this->PredicateIndex), this->Term.size());
 		this->NameID = this->Lexicon->Index(QualifiedName);
 		delete[] QualifiedName;
 	} else {
 		QualifiedName = new char[strlen(this->Lexicon->Text(ParentNameID)) + strlen(this->Lexicon->Text(this->PredicateIndex)) + 12];
 		//sprintf(QualifiedName, "%s:%d:%s/%d", this->Lexicon->Text(ParentNameID), ArgumentIndex, this->Lexicon->Text(this->PredicateIndex), this->Term.size());
 		// This is easier in Schema to create joins in rule inputs
-		sprintf(QualifiedName, "%s/%d", this->Lexicon->Text(this->PredicateIndex), this->Term.size());
+		sprintf(QualifiedName, "%s/%lu", this->Lexicon->Text(this->PredicateIndex), this->Term.size());
 		this->NameID = this->Lexicon->Index(QualifiedName);
 		delete[] QualifiedName;
 	}
@@ -183,6 +184,43 @@ bool hsfcSCLAtom::RequiredFor(vector<hsfcSCLAtom*>& Rule) {
 	}
 
 	return false;
+
+}
+
+//-----------------------------------------------------------------------------
+// ResetEnumeration
+//-----------------------------------------------------------------------------
+void hsfcSCLAtom::ResetEnumeration() {
+
+	// Reset the cursor
+	this->Cursor = 0;
+
+	// Reset any children
+	for (unsigned int i = 0; i < this->Term.size(); i++) {
+		this->Term[i]->ResetEnumeration();
+	}
+
+}
+
+//-----------------------------------------------------------------------------
+// EnumerateTerms
+//-----------------------------------------------------------------------------
+hsfcSCLAtom* hsfcSCLAtom::EnumerateTerms() {
+
+	hsfcSCLAtom* Atom;
+
+	// Is this the term
+	if (this->Cursor == 0) {
+		this->Cursor++;
+		return this;
+	} else {
+		while (this->Cursor <= this->Term.size()) {
+			Atom = this->Term[this->Cursor - 1]->EnumerateTerms();
+			if (Atom != NULL) return Atom;
+			this->Cursor++;
+		}
+		return NULL;
+	}
 
 }
 
@@ -573,6 +611,21 @@ bool hsfcSCL::Read(hsfcGDL* GDL) {
 	}
 	this->Lexicon->IO->WriteToLog(2, true, "succeeded\n");
 
+	// Stratify the SCL
+	this->Lexicon->IO->WriteToLog(2, true, "Identify Rigids ... \n");
+	if (!this->IdentifyRigids()) {
+		this->Lexicon->IO->WriteToLog(2, true, "failed\n");
+		return false;
+	}
+	this->Lexicon->IO->WriteToLog(2, true, "succeeded\n");
+
+	//// Identify the complex rigids
+	//this->Lexicon->IO->WriteToLog(2, true, "Identify Complex Rigids ...\n");
+	//if (!this->IdentifyComplexRigids()) {
+	//	return false;
+	//}
+	//this->Lexicon->IO->WriteToLog(2, true, "succeeded\n");
+
 	// Print the details
 	if (this->Lexicon->IO->Parameters->LogDetail > 2) this->Print();
 
@@ -693,6 +746,35 @@ void hsfcSCL::DeleteTerm(vector<hsfcSCLAtom*>& Terms, int Index, bool DeleteChil
 	// Delete the term
 	delete Terms.at(Index);
 	Terms.erase(Terms.begin() + Index);
+
+}
+
+//-----------------------------------------------------------------------------
+// NameIDisRigid
+//-----------------------------------------------------------------------------
+bool hsfcSCL::NameIDisRigid(int NameID) {
+
+	// Look for the name id
+	for (unsigned int i = 0; i < this->RigidNameID.size(); i++) {
+		if (NameID == this->RigidNameID[i]) return true;
+	}
+
+	return false;
+
+}
+
+//-----------------------------------------------------------------------------
+// NameIDisNotRigid
+//-----------------------------------------------------------------------------
+void hsfcSCL::NameIDisNotRigid(int NameID) {
+
+	// Look for the name id
+	for (unsigned int i = 0; i < this->RigidNameID.size(); i++) {
+		if (NameID == this->RigidNameID[i]) {
+			this->RigidNameID.erase(this->RigidNameID.begin() + i);
+			return;
+		}
+	}
 
 }
 
@@ -1272,3 +1354,214 @@ RepeatStratum:
 	return true;
 
 }
+
+//-----------------------------------------------------------------------------
+// IdentifyComplexRigids
+//-----------------------------------------------------------------------------
+bool hsfcSCL::IdentifyRigids() {
+
+	bool StratumIsRigid;
+
+	// Inspect the stratum to find the rigids
+	// They are already ordered according to dependency
+
+	// If its not in the output of a non rigid rule, then its not rigid
+	this->RigidNameID.clear();
+
+	// Add in all of the statement name ids
+	for (unsigned int i = 0; i < this->Statement.size(); i++) {
+		// Is it already listed, or not
+		if (!this->NameIDisRigid(this->Statement[i]->NameID)) {
+			this->RigidNameID.push_back(this->Statement[i]->NameID);
+		}
+	}
+	// Add in all of the rule output name ids
+	for (unsigned int i = 0; i < this->Stratum.size(); i++) {
+		for (unsigned int j = 0; j < this->Stratum[i]->Rule.size(); j++) {
+			if (!this->NameIDisRigid(this->Stratum[i]->Rule[j]->Term[0]->NameID)) {
+				this->RigidNameID.push_back(this->Stratum[i]->Rule[j]->Term[0]->NameID);
+			}
+		}
+	}
+
+	// Identify the rigidity of each relation name id
+	for (unsigned int i = 0; i < this->Stratum.size(); i++) {
+
+		// Are all of its inputs rigids
+		StratumIsRigid = true;
+		for (unsigned int j = 0; j < this->Stratum[i]->Input.size(); j++) {
+			// Ignore Distinct
+			if (this->Lexicon->PartialMatch(this->Stratum[i]->Input[j], "distinct")) continue;
+			// Test if it might be rigid; if the input is already classified non rigid, then it fails
+			if (!this->NameIDisRigid(this->Stratum[i]->Input[j])) {
+				StratumIsRigid = false;
+				break;
+			}
+		}
+
+		// Is this stratum NOT rigid
+		if (!StratumIsRigid) {
+			// Classify the outputs from the strata
+			for (unsigned int j = 0; j < this->Stratum[i]->Output.size(); j++) {
+				this->NameIDisNotRigid(this->Stratum[i]->Output[j]);
+			}
+		}
+
+	}
+
+	// Find the complex rigids
+	//if (!this->IdentifyComplexRigids()) return false;
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// IdentifyComplexRigids
+//-----------------------------------------------------------------------------
+bool hsfcSCL::IdentifyComplexRigids() {
+
+	vector<unsigned int> RigidInputs;
+	vector<int> VariableNameID;
+	vector<int> VariableCount;
+	hsfcSCLAtom* Atom0;
+	hsfcSCLAtom* Atomk;
+
+	// Scan each stratum in order
+	for (unsigned int i = 0; i < this->Stratum.size(); i++) {
+	    // Scan each rule for two rigids with a common variable
+		for (unsigned int j = 0; j < this->Stratum[i]->Rule.size(); j++) {
+
+			// Check and record each input
+			RigidInputs.clear();
+			for (unsigned int k = 1; k < this->Stratum[i]->Rule[j]->Term.size(); k++) {
+				// Is this relation rigid
+				if (this->NameIDisRigid(this->Stratum[i]->Rule[j]->Term[k]->NameID)) {
+					// Tag it
+					RigidInputs.push_back(k);
+				}
+			}
+
+			// Were there more than one rigid input
+			while (RigidInputs.size() > 1) {
+				// Look for a common variable
+
+				// Compare the first rigid input with all of the others
+				// Inspect each of the other rigid inputs
+				for (unsigned int k = 1; k < RigidInputs.size(); k++) {
+
+					// Look at each term in the 0th rigid for a variable
+					this->Stratum[i]->Rule[j]->Term[RigidInputs[0]]->ResetEnumeration();
+					while(Atom0 = this->Stratum[i]->Rule[j]->Term[RigidInputs[0]]->EnumerateTerms()) {
+						// Is it a variable
+						if (this->Lexicon->IsVariable(Atom0->NameID)) {
+							// Look at each term in the kth rigid for a variable
+							this->Stratum[i]->Rule[j]->Term[RigidInputs[k]]->ResetEnumeration();
+							while(Atomk = this->Stratum[i]->Rule[j]->Term[RigidInputs[k]]->EnumerateTerms()) {
+								// Is it the same variable
+								if (Atom0->NameID == Atomk->NameID) {
+									//printf("Stratum %d, Rule %d, %s == %s\n", i, j, this->Lexicon->Text(Atom0->NameID), this->Lexicon->Text(Atomk->NameID));
+									this->BuildComplexRigid(i, j, RigidInputs[0], RigidInputs[k]); 
+									// Add the new rigid to the list
+									this->RigidNameID.push_back(this->Stratum[i]->Rule[0]->Term[0]->NameID);
+									// Reprocess the same stratum, now the i+1 th 
+									goto Repeat;
+								}
+							}
+						}
+					}
+				}
+
+				// Clear the first rigid input from the list
+				RigidInputs.erase(RigidInputs.begin());
+
+			}
+		}
+Repeat:;
+
+	}
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// BuildComplexRigid
+//-----------------------------------------------------------------------------
+void hsfcSCL::BuildComplexRigid(unsigned int StratumIndex, unsigned int RuleIndex, unsigned int Rigid1Index, unsigned int Rigid2Index) {
+
+	hsfcSCLStratum* NewStratum;
+	hsfcSCLAtom* NewRule;
+	hsfcSCLAtom* NewRelation;
+	hsfcSCLAtom* NewVariable;
+	hsfcSCLAtom* Atom;
+
+	// Create the new rule schema
+	NewRule = new hsfcSCLAtom(this->Lexicon);
+	NewRule->Initialise();
+	NewRule->NameID = this->Lexicon->Index("<=");
+	NewRule->PredicateIndex = NewRule->NameID;
+
+	// Create the head of the rule
+	NewRelation = new hsfcSCLAtom(this->Lexicon);
+	NewRelation->Initialise();
+	NewRule->Term.push_back(NewRelation);
+
+	// Create the body of the rule
+	// One relation at a time
+	NewRelation = new hsfcSCLAtom(this->Lexicon);
+	NewRelation->FromSCLAtom(this->Stratum[StratumIndex]->Rule[RuleIndex]->Term[Rigid1Index]);
+	NewRule->Term.push_back(NewRelation);
+
+	NewRelation = new hsfcSCLAtom(this->Lexicon);
+	NewRelation->FromSCLAtom(this->Stratum[StratumIndex]->Rule[RuleIndex]->Term[Rigid2Index]);
+	NewRule->Term.push_back(NewRelation);
+
+	// Populate all of the variables in the head of the rule
+	// Enumerate the terms in the body
+	NewRule->Term[1]->ResetEnumeration();
+	while(Atom = NewRule->Term[1]->EnumerateTerms()) {
+		// Is it a variable term
+		if (this->Lexicon->IsVariable(Atom->NameID)) {
+			// Create the new variable
+			NewVariable = new hsfcSCLAtom(this->Lexicon);
+			NewVariable->FromSCLAtom(Atom);
+			NewRule->Term[0]->Term.push_back(NewVariable);
+		}
+	}
+
+	NewRule->Term[2]->ResetEnumeration();
+	while(Atom = NewRule->Term[2]->EnumerateTerms()) {
+		// Is it a variable term
+		if (this->Lexicon->IsVariable(Atom->NameID)) {
+			// Create the new variable, there will be duplicates
+			for (unsigned int i = 0; i < NewRule->Term[0]->Term.size(); i++) {
+				if (NewRule->Term[0]->Term[i]->NameID == Atom->NameID) {
+					goto SkipDuplicate;
+				}
+			}
+			NewVariable = new hsfcSCLAtom(this->Lexicon);
+			NewVariable->FromSCLAtom(Atom);
+			NewRule->Term[0]->Term.push_back(NewVariable);
+		}
+SkipDuplicate:;
+	}
+
+	// Complete the new rule head relation
+	NewRule->Term[0]->NameID = this->Lexicon->NewRigidNameID(NewRule->Term[0]->Term.size());
+	NewRule->Term[0]->PredicateIndex = NewRule->Term[0]->NameID;
+
+	// Remove the old rigids from the old rule
+	// First copy the new rigid into the first input
+	this->Stratum[StratumIndex]->Rule[RuleIndex]->Term[Rigid1Index]->FromSCLAtom(NewRule->Term[0]);
+	// Now delete the second input
+	this->Stratum[StratumIndex]->Rule[RuleIndex]->Term.erase(this->Stratum[StratumIndex]->Rule[RuleIndex]->Term.begin() + Rigid2Index);
+
+	// Create the new stratum
+	NewStratum = new hsfcSCLStratum(this->Lexicon);
+	NewStratum->Initialise();
+	NewStratum->AddRule(NewRule);
+	this->Stratum.insert(this->Stratum.begin() + StratumIndex, NewStratum);
+
+}
+

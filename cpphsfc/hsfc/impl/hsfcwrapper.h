@@ -19,10 +19,11 @@
 
 #if HSFC_VERSION == 1
 #include <hsfc/impl/hsfcAPI.h>
+typedef hsfcGDLParamaters hsfcGDLParameters;
 #else
 #include <hsfc/impl/hsfcEngine.h>
+typedef hsfcParameters hsfcGDLParameters;
 typedef hsfcEngine hsfcGDLManager;
-typedef hsfcParameters hsfcGDLParamaters;
 #endif
 
 namespace HSFC
@@ -48,6 +49,11 @@ private:
                     const boost::filesystem::path& outfile,
                     const std::string& extra_options = std::string());
 
+
+#if HSFC_VERSION > 1
+    boost::scoped_ptr<hsfcGDLParameters> params_;
+#endif
+
 public:
     HSFCManager();
 
@@ -70,16 +76,16 @@ public:
 
     // These are debugging functions. Don't use them except for debugging code.
     std::ostream& PrintState(std::ostream& os, const hsfcState& GameState) const;
-    void DisplayState(const hsfcState& GameState) const;
+    void DisplayState(const hsfcState& GameState, bool rigids) const;
 
     // NOTE: the change of behaviour of the Initialise function compared to the underlying
     // HSFC. Passing a string is now assumed to be a GDL description. To pass a filename
     // use boost::filesystem::path.
     void Initialise(const std::string& gdldescription,
-                    const hsfcGDLParamaters& Paramaters,
+                    const hsfcGDLParameters& Parameters,
                     bool usegadelac);
     void Initialise(const boost::filesystem::path& gdlfilename,
-                    const hsfcGDLParamaters& Paramaters,
+                    const hsfcGDLParameters& Parameters,
                     bool usegadelac);
 
 

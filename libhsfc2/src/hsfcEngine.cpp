@@ -85,7 +85,7 @@ hsfcEngine::~hsfcEngine(void){
 //-----------------------------------------------------------------------------
 // Initialise
 //-----------------------------------------------------------------------------
-bool hsfcEngine::Initialise(string* Script, hsfcParameters& Parameters) {
+bool hsfcEngine::Initialise(string* Script, hsfcParameters* Parameters) {
 
 	try {
 
@@ -129,24 +129,10 @@ bool hsfcEngine::Initialise(string* Script, hsfcParameters& Parameters) {
 
 		// Create the lexicon
 		this->Lexicon = new hsfcLexicon();
-		this->Lexicon->Initialise();
+		this->Lexicon->Initialise(Parameters);
 		this->Parameters = this->Lexicon->IO->Parameters;
 
 		// Set properties
-		if (Parameters.LogFileName != NULL) {
-			this->Parameters->LogFileName = new char[strlen(Parameters.LogFileName) + 1];
-			strcpy(this->Parameters->LogFileName, Parameters.LogFileName);
-		}
-		this->Parameters->LogDetail = Parameters.LogDetail;
-		this->Parameters->MaxRelationSize = Parameters.MaxRelationSize;
-		this->Parameters->MaxReferenceSize = Parameters.MaxReferenceSize;
-		this->Parameters->MaxStateSize = Parameters.MaxStateSize;
-		this->Parameters->LowSpeedOnly = Parameters.LowSpeedOnly;
-		this->Parameters->SCLOnly = Parameters.SCLOnly;
-		this->Parameters->SchemaOnly = Parameters.SchemaOnly;
-		this->Parameters->TimeBuildSchema = 0;
-		this->Parameters->TimeOptimise = 0;
-		this->Parameters->TimeBuildLookup = 0;
 		this->NumRoles = 0;
 
 		// Create the schema
@@ -193,7 +179,7 @@ bool hsfcEngine::Initialise(string* Script, hsfcParameters& Parameters) {
 //-----------------------------------------------------------------------------
 // InitialiseFromFile
 //-----------------------------------------------------------------------------
-bool hsfcEngine::InitialiseFromFile(string* FileName, hsfcParameters& Paramaters) {
+bool hsfcEngine::InitialiseFromFile(string* FileName, hsfcParameters* Paramaters) {
 
 	try {
 
@@ -229,9 +215,6 @@ bool hsfcEngine::CreateGameState(hsfcState** GameState) {
 
 		// Set up the data storage and rigids
 		this->StateManager->InitialiseState(*GameState);
-
-		// Set to the initial game state
-		this->StateManager->SetInitialState(*GameState);
 
 		// Set the number of roles
 		this->NumRoles = (*GameState)->NumRelations[this->StateManager->RoleRelationIndex];
@@ -318,11 +301,11 @@ void hsfcEngine::GetLegalMoves(hsfcState* GameState, vector< vector<hsfcLegalMov
 		}
 
 		// Advance the state to create the terminal relation tuple
-		if (GameState->CurrentStep < 1) this->RulesEngine->AdvanceState(GameState, 1);
+		if (GameState->CurrentStep < 1) this->RulesEngine->AdvanceState(GameState, 1, false);
 		if (this->RulesEngine->IsTerminal(GameState)) return;
 
 		// Advance the state to create the legal relation tuples
-		if (GameState->CurrentStep < 2) this->RulesEngine->AdvanceState(GameState, 2);
+		if (GameState->CurrentStep < 2) this->RulesEngine->AdvanceState(GameState, 2, false);
 
 		// Get the moves
 		this->RulesEngine->GetLegalMoves(GameState, LegalMove);
@@ -352,10 +335,10 @@ void hsfcEngine::DoMove(hsfcState* GameState, vector<hsfcLegalMove>& DoesMove) {
 		}
 
 		// Advance the state to calculate the next tuples
-		this->RulesEngine->AdvanceState(GameState, 4);
+		this->RulesEngine->AdvanceState(GameState, 4, false);
 
 		// Advance the state to the next state
-		this->RulesEngine->AdvanceState(GameState, 0);
+		this->RulesEngine->AdvanceState(GameState, 0, false);
 
 	}
 	catch (int e) {
@@ -374,7 +357,7 @@ bool hsfcEngine::IsTerminal(hsfcState* GameState) {
 	try {
 
 		// Advance the state to create the terminal relation tuple
-		if (GameState->CurrentStep < 1) this->RulesEngine->AdvanceState(GameState, 1);
+		if (GameState->CurrentStep < 1) this->RulesEngine->AdvanceState(GameState, 1, false);
 		return this->RulesEngine->IsTerminal(GameState);
 
 	}
@@ -400,8 +383,8 @@ void hsfcEngine::GetGoalValues(hsfcState* GameState, vector<int>& GoalValue) {
 		GoalValue.clear();
 
 		// Advance the state to create the terminal relation tuple
-		if (GameState->CurrentStep < 1) this->RulesEngine->AdvanceState(GameState, 1);
-		this->RulesEngine->AdvanceState(GameState, 5);
+		if (GameState->CurrentStep < 1) this->RulesEngine->AdvanceState(GameState, 1, false);
+		this->RulesEngine->AdvanceState(GameState, 5, false);
 
 		// Return if the game is not terminal
 		if (!this->RulesEngine->IsTerminal(GameState)) return;
@@ -430,29 +413,38 @@ void hsfcEngine::PlayOut(hsfcState* GameState, vector<int>& GoalValue) {
 
 	try {
 
-		// Clear the goal values
-		GoalValue.clear();
+        // Do an integrity check on the state
+        if (GameState->CurrentStep > 2) {
+            this->Lexicon->IO->WriteToLog(0, false, "Error: State at wrong step in hsfcEngine::PlayOut\n");
+            return;
+        }
 
 		// Advance the state to create the terminal relation tuple
-		if (GameState->CurrentStep < 1) this->RulesEngine->AdvanceState(GameState, 1);
+		if (GameState->CurrentStep < 1) this->RulesEngine->AdvanceState(GameState, 1, false);
 
 		// Play until the game is terminal
 		while (!this->RulesEngine->IsTerminal(GameState)) {
 
-			// Advanc eto calculate all the legal moves
-			this->RulesEngine->AdvanceState(GameState, 2);
+            // BUG FIX: The first iteration may already have calcuated
+			// legal moves - so we don't want to advance again.
+            // Advance to calculate all the legal moves
+            if (GameState->CurrentStep < 2)
+                this->RulesEngine->AdvanceState(GameState, 2, false);
 
 			// Get the legal move tuples
 			this->RulesEngine->ChooseRandomMoves(GameState);
 
 			// Advance to the next state
-			this->RulesEngine->AdvanceState(GameState, 0);
+			this->RulesEngine->AdvanceState(GameState, 0, false);
 			if (this->Parameters->LogDetail > 3) this->StateManager->PrintRelations(GameState, false);
 
 			// Advance to calculate terminal tuple
-			this->RulesEngine->AdvanceState(GameState, 1);
+			this->RulesEngine->AdvanceState(GameState, 1, false);
 
 		}
+
+		// Clear the goal values
+		GoalValue.clear();
 
 		// Go through all of the roles
 		for (unsigned int i = 0; i < GameState->NumRelations[this->StateManager->RoleRelationIndex]; i++) {
@@ -505,8 +497,23 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 	clock_t Finish;
 	double GamesPerSecond;
 
+	// Clear the paramaters
+	Parameters.TimeBuildSchema = 0;
+	Parameters.TimeOptimise = 0;
+	Parameters.TimeBuildLookup = 0;
+	Parameters.Playouts = 0;
+	Parameters.GamesPerSec = 0;
+	Parameters.AveRounds = 0;
+	Parameters.StDevRounds = 0;
+	Parameters.AveScore0 = 0;
+	Parameters.StDevScore0 = 0;
+	Parameters.TreeNodes1 = 0;
+	Parameters.TreeNodes2 = 0;
+	Parameters.TreeNodes3 = 0;
+
 	// Initialise the this with the game rules and game Parameters
-	if (!this->InitialiseFromFile(GDLFileName, Parameters)) {
+//	if (!this->InitialiseFromFile(GDLFileName, &Parameters)) {
+	if (!this->Initialise(GDLFileName, &Parameters)) {
 		this->Lexicon->IO->WriteToLog(0, false, "Fatal Error: failed to create Engine\n");
 		return;
 	}
@@ -526,13 +533,13 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 
 	// Show times
 	this->Lexicon->IO->WriteToLog(1, true, "Build Time\n");
-	this->Lexicon->IO->FormatToLog(1, true, "  TimeBuildSchema %.3f sec\n", this->Parameters->TimeBuildSchema);
-	this->Lexicon->IO->FormatToLog(1, true, "     TimeOptimise %.3f sec\n", this->Parameters->TimeOptimise);
-	this->Lexicon->IO->FormatToLog(1, true, "  TimeBuildLookup %.3f sec\n", this->Parameters->TimeBuildLookup);
+	this->Lexicon->IO->FormatToLog(1, true, "  TimeBuildSchema %.3f sec\n", Parameters.TimeBuildSchema);
+	this->Lexicon->IO->FormatToLog(1, true, "     TimeOptimise %.3f sec\n", Parameters.TimeOptimise);
+	this->Lexicon->IO->FormatToLog(1, true, "  TimeBuildLookup %.3f sec\n", Parameters.TimeBuildLookup);
 
 	// Get the legal moves from the initial game state and print them out
 	this->GetLegalMoves(GameState, LegalMove);
-	if (this->Parameters->LogDetail > 1) {
+	if (Parameters.LogDetail > 1) {
 		this->Lexicon->IO->WriteToLog(1, true, "Legal Moves\n");
 		for (unsigned int i = 0; i < LegalMove.size(); i++) {
 			for (unsigned int j = 0; j < LegalMove[i].size(); j++) {
@@ -541,6 +548,12 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 			}
 		}
 	}
+
+
+	// Choose some moves
+	this->RulesEngine->ChooseRandomMoves(GameState);
+	this->RulesEngine->AdvanceState(GameState, 4, true);
+	if (this->Lexicon->IO->Parameters->LogDetail > 2) this->StateManager->PrintRelations(GameState, false);
 
 	// Perform tests to gain the following statistics
 	// Average & StdDeviation for Random Playout Depth
@@ -562,12 +575,13 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 
 	// Set the number of games for the test
 	NumGames = 1000;
-	if ((Finish - Start) > 10) NumGames = 300;
-	if ((Finish - Start) > 50) NumGames = 100;
-	if ((Finish - Start) > 250) NumGames = 30;
-	if ((Finish - Start) > 1250) NumGames = 10;
-	if ((Finish - Start) > 6250) NumGames = 3;
-
+/*	if ((Finish - Start) > 10) NumGames = 300;
+	if ((Finish - Start) > 40) NumGames = 100;
+	if ((Finish - Start) > 160) NumGames = 30;
+	if ((Finish - Start) > 640) NumGames = 10;
+	if ((Finish - Start) > 2560) NumGames = 3;
+	if ((Finish - Start) > 10240) NumGames = 1;
+*/
 	// Play the game
 	Start = clock();
 	for (int i = 0; i < NumGames; i ++) {
@@ -587,23 +601,31 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 
 	}
 	Finish = clock();
-	GamesPerSecond = (double)(TICKS_PER_SECOND * Count) / (double)(Finish - Start);
+	GamesPerSecond = (double)TICKS_PER_SECOND * (double)Count / ((double)Finish - (double)Start + 0.5);
 
 	// Calculate statistics
 	this->Lexicon->IO->WriteToLog(1, true, "Game Statistics\n");
 	this->Lexicon->IO->LogIndent = 4;
 	this->Lexicon->IO->FormatToLog(1, true, "From %d Playouts\n", Count);
 	this->Lexicon->IO->FormatToLog(1, true, "  Games Per Second %.3f\n", GamesPerSecond);
+	Parameters.Playouts = Count;
+	Parameters.GamesPerSec = GamesPerSecond;
+
 	Average = SumRounds / (double)Count;
 	StdDev = sqrt((SumRounds2 / (double)Count) - (Average * Average));
 	this->Lexicon->IO->WriteToLog(1, true, "Rounds Per Game\n");
 	this->Lexicon->IO->FormatToLog(1, true, "  Average = %f\n", Average);
 	this->Lexicon->IO->FormatToLog(1, true, "   StdDev = %f\n", StdDev);
+	Parameters.AveRounds = Average;
+	Parameters.StDevRounds = StdDev;
+
 	Average = SumGoalValue / (double)Count;
 	StdDev = sqrt((SumGoalValue2 / (double)Count) - (Average * Average));
 	this->Lexicon->IO->WriteToLog(1, true, "Role[0] Score\n");
 	this->Lexicon->IO->FormatToLog(1, true, "  Average = %f\n", Average);
 	this->Lexicon->IO->FormatToLog(1, true, "   StdDev = %f\n", StdDev);
+	Parameters.AveScore0 = Average;
+	Parameters.StDevScore0 = StdDev;
 
 	// Construct a tree to depth 3 and count the nodes
 
@@ -679,6 +701,9 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 	this->Lexicon->IO->FormatToLog(1, true, "    Depth 1 = %d\n", Node1Count);
 	this->Lexicon->IO->FormatToLog(1, true, "    Depth 2 = %d\n", Node2Count);
 	this->Lexicon->IO->FormatToLog(1, true, "    Depth 3 = %d\n", Node3Count);
+	Parameters.TreeNodes1 = Node1Count;
+	Parameters.TreeNodes2 = Node2Count;
+	Parameters.TreeNodes3 = Node3Count;
 
 	// Clean up the objects
 	this->FreeGameState(GameState);
@@ -759,13 +784,23 @@ bool hsfcEngine::Create(const char* Script) {
 
 	clock_t Start;
 	clock_t Finish;
+	int Length;
+	char* CleanScript;
+
+	// Clean up the script
+	Length = strlen(Script) + 1;
+	CleanScript = new char[Length];
+	for (unsigned int i = 0; i < Length; i ++) {
+		CleanScript[i] = Script[i];
+		// Make everything lower case
+		if ((Script[i] >= 'A') && (Script[i] <= 'Z')) {
+			CleanScript[i] = Script[i] + ('a' - 'A');
+		}
+	}
 
 	// Create the High Speed Forward Chaining engine
 
 	// Initialise the timing
-	this->Parameters->TimeBuildSchema = 0;
-	this->Parameters->TimeOptimise = 0;
-	this->Parameters->TimeBuildLookup = 0;
 	Start = clock();
 
 	// Read Well Formed Text from the file
@@ -773,8 +808,9 @@ bool hsfcEngine::Create(const char* Script) {
 	this->Lexicon->IO->LogIndent = 2;
 	this->WFT = new hsfcWFT(Lexicon);
 	this->WFT->Initialise();
-	this->WFT->Load(Script, "");
+	this->WFT->Load(CleanScript, "");
 	this->WFT->RemoveComments("/#;:'");
+	delete[] CleanScript;
 
 	// Create the GDL from the WFT
 	this->Lexicon->IO->WriteToLog(1, false, "\n=== Read GDL ===\n\n");
@@ -896,9 +932,19 @@ void hsfcEngine::TreeGetMoves(hsfcEngine* Engine, hsfcState* GameState, vector< 
 	// Set properties
 	RoleMoveIndex.clear();
 	MoveCount = 1;
-	for (unsigned int i = 0; i < Engine->NumRoles; i++) {
-		MoveCount *= RoleMove[i].size();
-		RoleMoveIndex.push_back(0);
+
+	// Check there are moves for all roles
+	if (RoleMove.size() == Engine->NumRoles) {
+		for (unsigned int i = 0; i < Engine->NumRoles; i++) {
+			MoveCount *= RoleMove[i].size();
+			RoleMoveIndex.push_back(0);
+		}
+	} else {
+		this->Lexicon->IO->WriteToLog(0, false, "Warning: No moves in hsfcEngine::TreeGetMoves\n");
+		MoveCount = 0;
+		for (unsigned int i = 0; i < Engine->NumRoles; i++) {
+			RoleMoveIndex.push_back(0);
+		}
 	}
 
 }

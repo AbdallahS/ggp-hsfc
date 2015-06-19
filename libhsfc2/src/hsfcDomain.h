@@ -29,10 +29,13 @@ public:
 	void CreateDomains(hsfcSchema* Schema);
 	void FreeDomains();
 	bool BuildDomains(hsfcSchema* Schema);
+	bool BuildDomain(hsfcRelationSchema* RelationSchema, unsigned int Index);
+	bool RebuildRigidDomain(hsfcRelationSchema* RelationSchema, unsigned int Index);
 	bool TermsToID(int RelationIndex, hsfcTuple Term[], unsigned int& ID);
 	bool IDToTerms(int RelationIndex, hsfcTuple Term[], unsigned int ID);
 	bool LoadTerms(hsfcSCLAtom* SCLAtom, hsfcTuple Term[]);
 	unsigned int RelationAsKIF(hsfcTuple& Relation, char** KIF);
+	void Print();
 
 	hsfcDomain* Domain;
 
@@ -41,7 +44,6 @@ protected:
 private:
 	unsigned int KIFLength(hsfcTuple& Relation);
 	void TestDomains();
-	void Print();
 
 	hsfcLexicon* Lexicon;
 	unsigned int DomainSize;

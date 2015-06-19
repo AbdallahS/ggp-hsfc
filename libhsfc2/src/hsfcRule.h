@@ -27,7 +27,7 @@ public:
 
 	void Initialise();
 	void FromSchema(hsfcRuleSchema* RuleSchema, bool LowSpeed);
-	void OptimiseInputs();
+	void OptimiseInputs(hsfcSchema* Schema);
 	void CreateLookupTable();
 	int Execute(hsfcState* State);
 	int HighSpeedExecute(hsfcState* State);
@@ -149,7 +149,7 @@ public:
 	bool Create(hsfcSchema* Schema, bool LowSpeedOnly);
 
 	void SetInitialState(hsfcState* State);
-	void AdvanceState(hsfcState* State, int Step);
+	void AdvanceState(hsfcState* State, int Step, bool LowSpeed);
 	bool IsTerminal(hsfcState* State);
 	int GoalValue(hsfcState* State, int RoleIndex);
 	void GetLegalMoves(hsfcState* State, vector< vector<hsfcLegalMove> >& LegalMove);
@@ -164,7 +164,7 @@ public:
 protected:
 
 private:
-	void ProcessRules(hsfcState* State, int Step);
+	void ProcessRules(hsfcState* State, int Step, bool LowSpeed, bool ProcessRigids);
 	void DeleteStrata();
 	void SetStratumProperties();
 	bool CalculateRigids();

@@ -69,6 +69,9 @@ class Move
 public:
     Move(const Move& other);
     Move(Game& game, const PortableMove& pm);
+#if HSFC_VERSION > 1
+    ~Move();
+#endif
     Move& operator=(const Move& other);
 
     bool operator==(const Move& other) const;
@@ -147,8 +150,13 @@ private:
     boost::scoped_ptr<State> initstate_; // Useful to maintain an init state
 
     // FIXUP: Get Michael to fix: spelling mistake in the type
-    void initInternals(hsfcGDLParamaters& params);
+    void initInternals(hsfcGDLParameters& params);
 };
+
+#if HSFC_VERSION > 1
+// DEBUG function to validate a GDL game
+void validate(const std::string& gdldescription);
+#endif
 
 
 template<typename OutputIterator>
@@ -215,10 +223,12 @@ public:
     void play(Iterator begin, Iterator end);
 
 
-    /*
-     * For examining the internal state
-     */
+    /****************************************************************
+     * DEBUG ONLY FUNCTIONS:
+     * For examining the internal state and printing the internal state
+     ******************************************************************/
     const hsfcState& internal(){ return *state_; }
+    void display(bool rigids=false) const;
 
 private:
     friend class PortableState;

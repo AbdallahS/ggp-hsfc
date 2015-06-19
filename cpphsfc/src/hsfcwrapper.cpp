@@ -18,7 +18,11 @@ namespace HSFC
  * Implementation of HSFCManager
  *****************************************************************************************/
 
-HSFCManager::HSFCManager() : internal_(new hsfcGDLManager())
+HSFCManager::HSFCManager() :
+    internal_(new hsfcGDLManager())
+#if HSFC_VERSION > 1
+    , params_(new hsfcGDLParameters())
+#endif
 {  }
 
 /*****************************************************************************************
@@ -45,6 +49,7 @@ void HSFCManager::PopulatePlayerNamesFromLegalMoves()
 #else
             internal_->GetMoveText(lm);
             parse_sexpr(lm.Text,term);
+            delete[] lm.Text;
 #endif
             if (SubTerms* ts = boost::get<SubTerms>(&term))
             {
@@ -194,10 +199,14 @@ void HSFCManager::PlayOut(hsfcState& GameState, std::vector<int>& GoalValue)
     internal_->PlayOut(&GameState, GoalValue);
 }
 
-void HSFCManager::DisplayState(const hsfcState& GameState) const
+void HSFCManager::DisplayState(const hsfcState& GameState, bool rigids) const
 {
+#if HSFC_VERSION == 1
     hsfcStateManager* sm = const_cast<hsfcStateManager*>(internal_->StateManager);
-    sm->PrintRelations(const_cast<hsfcState*>(&GameState), true);
+    sm->PrintRelations(const_cast<hsfcState*>(&GameState), rigids);
+#else
+    internal_->PrintState(const_cast<hsfcState*>(&GameState), rigids);
+#endif
 }
 
 std::ostream& HSFCManager::PrintState(std::ostream& os, const hsfcState& GameState) const
@@ -222,7 +231,7 @@ std::ostream& HSFCManager::PrintState(std::ostream& os, const hsfcState& GameSta
  *****************************************************************************************/
 
 void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
-                             const hsfcGDLParamaters& Parameters,
+                             const hsfcGDLParameters& Parameters,
                              bool usegadelac)
 {
     namespace bfs=boost::filesystem;
@@ -266,9 +275,9 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
 
         // needed to avoid non-const in hsfcGDLManager::Initialise
         std::string tmpstr(infile.native());
-        hsfcGDLParamaters params(Parameters);
 
 #if HSFC_VERSION == 1
+        hsfcGDLParameters params(Parameters);
         int result = internal_->InitialiseFromFile(&tmpstr, params);
         if (result != 0)
         {
@@ -277,7 +286,8 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
             throw HSFCInternalError() << ErrorMsgInfo(ss.str());
         }
 #else
-        if (!internal_->InitialiseFromFile(&tmpstr, params))
+        params_.reset(new hsfcGDLParameters(Parameters));
+        if (!internal_->InitialiseFromFile(&tmpstr, params_.get()))
         {
             std::ostringstream ss;
             ss << "Failed to initialise the HSFC engine.";
@@ -297,7 +307,7 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
 }
 
 void HSFCManager::Initialise(const std::string& gdldescription,
-                             const hsfcGDLParamaters& Parameters,
+                             const hsfcGDLParameters& Parameters,
                              bool usegadelac)
 {
     namespace bfs=boost::filesystem;
@@ -357,10 +367,10 @@ std::ostream& HSFCManager::PrintMove(std::ostream& os, const hsfcLegalMove& lega
         Term term;
 
 #if HSFC_VERSION == 1
-            parse_flat(legalmove.Text, term);
+        parse_flat(legalmove.Text, term);
 #else
-            internal_->GetMoveText(const_cast<hsfcLegalMove&>(legalmove));
-            parse_sexpr(legalmove.Text,term);
+        internal_->GetMoveText(const_cast<hsfcLegalMove&>(legalmove));
+        parse_sexpr(legalmove.Text,term);
 #endif
         if (SubTerms* ts = boost::get<SubTerms>(&term))
         {
@@ -400,14 +410,9 @@ void HSFCManager::GetStateData(const hsfcState& state,
     {
         if (sm->Schema->Relation[i]->Fact != hsfcFactPermanent)
         {
-// FIXUP: 20150603
-// Need to ask Michael S why he has the j <= 32 test in his code in
-// hsfcStateManager::PrintRelations() function. I have copied what he
-// did here but I don't think it is correct. Tere are games states
-// such as the initial state of nineboardtictactoe where having this
-// limit breaks the transfer of the correct state information.
-
-            // for (int j=0; j < ts.NumRelations[i] && j<=32; ++j)
+            // FIXUP: 20150603. Removed the j <= 32 copied from the
+            // hsfcStateManager::PrintRelations() function. Was there only
+            // reduce verbosity.
             for (int j=0; j < ts.NumRelations[i]; ++j)
             {
                 relationset.insert(std::make_pair(i, ts.RelationID[i][j]));
@@ -421,8 +426,8 @@ void HSFCManager::GetStateData(const hsfcState& state,
     for (int i=1; i < sm->NumRelationLists; ++i)
     {
         hsfcRelationSchema* tmp = sm->Schema->RelationSchema[i];
-        std::cerr << " RER: " << tmp << std::endl;
-        if (sm->Schema->RelationSchema[i]->Fact != hsfcFactRigid)
+//        std::cerr << " RER: " << tmp << std::endl;
+        if (sm->Schema->RelationSchema[i]->Rigidity != hsfcRigidityFull)
         {
             for (int j=0; j < ts.NumRelations[i]; ++j)
             {

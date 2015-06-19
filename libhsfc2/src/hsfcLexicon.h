@@ -17,6 +17,30 @@
 #include "hsfcIO.h"
 
 //=============================================================================
+// CLASS: hsfcStatistic
+//=============================================================================
+class hsfcStatistic {
+
+public:
+	hsfcStatistic(void);
+	~hsfcStatistic(void);
+
+	void Initialise();
+	void AddObservation(double Value);
+	double Average();
+	double StdDev();
+
+	double Count;
+	double Sum;
+	double Sum2;
+
+protected:
+
+private:
+
+};
+
+//=============================================================================
 // CLASS: hsfcLexicon
 //=============================================================================
 class hsfcLexicon {
@@ -25,11 +49,12 @@ public:
 	hsfcLexicon(void);
 	~hsfcLexicon(void);
 
-	void Initialise();
+	void Initialise(hsfcParameters* Parameters);
 	unsigned int Index(const char* Value);
 	unsigned int RelationIndex(const char* Value, bool Add);
 	unsigned int RelationIndex(unsigned int NameID);
 	unsigned int GDLIndex(unsigned int ID);
+	unsigned int NewRigidNameID(int Arity);
 	void Parse(const char* Text, vector<hsfcTuple>& Reference);
 	bool Match(unsigned int ID, const char* Text);
 	bool PartialMatch(unsigned int ID, const char* Text);
@@ -57,6 +82,8 @@ private:
 	vector<unsigned int> TermIndex;
 	vector<string> RelationName;
 	vector<unsigned int> RelationNameID;
+	vector<bool> RelationIsRigid;
+	int UniqueNum;
 
 };
 

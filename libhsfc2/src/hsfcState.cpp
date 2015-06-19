@@ -57,6 +57,10 @@ void hsfcStateManager::Initialise(){
 	this->NoNextRelation = 0;
 	this->StateSize = 0;
 	this->MaxRelationSize = 0;
+	//this->FullPermanent.clear(); 
+	//this->PartPermanent.clear(); 
+	//this->Initial.clear();
+	//this->Next.clear();
 
 }
 
@@ -74,6 +78,8 @@ bool hsfcStateManager::SetSchema(hsfcSchema* Schema){
 	hsfcTuple* LegalEntry;
 	hsfcTuple* DoesEntry;
 	hsfcTuple* SeesEntry;
+	int TrueIndex;
+	hsfcReference NewReference;
 
 	this->Lexicon->IO->WriteToLog(2, true, "Translating Schema ...\n");
 
@@ -155,6 +161,7 @@ bool hsfcStateManager::SetSchema(hsfcSchema* Schema){
 			}
 		}
 		// Is the state too big
+		this->Lexicon->IO->Parameters->StateSize = this->StateSize;
 		if (this->StateSize > this->Lexicon->IO->Parameters->MaxStateSize) {
 			this->Lexicon->IO->WriteToLog(0, false, "Error: state too big in hsfcStateManager::SetSchema\n");
 			return false;
@@ -270,6 +277,24 @@ bool hsfcStateManager::SetSchema(hsfcSchema* Schema){
 				if (RoleEntry->ID != SeesEntry->ID) continue;
 				this->SeesToRole[i] = j;
 			}
+		}
+	}
+
+	// Create Next references
+	this->Lexicon->IO->WriteToLog(2, true, "  Setting (next ...) references\n");
+
+	// Reset the list
+	this->Next.clear();
+
+	// Link all Next --> True
+	for (unsigned int i = 1; i < this->Schema->RelationSchema.size(); i++) {
+		// Is this a (next ...)
+		if (this->Schema->RelationSchema[i]->Fact == hsfcFactNext) {
+			// Create the reference
+			TrueIndex = this->Lexicon->TrueFrom(this->Schema->RelationSchema[i]->Index);
+			NewReference.SourceIndex = this->Schema->RelationSchema[i]->Index;
+			NewReference.DestinationIndex = TrueIndex;
+			this->Next.push_back(NewReference);
 		}
 	}
 
@@ -397,22 +422,9 @@ void hsfcStateManager::InitialiseState(hsfcState* State){
 		}
 	}
 
-	//// Fully populate any permanent fact relations
-	//// Permanent facts cannot use IDSorted
-	//for (unsigned int i = 1; i < this->Schema->RelationSchema.size(); i++) {
-	//	if (this->Schema->RelationSchema[i]->Fact == hsfcFactRigid) {
-	//		for (unsigned int j = 0; j < State->MaxNumRelations[i]; j++) {
-	//			State->RelationID[i][j] = j;
-	//			State->RelationExists[i][j] = true;
-	//		}
-	//		State->NumRelations[i] = State->MaxNumRelations[i];
-	//	}
-	//}
-
-	// Add the Rigid relations from the reference table
-	for (unsigned int i = 0; i < this->Schema->Rigid.size(); i++) {
-		// Add the RelationID to the state
-		this->AddRelation(State, this->Schema->Rigid[i]);
+	// Add the permanent relations from the reference table
+	for (unsigned int i = 0; i < this->FullPermanent.size(); i++) {
+		this->AddRelation(State, this->FullPermanent[i]);
 	}
 
 	// Reset the step counters
@@ -431,7 +443,7 @@ void hsfcStateManager::FromState(hsfcState* State, hsfcState* Source){
 
 	// Copy the relations
 	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
-		if (this->Schema->RelationSchema[i]->Fact != hsfcFactRigid) {
+		if (this->Schema->RelationSchema[i]->Rigidity != hsfcRigidityFull) {
 			for (unsigned int j = 0; j < Source->NumRelations[i]; j++) {
 				if (State->RelationID[i] != NULL) {
 					State->RelationID[i][j] = Source->RelationID[i][j];
@@ -458,9 +470,9 @@ void hsfcStateManager::FromState(hsfcState* State, hsfcState* Source){
 //-----------------------------------------------------------------------------
 void hsfcStateManager::ResetState(hsfcState* State) {
 
-	// Go through all of the relations and clear all the lists; except the rigid facts
+	// Go through all of the relations and clear all the lists; except the permanent facts
 	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
-		if (this->Schema->RelationSchema[i]->Fact != hsfcFactRigid) {
+		if (this->Schema->RelationSchema[i]->Rigidity != hsfcRigidityFull) {
 			if (State->RelationExists[i] != NULL) {
 				for (unsigned int j = 0; j < State->NumRelations[i]; j++) {
 					State->RelationExists[i][State->RelationID[i][j]] = false;
@@ -481,13 +493,13 @@ void hsfcStateManager::SetInitialState(hsfcState* State) {
 	this->ResetState(State);
 
 	// Add the (init (...)) relations from the state
-	for (unsigned int i = 0; i < this->Schema->Initial.size(); i++) {
-		this->AddRelation(State, this->Schema->Initial[i]);
+	for (unsigned int i = 0; i < this->Initial.size(); i++) {
+		this->AddRelation(State, this->Initial[i]);
 	}
 
 	// Add the permanent relations from the reference table
-	for (unsigned int i = 0; i < this->Schema->Permanent.size(); i++) {
-		this->AddRelation(State, this->Schema->Permanent[i]);
+	for (unsigned int i = 0; i < this->PartPermanent.size(); i++) {
+		this->AddRelation(State, this->PartPermanent[i]);
 	}
 
 	// Reset the cycle counter
@@ -512,7 +524,7 @@ void hsfcStateManager::NextState(hsfcState* State) {
 
 	// Clear all of the lists except for the rigid and the next relations
 	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
-		if ((this->Schema->RelationSchema[i]->Fact != hsfcFactRigid) && (this->Schema->RelationSchema[i]->Fact != hsfcFactNext)) {
+		if ((this->Schema->RelationSchema[i]->Rigidity != hsfcRigidityFull) && (this->Schema->RelationSchema[i]->Fact != hsfcFactNext)) {
 			if (State->RelationExists[i] != NULL) {
 				for (unsigned int j = 0; j < State->NumRelations[i]; j++) {
 					State->RelationExists[i][State->RelationID[i][j]] = false;
@@ -523,10 +535,10 @@ void hsfcStateManager::NextState(hsfcState* State) {
 	}
 
 	// Transfer the lists from next to predicate
-	for (unsigned int i = 0; i < this->Schema->Next.size(); i++) {
+	for (unsigned int i = 0; i < this->Next.size(); i++) {
 
-		SourceIndex = this->Schema->Next[i].SourceIndex;
-		DestinationIndex = this->Schema->Next[i].DestinationIndex;
+		SourceIndex = this->Next[i].SourceIndex;
+		DestinationIndex = this->Next[i].DestinationIndex;
 
 		// Transfer of relations
 		// There is an opportunity for a bulk transfer flag
@@ -551,8 +563,8 @@ void hsfcStateManager::NextState(hsfcState* State) {
 	}
 
 	// Add in any permanent relations that are in nonpermanent lists eg. (legal role noop)
-	for (unsigned int i = 0; i < this->Schema->Permanent.size(); i++) {
-		this->AddRelation(State, this->Schema->Permanent[i]);
+	for (unsigned int i = 0; i < this->PartPermanent.size(); i++) {
+		this->AddRelation(State, this->PartPermanent[i]);
 	}
 
 	// Advance the Cycle counter
@@ -713,6 +725,7 @@ void hsfcStateManager::PrintRelations(hsfcState* State, bool ShowRigids) {
 
 	hsfcTuple Relation;
 	char* KIF;
+	hsfcRelationSchema* RelationSchema;
 
 	this->Lexicon->IO->WriteToLog(0, false, "\n--- State ---\n");
 
@@ -721,46 +734,60 @@ void hsfcStateManager::PrintRelations(hsfcState* State, bool ShowRigids) {
 		if (this->Schema->RelationSchema[i]->IsInState) {
 
 			this->Lexicon->IO->FormatToLog(0, false, "Relation %-3d - %-24s", i, this->Lexicon->Relation(i)); 
-			this->Lexicon->IO->FormatToLog(0, false, "  Count %-8d Max %-8d Type ", State->NumRelations[i], State->MaxNumRelations[i]); 
-			switch (this->Schema->RelationSchema[i]->Fact) {
-				case 0:
-					this->Lexicon->IO->WriteToLog(0, false, "None\n");
-					break;
-				case 1:
-					this->Lexicon->IO->WriteToLog(0, false, "Emb\n");
-					break;
-				case 2:
-					this->Lexicon->IO->WriteToLog(0, false, "Aux\n");
-					break;
-				case 3:
-					this->Lexicon->IO->WriteToLog(0, false, "Rigid\n");
-					break;
-				case 4:
-					this->Lexicon->IO->WriteToLog(0, false, "Init\n");
-					break;
-				case 5:
-					this->Lexicon->IO->WriteToLog(0, false, "True\n");
-					break;
-				case 6:
-					this->Lexicon->IO->WriteToLog(0, false, "Next\n");
-					break;
-				default:
-					this->Lexicon->IO->WriteToLog(0, false, "Error\n");
-					break;
-			}
+			this->Lexicon->IO->FormatToLog(0, false, "  Count %-8d Max %-8d ", State->NumRelations[i], State->MaxNumRelations[i]); 
 
-			if (ShowRigids || (this->Schema->RelationSchema[i]->Fact != hsfcFactRigid)) {
-				for (unsigned int j = 0; (j < State->NumRelations[i]) && (j < 128); j++) {
-					this->Lexicon->IO->FormatToLog(0, false, "%4d.%-9d", i, State->RelationID[i][j]);
-					Relation.Index = i;
-					Relation.ID = State->RelationID[i][j];
-					KIF = NULL;
-					this->DomainManager->RelationAsKIF(Relation, &KIF);
-					this->Lexicon->IO->FormatToLog(0, false, "  %s\n", KIF);
-					delete[] KIF;
+			RelationSchema = this->Schema->RelationSchema[i];
+			if (RelationSchema != NULL) {
+				switch (RelationSchema->Fact) {
+					case 0:
+						this->Lexicon->IO->WriteToLog(0, false, "None ");
+						break;
+					case 1:
+						this->Lexicon->IO->WriteToLog(0, false, "Emb  ");
+						break;
+					case 2:
+						this->Lexicon->IO->WriteToLog(0, false, "Aux  ");
+						break;
+					case 3:
+						this->Lexicon->IO->WriteToLog(0, false, "Init ");
+						break;
+					case 4:
+						this->Lexicon->IO->WriteToLog(0, false, "True ");
+						break;
+					case 5:
+						this->Lexicon->IO->WriteToLog(0, false, "Next ");
+						break;
+					default:
+						this->Lexicon->IO->WriteToLog(0, false, "Err  ");
+						break;
 				}
-				if ((this->Schema->RelationSchema[i]->Fact != hsfcFactRigid) && (State->NumRelations[i] > 128)) {
-					this->Lexicon->IO->FormatToLog(0, false, "Count = %d\n", State->NumRelations[i]);
+				switch (RelationSchema->Rigidity) {
+					case 0:
+						this->Lexicon->IO->WriteToLog(0, false, "None\n");
+						break;
+					case 1:
+						this->Lexicon->IO->WriteToLog(0, false, "Some\n");
+						break;
+					case 2:
+						this->Lexicon->IO->WriteToLog(0, false, "Full\n");
+						break;
+					default:
+						this->Lexicon->IO->WriteToLog(0, false, "Err \n");
+						break;
+				}
+				if (ShowRigids || (RelationSchema->Rigidity != hsfcRigidityFull)) {
+					for (unsigned int j = 0; (j < State->NumRelations[i]) && (j < 128); j++) {
+						this->Lexicon->IO->FormatToLog(0, false, "%4d.%-9d", i, State->RelationID[i][j]);
+						Relation.Index = i;
+						Relation.ID = State->RelationID[i][j];
+						KIF = NULL;
+						this->DomainManager->RelationAsKIF(Relation, &KIF);
+						this->Lexicon->IO->FormatToLog(0, false, "  %s\n", KIF);
+						delete[] KIF;
+					}
+					if ((RelationSchema->Rigidity != hsfcRigidityFull) && (State->NumRelations[i] > 128)) {
+						this->Lexicon->IO->FormatToLog(0, false, "Count = %d\n", State->NumRelations[i]);
+					}
 				}
 			}
 
@@ -774,33 +801,135 @@ void hsfcStateManager::PrintRelations(hsfcState* State, bool ShowRigids) {
 }
 
 //-----------------------------------------------------------------------------
+// CreateRigids
+//-----------------------------------------------------------------------------
+void hsfcStateManager::CreateRigids(hsfcState* State) {
+
+	hsfcRelationSchema* RelationSchema;
+	hsfcTuple* Term;
+	hsfcFactType FactType;
+	unsigned int ID;
+
+	// Change the schema to compress the rigid IDs
+	// Leave Init as is because the domains for (init: ...) (true: ...) (next: ...) are identical
+
+	// Load relations from the state to the schema as permanents or initial
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		// Find the relation schema
+		RelationSchema = this->Schema->RelationSchema[i];
+		if ((RelationSchema->Rigidity == hsfcRigidityFull) && (RelationSchema->IsInState)) {
+			// Is this a permanent or an initial
+			//if (!this->Lexicon->PartialMatch(RelationSchema->NameID, "init:")) {
+				// Create the terms array
+				Term = new hsfcTuple[RelationSchema->Arity + 1];
+				// Reset the schema
+				FactType = RelationSchema->Fact;
+				RelationSchema->Initialise(RelationSchema->NameID, RelationSchema->Arity, RelationSchema->Index);
+				RelationSchema->Rigidity = hsfcRigidityFull;
+				RelationSchema->IsInState = true;
+				RelationSchema->Fact = FactType;
+				for (int j = 0; j < RelationSchema->Arity; j++) {
+					RelationSchema->DomainSchema[j]->Rigid = true;
+				}
+				
+				// Rebuild the schema from the rigids in the state
+				// Load each relation
+				for (unsigned int j = 0; j < State->NumRelations[i]; j++) {
+					// Get the terms from the old domain structure
+					this->DomainManager->IDToTerms(i, Term, State->RelationID[i][j]); 
+					// Load the terms into the new schema
+					RelationSchema->AddRigidTerms(Term);
+				}
+
+				// Clean up memory
+				delete[] Term;
+			//}
+		}
+	}
+
+	// Reduild the domain as a rigid domain
+	// Load relations from the state to the schema as permanents or initial
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		// Find the relation schema
+		RelationSchema = this->Schema->RelationSchema[i];
+		if ((RelationSchema->Rigidity == hsfcRigidityFull) && (RelationSchema->IsInState)) {
+			this->DomainManager->Domain[i].Rigid = true;
+			this->DomainManager->RebuildRigidDomain(RelationSchema, i);
+		}
+	}
+
+	// Print the new domains
+	if (this->Lexicon->IO->Parameters->LogDetail > 2) this->DomainManager->Print();
+
+	// Validate the new domains
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		// Find the relation schema
+		RelationSchema = this->Schema->RelationSchema[i];
+		if ((RelationSchema->Rigidity == hsfcRigidityFull) && (RelationSchema->IsInState)) {
+			Term = new hsfcTuple[RelationSchema->Arity + 1];
+			for (unsigned int j = 0; j < this->DomainManager->Domain[i].IDCount; j++) {
+				this->DomainManager->IDToTerms(i, Term, j);
+				this->DomainManager->TermsToID(i, Term, ID);
+				if (ID != j) {
+					this->Lexicon->IO->WriteToLog(0, false, "Warning: Bad ID to Terms to ID conversion::CreateRigids\n\n");
+				}
+			}
+			delete[] Term;
+		}
+	}
+
+
+}
+
+//-----------------------------------------------------------------------------
 // CreatePermanents
 //-----------------------------------------------------------------------------
 void hsfcStateManager::CreatePermanents(hsfcState* State) {
 
 	hsfcTuple Relation;
+	hsfcRelationSchema* RelationSchema;
 
-	// This is calculated from an initiailsed state after running all of the rigid rules
-	this->Schema->Rigid.clear();
-	this->Schema->Permanent.clear();
-	this->Schema->Initial.clear();
+	// This is calculated from an initiailsed state after running all/only of the rigid rules
+	this->PartPermanent.clear();
+	this->FullPermanent.clear();
+	this->Initial.clear();
+
+	// All the rigid relations have now got different IDs
+	// But they are all fully instantiated
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		Relation.Index = i;
+		// Find the relation schema
+		RelationSchema = this->Schema->RelationSchema[i];
+		if ((RelationSchema->Rigidity == hsfcRigidityFull) && (RelationSchema->IsInState)) {
+			// Is this a permanent or an initial
+			if (!this->Lexicon->PartialMatch(RelationSchema->NameID, "init:")) {
+				// Add every one to the state
+				for (unsigned int j = 0; j < this->DomainManager->Domain[i].IDCount; j++) {
+					Relation.ID = j;
+					// Add the relation instance to the schema
+					this->FullPermanent.push_back(Relation);
+				}
+			}
+		}
+	}
 
 	// Load relations from the state to the schema as permanents or initial
 	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
 		Relation.Index = i;
 		for (unsigned int j = 0; j < State->NumRelations[i]; j++) {
+			// Find the relation schema
+			RelationSchema = this->Schema->RelationSchema[i];
 			Relation.ID = State->RelationID[i][j];
 			// Is this a permanent or an initial
-			if (this->Lexicon->PartialMatch(this->Schema->RelationSchema[i]->NameID, "init:")) {
+			if (this->Lexicon->PartialMatch(RelationSchema->NameID, "init:")) {
 				// The domains for (init: ...) (true: ...) (next: ...) are identical
 				Relation.Index = this->Lexicon->TrueFrom(Relation.Index);
 				// Add the relation instance to the schema
-				this->Schema->Initial.push_back(Relation);
+				this->Initial.push_back(Relation);
 			} else {
-				if (this->Schema->RelationSchema[i]->Fact == hsfcFactRigid) {
-					this->Schema->Rigid.push_back(Relation);
-				} else {
-					this->Schema->Permanent.push_back(Relation);
+				// Is this a partial permanent, fully permanents ar ealready done
+				if (RelationSchema->Rigidity != hsfcRigidityFull) {
+					this->PartPermanent.push_back(Relation);
 				}
 			}
 		}

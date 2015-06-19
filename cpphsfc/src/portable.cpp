@@ -118,14 +118,19 @@ PortableMove::PortableMove() : RoleIndex_(-1), RelationIndex_(-1), ID_(-1)
 { }
 
 PortableMove::PortableMove(const Move& move) :
-    RoleIndex_(move.move_.RoleIndex), Text_(move.move_.Text),
+    RoleIndex_(move.move_.RoleIndex),
+    ID_(move.move_.Tuple.ID),
 #if HSFC_VERSION == 1
-    RelationIndex_(move.move_.Tuple.RelationIndex),
+    Text_(move.move_.Text),
+    RelationIndex_(move.move_.Tuple.RelationIndex)
 #else
-    RelationIndex_(move.move_.Tuple.Index),
+    RelationIndex_(move.move_.Tuple.Index)
 #endif
-    ID_(move.move_.Tuple.ID)
-{ }
+{
+#if HSFC_VERSION > 1
+    if (move.move_.Text != NULL) Text_ = move.move_.Text;
+#endif
+ }
 
 PortableMove::PortableMove(const PortableMove& other) :
     RoleIndex_(other.RoleIndex_), Text_(other.Text_),
@@ -144,21 +149,23 @@ PortableMove& PortableMove::operator=(const PortableMove& other)
 bool PortableMove::operator==(const PortableMove& other) const
 {
     return (RoleIndex_ == other.RoleIndex_ && RelationIndex_ == other.RelationIndex_ &&
-            ID_ == other.ID_ && Text_ == other.Text_);
+            ID_ == other.ID_); // && Text_ == other.Text_);
 }
 
 bool PortableMove::operator!=(const PortableMove& other) const
 {
     return (RoleIndex_ != other.RoleIndex_ || RelationIndex_ != other.RelationIndex_ ||
-            ID_ != other.ID_ || Text_ != other.Text_);
+            ID_ != other.ID_); // || Text_ != other.Text_);
 }
 
 bool PortableMove::operator<(const PortableMove& other) const
 {
     if (RoleIndex_ != other.RoleIndex_) return RoleIndex_ < other.RoleIndex_;
     if (RelationIndex_ != other.RelationIndex_) return RelationIndex_ < other.RelationIndex_;
-    if (ID_ != other.ID_) return ID_ < other.ID_;
-    return Text_ < other.Text_;
+    return ID_ < other.ID_;
+
+//    if (ID_ != other.ID_) return ID_ < other.ID_;
+//    return Text_ < other.Text_;
 }
 
 std::size_t PortableMove::hash_value() const
@@ -167,7 +174,7 @@ std::size_t PortableMove::hash_value() const
     boost::hash_combine(seed, RoleIndex_);
     boost::hash_combine(seed, RelationIndex_);
     boost::hash_combine(seed, ID_);
-    boost::hash_combine(seed, Text_);
+//    boost::hash_combine(seed, Text_);
     return seed;
 }
 

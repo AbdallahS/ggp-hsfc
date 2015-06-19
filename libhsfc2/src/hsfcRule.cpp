@@ -188,20 +188,35 @@ void hsfcRule::FromSchema(hsfcRuleSchema* RuleSchema, bool LowSpeed) {
 //-----------------------------------------------------------------------------
 // OptimiseInputs
 //-----------------------------------------------------------------------------
-void hsfcRule::OptimiseInputs() {
+void hsfcRule::OptimiseInputs(hsfcSchema* Schema) {
 
 	unsigned int RelationIndex;
+	unsigned int TermRelationIndex;
+	unsigned int TermDomainIndex;
+	vector<unsigned int> Indirect;		// Indirect adressing of inputs
+	vector<unsigned int> InputIndex;
+	vector<unsigned int> BestInputIndex;
+	vector<unsigned int> InputRelationIndex;
+	vector<unsigned int> Permutation; 
+	vector<bool> VariableFixed;
+	double ReadCount;
+	double ExpectedFrequency;
+	double PassProbability;
+	double ExpectedInstances;
+	double LookupSize;
+	unsigned int VariableIndex;
+	int Count;
+	double BestReadCount;
+	double BestLookupSize;
+	bool BestPermutation;
+	unsigned int NumPermutations;
+	unsigned int Temp0;
+	unsigned int Temp1;
 
-	// Calculate the lookup size
-	this->LookupSize = 1;
-	for (int i = 0; i < this->NumInputs; i++) {
-		this->LookupSize *= (double)this->DomainManager->Domain[this->Input[i]].IDCount;
-	}
-
-	// Should the rule be low speed
-	if (this->LookupSize > this->Lexicon->IO->Parameters->MaxReferenceSize) {
-		this->LowSpeed = true;
-	}
+	// Set the default speed
+	this->LowSpeed = false;
+	BestReadCount = 1e99;
+	BestLookupSize = 1e99;
 
 	// Are any of the relations 'sorted' rather than 'exists'
 	for (unsigned int i = 0; i < this->RuleSchema->RelationSchema.size(); i++) {
@@ -210,6 +225,192 @@ void hsfcRule::OptimiseInputs() {
 			this->LowSpeed = true;
 		}
 	}
+
+	// Even if it is low speed, we can still benefit from sorting the inputs
+
+	// Do everything in the schema first, then recreate the rule from the new schema
+	// Sort the rule relations so the possible inputs are first
+
+	// Keep track of the permutations of the input indexes by addressing them indirectly
+	// Not all of the relations are inputs, so the initial vectors will look like
+	// OrigIndex	0, 1, 2, 3, 4, 5
+	// Input/Cond   any order / any order	InputCount
+	// InputIndex	shuffled  / ignored
+
+	// Set all the input types
+	for (unsigned int i = 1; i < this->RuleSchema->RelationSchema.size(); i++) {
+		// By default its an input
+		this->RuleSchema->RelationSchema[i]->Type = hsfcRuleInput;
+		// Is it a precondition
+		Count = 0;
+		for (unsigned int j = 0; j < this->RuleSchema->RelationSchema[i]->TermSchema.size(); j++) {
+			if (this->RuleSchema->RelationSchema[i]->TermSchema[j].Type == hsfcTypeVariable) Count++;
+		}
+		if (Count == 0) {
+			this->RuleSchema->RelationSchema[i]->Type = hsfcRulePreCondition;
+			continue;
+		}
+		// Is it a function
+		if (this->RuleSchema->RelationSchema[i]->Function != hsfcFunctionNone) {
+			this->RuleSchema->RelationSchema[i]->Type = hsfcRuleCondition;
+			continue;
+		}
+		// Add it to the input list
+		Indirect.push_back(0);
+		InputIndex.push_back(i);
+		BestInputIndex.push_back(i);
+		InputRelationIndex.push_back(this->RuleSchema->RelationSchema[i]->TermSchema[0].RelationIndex);
+
+	}
+	// Keep track of each of the variables
+	for (unsigned int i = 0; i < this->RuleSchema->VariableSchema.size(); i++) VariableFixed.push_back(false);
+
+	// Is this a trivial exercise or de we need some permutation tables
+	if (InputIndex.size() <= 1) return;
+
+	// We need to create all the permutations for the first two inputs
+	NumPermutations = 0;
+	for (unsigned int i = 0; i < InputIndex.size(); i++) {
+		for (unsigned int j = 0; j < InputIndex.size(); j++) {
+			if (j != i) {
+				Permutation.push_back(i);
+				Permutation.push_back(j);
+				NumPermutations++;
+			}
+		}
+	}
+
+	//// Calculate for each permutation of inputs
+	//for (unsigned int p = 0; p < NumPermutations; p++) {
+
+		// Set up the indirect addressing for this permutation
+		for (unsigned int i = 0; i < InputIndex.size(); i++) {
+			Indirect[i] = i;
+		}
+		// Indirect: 0, 1, 2, 3, etc
+		// Now swap the first two inputs
+		//printf("\nPermutation: ");
+		//for (unsigned int i = 0; i < 2; i++) printf(" %d", Permutation[2*p+i]); 
+		//Temp0 = Indirect[Permutation[2*p]];
+		//Temp1 = Indirect[Permutation[2*p+1]];
+		//Indirect[Permutation[2*p]] = 0;
+		//Indirect[Permutation[2*p+1]] = 1;
+		//Indirect[0] = Temp0;
+		//Indirect[1] = Temp1;
+		//printf("\nPermutation: ");
+		//for (unsigned int i = 0; i < InputIndex.size(); i++) printf(" %d", InputIndex[Indirect[i]]); 
+		//printf("\n");
+
+		//continue;
+
+		// Keep track of each of the variables
+		for (unsigned int i = 0; i < this->RuleSchema->VariableSchema.size(); i++) VariableFixed[i] = false;
+
+		// Calculate the ReadCost = number of reads of any input from the state
+		ReadCount = 0;
+		ExpectedFrequency = 1;
+		ExpectedInstances = 1;
+		LookupSize = 0;
+		for (unsigned int i = 0; i < InputIndex.size(); i++) {
+
+			// How many read operations wil there be
+			ReadCount += ExpectedFrequency * Schema->RelationSchema[InputRelationIndex[Indirect[i]]]->Statistics.Average();
+			ExpectedInstances = ExpectedInstances * this->DomainManager->Domain[InputRelationIndex[Indirect[i]]].IDCount;
+			LookupSize += ExpectedInstances;
+
+			// Calculate the pass probability based on the variable domain sizes
+			PassProbability = 1;
+			for (unsigned int j = 0; j < this->RuleSchema->RelationSchema[InputIndex[Indirect[i]]]->TermSchema.size(); j++) {
+
+				// Check if the term is a variable
+				if (this->RuleSchema->RelationSchema[InputIndex[Indirect[i]]]->TermSchema[j].Type == hsfcTypeVariable) {
+					VariableIndex = this->RuleSchema->RelationSchema[InputIndex[Indirect[i]]]->TermSchema[j].VariableIndex;
+					// Is it already present, and must match exactly
+					if (VariableFixed[VariableIndex]) {
+						PassProbability = PassProbability / this->RuleSchema->VariableSchema[VariableIndex]->Term.size();
+					} else {
+						VariableFixed[VariableIndex] = true;
+					}
+				}
+				// Fixed arguments have only one chance of being correct
+				if (this->RuleSchema->RelationSchema[InputIndex[Indirect[i]]]->TermSchema[j].Type == hsfcTypeFixed) {
+					// We need to consult the domain
+					TermRelationIndex = this->RuleSchema->RelationSchema[InputIndex[Indirect[i]]]->TermSchema[j].RelationIndex;
+					TermDomainIndex = this->RuleSchema->RelationSchema[InputIndex[Indirect[i]]]->TermSchema[j].ArgumentIndex;
+					PassProbability = PassProbability / this->DomainManager->Domain[TermRelationIndex].RecordSize[TermDomainIndex];
+				}
+
+			}
+
+			// Calculate the numbe of instance at this point in the execution of the rule
+			ExpectedFrequency = ExpectedFrequency * PassProbability * Schema->RelationSchema[InputRelationIndex[Indirect[i]]]->Statistics.Average();
+			ExpectedInstances = ExpectedInstances * PassProbability;
+
+			//// Debug
+			//printf("Input #%d\n", i); 
+			//this->RuleSchema->RelationSchema[InputIndex[Indirect[i]]]->Print();
+			//printf("  ReadCount          %.0f\n", ReadCount); 
+			//printf("  PassProbability    %.6f\n", PassProbability); 
+			//printf("  ExpectedFrequency  %.3f\n", ExpectedFrequency); 
+			//printf("  ExpectedInstances  %.3f\n", ExpectedInstances); 
+			//printf("  LookupSize         %.0f\n", LookupSize); 
+
+			// Check if all the variables are in the rule
+			for (unsigned int j = 0; j < VariableFixed.size(); j++) {
+				if (!VariableFixed[j]) goto NextInput;
+			}
+			// Add in the remaining conditions and the result
+			for (unsigned int j = i; j < this->RuleSchema->RelationSchema.size(); j++) LookupSize += ExpectedInstances;
+			//printf("  FinalLookupSize    %.0f\n", LookupSize); 
+
+			break;
+
+NextInput:;
+
+		}
+
+		// Is this the best so far
+		// HighSpeed is always betterthan LowSpeed
+		BestPermutation = false;
+		if (BestLookupSize > this->Lexicon->IO->Parameters->MaxLookupSize) {
+			if (LookupSize < this->Lexicon->IO->Parameters->MaxLookupSize) {
+				BestPermutation = true;
+			} else {
+				if (ReadCount < BestReadCount) {
+					BestPermutation = true;
+				}
+			}
+		} else {
+			if (ReadCount < BestReadCount) {
+				if (LookupSize < this->Lexicon->IO->Parameters->MaxLookupSize) {
+					BestPermutation = true;
+				}
+			}
+		}
+
+		// Record the best permutation
+		if (BestPermutation) {
+			BestLookupSize = LookupSize;
+			BestReadCount = ReadCount;
+			for (unsigned int i = 0; i < InputIndex.size(); i++) {
+				BestInputIndex[i] = InputIndex[Indirect[i]];
+			}
+		}
+
+	//}
+
+	//printf("\nBestPermutation: ");
+	//for (unsigned int i = 0; i < InputIndex.size(); i++) printf(" %d", BestInputIndex[i]); 
+	//printf("\n");
+	//printf("  BestReadCount      %.0f\n", BestReadCount); 
+	//printf("  BestLookupSize     %.0f\n", BestLookupSize); 
+
+	// Is the lookup table too big
+	if (BestLookupSize > this->Lexicon->IO->Parameters->MaxLookupSize) {
+		this->LowSpeed = true;
+		//printf("  Set to LowSpeed\n"); 
+	}
+
 
 }
 
@@ -325,7 +526,7 @@ void hsfcRule::CreateLookupTable() {
 			this->Lexicon->IO->FormatToLog(0, true, "    Count = %d\n", Count);
 		}
 
-		this->Lexicon->IO->FormatToLog(3, true, "Lookup Size = %d\n", this->LookupSize * sizeof(int));
+		this->Lexicon->IO->FormatToLog(3, true, "Lookup Size = %.0f\n", this->LookupSize * sizeof(int));
 
 		return;
 
@@ -430,8 +631,8 @@ void hsfcRule::CreateLookupTable() {
 	// At this point we know the size of the condition and result references
 
 	// Improvement:
-	// It is possible to back-propogate from condition(0) >> input(last) if condition is fact
-	// It is also possible to back propogate from input(i) >>  input(i-1)
+	// It is possible to back-propogate from condition(0) > > input(last) if condition is fact
+	// It is also possible to back propogate from input(i) > >  input(i-1)
 
 	// Create the condition references
 	for (int i = 0; i < this->NumConditions; i++) {
@@ -570,7 +771,9 @@ void hsfcRule::CreateLookupTable() {
 		this->Lexicon->IO->FormatToLog(0, true, "    Count = %d\n", Count);
 	}
 
-	this->Lexicon->IO->FormatToLog(3, true, "Lookup Size = %d bytes\n", this->LookupSize * sizeof(int));
+	// Collect the stats
+	this->Lexicon->IO->FormatToLog(3, true, "Lookup Size = %.0f bytes\n", this->LookupSize * sizeof(int));
+	this->Lexicon->IO->Parameters->TotalLookupSize += this->LookupSize;
 
 	// Cleanup
 	delete[] LookupValue;
@@ -1850,11 +2053,11 @@ bool hsfcStratum::Create(hsfcStratumSchema* StratumSchema, bool LowSpeedOnly) {
 	}
 
 	// Is this a multipass rule
-	this->SelfReferenceCount = StratumSchema->SCLStratum->SelfReferenceCount;
+	this->SelfReferenceCount = StratumSchema->SelfReferenceCount;
 	this->MultiPass = ((this->SelfReferenceCount > 1) || (RuleSRC > 1));
 
 	// Is this stratum rigid
-	this->IsRigid = StratumSchema->IsRigid;
+	this->IsRigid = (StratumSchema->Rigidity == hsfcRigidityFull);
 	this->Type = StratumSchema->Type;
 
 	return true;
@@ -2028,6 +2231,7 @@ bool hsfcRulesEngine::Create(hsfcSchema* Schema, bool LowSpeedOnly) {
 
 	hsfcStratum* NewStratum;
 
+	this->Lexicon->IO->LogIndent = 2;
 	this->Lexicon->IO->WriteToLog(2, true, "Creating Engine ...\n");
 
 	// Record the schema
@@ -2045,19 +2249,23 @@ bool hsfcRulesEngine::Create(hsfcSchema* Schema, bool LowSpeedOnly) {
 	}
 
 	// Set stratum execution properties
+	this->Lexicon->IO->LogIndent = 2;
 	this->Lexicon->IO->WriteToLog(2, true, "  Set Stratum Properties\n");
 	this->SetStratumProperties();
 
 	// Calculate all of the rigid facts
+	this->Lexicon->IO->LogIndent = 2;
 	this->Lexicon->IO->WriteToLog(2, true, "  Calculate Rigids\n");
 	if (!this->CalculateRigids()) return false;
 
 	// Optimise the rule inputs
+	this->Lexicon->IO->LogIndent = 2;
 	this->Lexicon->IO->WriteToLog(2, true, "  Optimise Rule Inputs\n");
 	this->OptimiseRuleInputs();
 
 	// Create the lookup tables
-	this->Lexicon->IO->WriteToLog(2, true, "  Create Lookup Tables\n");
+	this->Lexicon->IO->LogIndent = 2;
+	this->Lexicon->IO->WriteToLog(2, true, "  Creating Lookup Tables\n");
 	this->CreateLookupTables();
 
 	// Free the state
@@ -2082,7 +2290,7 @@ void hsfcRulesEngine::SetInitialState(hsfcState* State) {
 //-----------------------------------------------------------------------------
 // AdvanceState
 //-----------------------------------------------------------------------------
-void hsfcRulesEngine::AdvanceState(hsfcState* State, int Step) {
+void hsfcRulesEngine::AdvanceState(hsfcState* State, int Step, bool LowSpeed) {
 
 	int NextStep;
 	int NoSteps;
@@ -2096,7 +2304,7 @@ void hsfcRulesEngine::AdvanceState(hsfcState* State, int Step) {
 
 	// Is it the goal relations
 	if (Step == 5) {
-		this->ProcessRules(State, 5);
+		this->ProcessRules(State, 5, LowSpeed, false);
 		return;
 	}
 
@@ -2115,7 +2323,7 @@ void hsfcRulesEngine::AdvanceState(hsfcState* State, int Step) {
 		if (NextStep == 0) {
 			this->StateManager->NextState(State);
 		} else {
-			this->ProcessRules(State, NextStep);
+			this->ProcessRules(State, NextStep, LowSpeed, false);
 		}
 
 		// Update the current step
@@ -2160,7 +2368,7 @@ int hsfcRulesEngine::GoalValue(hsfcState* State, int RoleIndex) {
 
 	// Assumes the states is at Step 1 or greater
 	// Execute the goal rules
-	if (State->CurrentStep != 5) this->ProcessRules(State, 5);
+	if (State->CurrentStep != 5) this->ProcessRules(State, 5, false, false);
 
 	// Initialise 
 	NumRoles = this->DomainManager->Domain[this->StateManager->GoalRelationIndex].Size[0];
@@ -2191,7 +2399,7 @@ int hsfcRulesEngine::GoalValue(hsfcState* State, int RoleIndex) {
 void hsfcRulesEngine::GetLegalMoves(hsfcState* State, vector< vector<hsfcLegalMove> >& LegalMove) {
 
 	hsfcLegalMove NewLegalMove;
-	int RoleIndex;
+	unsigned int RoleIndex;
 	unsigned int NumRoles;
 	unsigned int NumLegalRoles;
 	unsigned int NumMoves;
@@ -2241,7 +2449,7 @@ void hsfcRulesEngine::ChooseRandomMoves(hsfcState* State) {
 	hsfcTuple NewMove;
 	int RandomNo;
 	int RandomIndex;
-	int RoleIndex;
+	unsigned int RoleIndex;
 	vector<int> NumMoves;
 	unsigned int NumRoles;
 	unsigned int NumLegalRoles;
@@ -2270,12 +2478,14 @@ void hsfcRulesEngine::ChooseRandomMoves(hsfcState* State) {
 		// Who is the move for
 		RelationID = State->RelationID[this->StateManager->LegalRelationIndex][i];
 		RoleIndex = this->StateManager->LegalToRole[RelationID % NumLegalRoles];
-		NumMoves[RoleIndex]++;
-		// Calculate the chance of this move being selected
-		RandomIndex = (RandomNo / (RoleIndex + 1)) % NumMoves[RoleIndex];
-		if (RandomIndex == 0) {
-			Move[RoleIndex].ID = RelationID;
-			Move[RoleIndex].Index = this->StateManager->DoesRelationIndex;
+		if (RoleIndex != UNDEFINED) {
+			NumMoves[RoleIndex]++;
+			// Calculate the chance of this move being selected
+			RandomIndex = (RandomNo / (RoleIndex + 1)) % NumMoves[RoleIndex];
+			if (RandomIndex == 0) {
+				Move[RoleIndex].ID = RelationID;
+				Move[RoleIndex].Index = this->StateManager->DoesRelationIndex;
+			}
 		}
 	}
 
@@ -2320,7 +2530,7 @@ void hsfcRulesEngine::Print() {
 //-----------------------------------------------------------------------------
 // ProcessRules
 //-----------------------------------------------------------------------------
-void hsfcRulesEngine::ProcessRules(hsfcState* State, int Step) {
+void hsfcRulesEngine::ProcessRules(hsfcState* State, int Step, bool LowSpeed, bool ProcessRigids) {
 
 	// Step
 	// 1 = Terminal Rules 
@@ -2329,11 +2539,13 @@ void hsfcRulesEngine::ProcessRules(hsfcState* State, int Step) {
 	// 4 = Next Rules
 	// 5 = Goal Rules (processed on requirement)
 
-	bool LowSpeed = this->Lexicon->IO->Parameters->LowSpeedOnly;
+	bool ForceLowSpeed = this->Lexicon->IO->Parameters->LowSpeedOnly || LowSpeed;
 	
 	// Go through all of the rules
 	for (int i = this->FirstStratumIndex[Step]; i <= this->LastStratumIndex[Step]; i++) {
-		this->Stratum[i]->ExecuteRules(State, LowSpeed);
+		if (ProcessRigids || (!this->Stratum[i]->IsRigid)) {
+			this->Stratum[i]->ExecuteRules(State, ForceLowSpeed);
+		}
 	}
 	
 }
@@ -2401,39 +2613,37 @@ bool hsfcRulesEngine::CalculateRigids(){
 
 	hsfcTuple Term[MAX_RELATION_ARITY];
 	hsfcTuple Relation;
-
-	// Reset everything
-	this->Schema->Rigid.clear();
-	this->Schema->Permanent.clear(); // Use this to prime the state
-	this->Schema->Initial.clear();
-
-	// Load all of the permanent instances into the schema
-	this->Schema->Permanent.clear();
-	for (unsigned int i = 0; i < this->Schema->SCL->Statement.size(); i++) {
-
-		// Convert the SCL to a relation instance
-		if (!this->DomainManager->LoadTerms(this->Schema->SCL->Statement[i], Term)) return false;
-		Relation.Index = this->Lexicon->RelationIndex(Term[0].ID);
-		if (Relation.Index == UNDEFINED) return false;
-
-		// Is this in the state, or only embedded
-		// Include the (init ...) as they may be calculated by a rigid rule
-		if (this->Schema->RelationSchema[Relation.Index]->IsInState) {
-			// Convert to id
-			if (!this->DomainManager->TermsToID(Relation.Index, Term, Relation.ID)) return false;
-			// Add the relation instance to the schema
-			this->Schema->Permanent.push_back(Relation);
-		}
-
-	}
+	hsfcRelationSchema* RelationSchema;
 
 	// Set up the internal state
 	this->State = this->StateManager->CreateState();
 	// Initialise the state
 	this->StateManager->InitialiseState(this->State);
-	this->StateManager->SetInitialState(this->State);
+	this->StateManager->SetInitialState(this->State); // Will be empty
 
 	if (this->Lexicon->IO->Parameters->LogDetail > 3) this->StateManager->PrintRelations(this->State, true);
+
+	// Load all of the permanent instances into the schema
+	for (unsigned int i = 0; i < this->Schema->Rigid.size(); i++) {
+
+		// Convert the SCL to a relation instance
+		if (!this->DomainManager->LoadTerms(this->Schema->Rigid[i], Term)) return false;
+		Relation.Index = this->Lexicon->RelationIndex(Term[0].ID);
+		if (Relation.Index == UNDEFINED) return false;
+
+		// Find the relation schema
+		RelationSchema = this->Schema->RelationSchema[Relation.Index];
+
+		// Is this in the state, or only embedded
+		// Include the (init ...) as they may be calculated by a rigid rule
+		if (RelationSchema->IsInState) {
+			// Convert to id
+			if (!this->DomainManager->TermsToID(Relation.Index, Term, Relation.ID)) return false;
+			// Add the relation instance to the schema
+			this->StateManager->AddRelation(this->State, Relation);
+		}
+
+	}
 
 	// Calculate all of the rigids
 	for (unsigned int i = 0; i < this->Stratum.size(); i++) {
@@ -2443,14 +2653,22 @@ bool hsfcRulesEngine::CalculateRigids(){
 		}
 	}
 
-	// Delete all the existing permanents and rebuild
-	this->StateManager->CreatePermanents(this->State);
+	if (this->Lexicon->IO->Parameters->LogDetail > 2) this->StateManager->PrintRelations(this->State, true);
 
+	// Delete all the existing permanents and rebuild
+	// This must be done in a very strict secuence
+	// Rebuild Schema and Domain
+	this->StateManager->CreateRigids(this->State);
+	this->StateManager->CreatePermanents(this->State);
+	// Rebuild StateManager
+	this->StateManager->FreeState(this->State);
+	this->StateManager->SetSchema(this->Schema);
+	this->State = this->StateManager->CreateState();
+	this->StateManager->InitialiseState(this->State);
 	if (this->Lexicon->IO->Parameters->LogDetail > 2) this->StateManager->PrintRelations(this->State, true);
 
 	this->StateManager->SetInitialState(this->State);
-
-	if (this->Lexicon->IO->Parameters->LogDetail > 3) this->StateManager->PrintRelations(this->State, true);
+	if (this->Lexicon->IO->Parameters->LogDetail > 2) this->StateManager->PrintRelations(this->State, true);
 
 	return true;
 
@@ -2461,26 +2679,54 @@ bool hsfcRulesEngine::CalculateRigids(){
 //-----------------------------------------------------------------------------
 void hsfcRulesEngine::OptimiseRuleInputs() {
 
+	time_t Start;
+	int Count;
+
 	// This must be done in the Schema as well as there is a direct correlation 
 	// between the Schema and the Engine in terms of rule relation ordering
 
 	// Run the game through many playouts to get the frequency data for the relations
+	this->State = this->StateManager->CreateState();
+	this->StateManager->InitialiseState(this->State);
 
-	// ToDo
-	// If NumInputs > MAX_NO_OF_INPUTS then LowSpeed or split rule
+	// Reset the statistics
+	for (unsigned int i = 1; i < this->Schema->RelationSchema.size(); i++) {
+		this->Schema->RelationSchema[i]->Statistics.Initialise();
+	}
 
-	// Provess each stratum
+	// Play out some number of games
+	Start = clock();
+	Count = 0;
+	while ((Count < 1000) && (clock() < Start + 3 * TICKS_PER_SECOND)) {
+
+		// Set the initial state
+		this->StateManager->SetInitialState(this->State);
+		this->AdvanceState(this->State, 1, true);
+		// Play until the game is terminal
+		while ((!this->IsTerminal(this->State)) && (clock() < Start + 3 * TICKS_PER_SECOND)) {
+ 
+			// Advance to calculate all the legal moves
+			this->AdvanceState(this->State, 2, true);
+			this->ChooseRandomMoves(this->State);
+
+			// Record the statistics
+			this->AdvanceState(this->State, 4, true);
+			for (unsigned int i = 1; i < this->Schema->RelationSchema.size(); i++) {
+				this->Schema->RelationSchema[i]->Statistics.AddObservation((double)this->State->NumRelations[i]);
+			}
+			Count ++;
+
+			// Advance to the next state and calculate terminal tuple
+			this->AdvanceState(this->State, 1, true);
+		}
+	}
+
+	// Process each stratum
 	for (unsigned int i = 0; i < this->Stratum.size(); i++) {
-		
-		//if (VERBOSE > 2) printf("Stratum %d\n", i);
-		
 		// Optimise each rule
 		for (unsigned int j = 0; j < this->Stratum[i]->Rule.size(); j++) {
-
-			//if (VERBOSE > 2) printf("    Rule %d\n", j);
-
 			// Optimise
-			this->Stratum[i]->Rule[j]->OptimiseInputs();
+			if (!this->Stratum[i]->IsRigid)	this->Stratum[i]->Rule[j]->OptimiseInputs(this->Schema);
 		}
 	}
 
@@ -2505,7 +2751,7 @@ void hsfcRulesEngine::CreateLookupTables() {
 
 	}
 
-	this->Lexicon->IO->FormatToLog(2, true, "  Total Lookup size = %d bytes\n", this->LookupSize);
+	this->Lexicon->IO->FormatToLog(2, true, "  Total Lookup size = %.0f bytes\n", this->LookupSize);
 
 }
 

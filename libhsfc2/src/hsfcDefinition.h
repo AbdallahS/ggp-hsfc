@@ -75,14 +75,25 @@ typedef struct hsfcParameters {
 	char* LogFileName;
 	int LogDetail;
 	unsigned int MaxRelationSize;
-	unsigned int MaxReferenceSize;
+	unsigned int MaxLookupSize;
 	unsigned int MaxStateSize;
 	bool LowSpeedOnly;
 	bool SCLOnly;
 	bool SchemaOnly;
+	unsigned int StateSize;
+	unsigned int TotalLookupSize;
 	double TimeBuildSchema;
 	double TimeOptimise;
 	double TimeBuildLookup;
+	double Playouts;
+	double GamesPerSec;
+	double AveRounds;
+	double StDevRounds;
+	double AveScore0;
+	double StDevScore0;
+	double TreeNodes1;
+	double TreeNodes2;
+	double TreeNodes3;
 } hsfcParameters;
 
 //=============================================================================
@@ -194,16 +205,24 @@ enum hsfcRuleTermType {
 };
 
 //=============================================================================
+// ENUM: hsfcRigidity
+//=============================================================================
+enum hsfcRigidity {
+	hsfcRigidityNone = 0x00000000, 
+	hsfcRigiditySome = 0x00000001, 
+	hsfcRigidityFull = 0x00000002 
+};
+
+//=============================================================================
 // ENUM: hsfcFactType
 //=============================================================================
 enum hsfcFactType {
 	hsfcFactNone = 0x00000000, 
 	hsfcFactEmbedded = 0x00000001, 
 	hsfcFactAux = 0x00000002, 
-	hsfcFactRigid = 0x00000003, 
-	hsfcFactInit = 0x00000004, 
-	hsfcFactTrue = 0x00000005, 
-	hsfcFactNext = 0x00000006 
+	hsfcFactInit = 0x00000003, 
+	hsfcFactTrue = 0x00000004, 
+	hsfcFactNext = 0x00000005 
 };
 
 //=============================================================================

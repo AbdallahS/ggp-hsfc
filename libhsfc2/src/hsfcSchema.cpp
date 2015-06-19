@@ -37,6 +37,26 @@ void hsfcDomainSchema::Initialise(unsigned int NameID){
 	// Clear the schema
 	this->NameID = NameID;
 	this->Term.clear();
+	this->Rigid = false;
+
+}
+
+//-----------------------------------------------------------------------------
+// FromDomainSchema
+//-----------------------------------------------------------------------------
+void hsfcDomainSchema::FromDomainSchema(hsfcDomainSchema* Source) {
+
+	hsfcTuple NewTerm;
+
+	// Copy the terms
+	for (unsigned int i = 0; i < Source->Term.size(); i++) {
+		NewTerm.Index = Source->Term[i].Index;
+		NewTerm.ID = Source->Term[i].ID;
+		this->Term.push_back(NewTerm);
+	}
+
+	// Copy the properties
+	this->NameID = Source->NameID;
 
 }
 
@@ -49,6 +69,13 @@ bool hsfcDomainSchema::AddTerm(hsfcTuple& NewTerm){
 	int LowerBound;
 	int UpperBound;
 	int Compare;
+
+	// Is this domain for a rigid relation
+	if (this->Rigid) {
+		// This is always added to the end of the schema, unsorted, duplicates allowed
+		this->Term.push_back(NewTerm);
+		return true;
+	}
 
     // Binary search of a specific domain; adding any unfound values in sort order
 	Target = 0;
@@ -226,6 +253,7 @@ void hsfcRelationSchema::Initialise(const unsigned int NameID, int Arity, unsign
 	this->Index = Index;
 	this->IsInState = false;
 	this->Fact = hsfcFactNone;
+	this->Rigidity = hsfcRigidityNone;
 
 	// Create the domains
 	for (int i = 0; i < Arity; i++) {
@@ -291,6 +319,28 @@ bool hsfcRelationSchema::AddTerms(vector<hsfcTuple>& Term, unsigned int DomainIn
 }
 
 //-----------------------------------------------------------------------------
+// AddRigidTerms
+//-----------------------------------------------------------------------------
+bool hsfcRelationSchema::AddRigidTerms(hsfcTuple Term[]) {
+
+	// Add the contents of the relation
+	// No checking is done for duplicates or sorting
+
+	// Integrity checks
+	if (this->Rigidity != hsfcRigidityFull) {
+		this->Lexicon->IO->WriteToLog(0, false, "Error: wrong rigidity in hsfcRelationSchema::AddRigidTerms\n");
+		return false; 
+	}
+
+	for (int i = 0; i < Arity; i++) {
+		if (!this->DomainSchema[i]->AddTerm(Term[i+1])) return false;
+	}
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
 // Print
 //-----------------------------------------------------------------------------
 void hsfcRelationSchema::Print(){
@@ -340,14 +390,44 @@ hsfcRuleRelationSchema::~hsfcRuleRelationSchema(void){
 //-----------------------------------------------------------------------------
 // Initialise
 //-----------------------------------------------------------------------------
-void hsfcRuleRelationSchema::Initialise(hsfcSCLAtom* SCL){
+void hsfcRuleRelationSchema::Initialise(){
 
 	// Initialise
 	this->TermSchema.clear();
-	this->SCL = SCL;
 	this->Function = hsfcFunctionNone;
 	this->Type = hsfcRuleInput;
 	this->ReferenceSize = 0;
+
+}
+
+//-----------------------------------------------------------------------------
+// FromRelationSchema
+//-----------------------------------------------------------------------------
+void hsfcRuleRelationSchema::FromRelationSchema(hsfcRuleRelationSchema* Source) {
+
+	hsfcRuleTermSchema NewTermSchema;
+
+	// Initialise the schema
+	this->Initialise();
+
+	// Copy the TermSchema
+	for (unsigned int i = 0; i < Source->TermSchema.size(); i++) {
+		NewTermSchema.NameID = Source->TermSchema[i].NameID;
+		NewTermSchema.RelationIndex = Source->TermSchema[i].RelationIndex;
+		NewTermSchema.EmbeddedIndex = Source->TermSchema[i].EmbeddedIndex;
+		NewTermSchema.Arity = Source->TermSchema[i].Arity;
+		NewTermSchema.Type = Source->TermSchema[i].Type;
+		NewTermSchema.VariableIndex = Source->TermSchema[i].VariableIndex;
+		NewTermSchema.ArgumentIndex = Source->TermSchema[i].ArgumentIndex;
+		NewTermSchema.Term.Index = Source->TermSchema[i].Term.Index;
+		NewTermSchema.Term.ID = Source->TermSchema[i].Term.ID;
+		this->TermSchema.push_back(NewTermSchema);
+	}
+
+	// Copy the properties
+	this->Function = Source->Function;
+	this->Type = Source->Type;
+	this->ReferenceSize = Source->ReferenceSize;
 
 }
 
@@ -404,6 +484,33 @@ void hsfcRuleSchema::Initialise(){
 	// Destroy all of the schemas
 	this->DeleteRelationSchema();
 	this->DeleteVariableSchema();
+
+}
+
+//-----------------------------------------------------------------------------
+// Initialise
+//-----------------------------------------------------------------------------
+void hsfcRuleSchema::FromRuleSchema(hsfcRuleSchema* Source){
+
+	hsfcRuleRelationSchema* NewRelationSchema;
+	hsfcDomainSchema* NewVariableSchema;
+
+	// Initialise the schema
+	this->Initialise();
+
+	// Copy the RelationSchema
+	for (unsigned int i = 0; i < Source->RelationSchema.size(); i++) {
+		NewRelationSchema = new hsfcRuleRelationSchema(this->Lexicon);
+		NewRelationSchema->FromRelationSchema(Source->RelationSchema[i]);
+		this->RelationSchema.push_back(NewRelationSchema);
+	}
+
+	// Copy the VariableSchema
+	for (unsigned int i = 0; i < Source->VariableSchema.size(); i++) {
+		NewVariableSchema = new hsfcDomainSchema(this->Lexicon);
+		NewVariableSchema->FromDomainSchema(Source->VariableSchema[i]);
+		this->VariableSchema.push_back(NewVariableSchema);
+	}
 
 }
 
@@ -486,7 +593,15 @@ void hsfcStratumSchema::Initialise(hsfcSCLStratum* SCLStratum){
 	this->DeleteRuleSchema();
 
 	// Set properties
-	this->SCLStratum = SCLStratum;
+	this->SelfReferenceCount = SCLStratum->SelfReferenceCount;
+	this->Input.clear();
+	for (unsigned int i = 0; i < SCLStratum->Input.size(); i++) this->Input.push_back(SCLStratum->Input[i]);
+	this->Output.clear();
+	for (unsigned int i = 0; i < SCLStratum->Output.size(); i++) this->Output.push_back(SCLStratum->Output[i]);
+
+	this->Rigidity = hsfcRigidityNone;
+
+	
 
 }
 
@@ -552,9 +667,6 @@ void hsfcSchema::Initialise(){
 	// Add the 0th relation for the Lexicon
 	this->RelationSchema.push_back(NULL);
 	this->Rigid.clear();
-	this->Permanent.clear();
-	this->Initial.clear();
-	this->Next.clear();
 
 }
 
@@ -564,9 +676,7 @@ void hsfcSchema::Initialise(){
 bool hsfcSchema::Create(hsfcSCL* SCL){
 
 	int NewEntryCount;
-
-	// Record the SCL
-	this->SCL = SCL;
+	hsfcSCLAtom* NewRigid;
 
 	// Initialise the schema
 	this->Initialise();
@@ -617,16 +727,20 @@ bool hsfcSchema::Create(hsfcSCL* SCL){
 
 	}
 
+	// Add the instance to the rigids
+	for (unsigned int i = 0; i < SCL->Statement.size(); i++) {
+		// copy each instance in SCL form
+		NewRigid = new hsfcSCLAtom(this->Lexicon);
+		NewRigid->FromSCLAtom(SCL->Statement[i]);
+		this->Rigid.push_back(NewRigid);
+	}
+
 	// Identify type of relations
 	this->Lexicon->IO->WriteToLog(2, true, "Identify Relation Types ...\n");
-	if (!this->IdentifyRelationTypes()) {
+	if (!this->IdentifyRelationTypes(SCL)) {
 		return false;
 	}
 	this->Lexicon->IO->WriteToLog(2, true, "succeeded\n");
-
-	// Create Next references
-	this->Lexicon->IO->WriteToLog(2, true, "Setting (next ...) references\n");
-	this->SetNextReferences();
 
 	if (this->Lexicon->IO->Parameters->LogDetail > 3) this->Print();
 	if (this->Lexicon->IO->Parameters->LogDetail > 2) this->Lexicon->Print();
@@ -674,7 +788,7 @@ hsfcRelationSchema* hsfcSchema::AddRelationSchema(unsigned int NameID, int Arity
 		return NULL; 
 	}
 
-	// Add the a new relation schrema
+	// Add the a new relation schema
 	NewRelationSchema = new hsfcRelationSchema(this->Lexicon);
 	NewRelationSchema->Initialise(NameID, Arity, this->RelationSchema.size());
 	this->RelationSchema.push_back(NewRelationSchema);
@@ -959,7 +1073,7 @@ bool hsfcSchema::CreateRuleRelationSchema(hsfcRuleSchema* RuleSchema, hsfcSCLAto
 	NewRuleRelationSchema = new hsfcRuleRelationSchema(this->Lexicon);
 
 	// Set new reule relation properties
-	NewRuleRelationSchema->Initialise(SCLRuleRelation);
+	NewRuleRelationSchema->Initialise();
 	if (!this->CreateRuleTermSchema(NewRuleRelationSchema, SCLRuleRelation, SCLRuleRelation->NameID, UNDEFINED)) return false;
 
 	if (SCLRuleRelation->Not) NewRuleRelationSchema->Function = NewRuleRelationSchema->Function | hsfcFunctionNot; 
@@ -1417,14 +1531,13 @@ bool hsfcSchema::OptimiseRuleSchema(hsfcRuleSchema* RuleSchema) {
 //-----------------------------------------------------------------------------
 // IdentifyRelationTypes
 //-----------------------------------------------------------------------------
-bool hsfcSchema::IdentifyRelationTypes() {
+bool hsfcSchema::IdentifyRelationTypes(hsfcSCL* SCL) {
 
 	hsfcRelationSchema* RelationSchema;
 
 	/* Fact Types
 	None - Defualt, and embedded
 	Aux - Transient, can include entries in Permanents 
-	Rigid - Whole relations that never change
 	Init - All initial values of True 
 	True - All in the state 
 	Next - All next values of True 
@@ -1457,7 +1570,7 @@ bool hsfcSchema::IdentifyRelationTypes() {
 		}
 		// Is it a (role)
 		if (this->Lexicon->Match(this->RelationSchema[i]->NameID, "role/1")) {
-			this->RelationSchema[i]->Fact = hsfcFactRigid;
+			this->RelationSchema[i]->Fact = hsfcFactAux;
 			this->RelationSchema[i]->IsInState = true;
 		}
 		// Is it a (terminal)
@@ -1499,16 +1612,38 @@ bool hsfcSchema::IdentifyRelationTypes() {
 
 	}
 
+	// Set the rigidity of the relations
+	// Initially either full or none
+	for (unsigned int i = 1; i < this->RelationSchema.size(); i++) {
+		if (SCL->NameIDisRigid(this->RelationSchema[i]->NameID)) {
+			this->RelationSchema[i]->Rigidity = hsfcRigidityFull;
+		} else {
+			this->RelationSchema[i]->Rigidity = hsfcRigidityNone;
+		}
+	}
+
+	// Find the relations that are have a rigid instance in the scl
+	for (unsigned int i = 0; i < SCL->Statement.size(); i++) {
+		// Find the relation schema
+		RelationSchema = this->FindRelationSchema(SCL->Statement[i]->NameID);
+		if (RelationSchema == NULL) {
+			this->Lexicon->IO->WriteToLog(0, false, "Error: null relationschema in hsfcSchema::IdentifyRelationTypes\n");
+			return false;
+		}
+		RelationSchema->Rigidity = hsfcRigidityFull;
+	}
+	
 	// Inspect the stratum to find the rigids
 	// They are already ordered according to dependency
 	// All outputs and inputs are required in the state
 	for (unsigned int i = 0; i < this->StratumSchema.size(); i++) {
 
+		// Set the default
+		this->StratumSchema[i]->Rigidity = hsfcRigidityFull;
 		// Are all of its inputs rigids
-		this->StratumSchema[i]->IsRigid = true;
-		for (unsigned int j = 0; j < this->StratumSchema[i]->SCLStratum->Input.size(); j++) {
+		for (unsigned int j = 0; j < this->StratumSchema[i]->Input.size(); j++) {
 			// Find the relation schema
-			RelationSchema = this->FindRelationSchema(this->StratumSchema[i]->SCLStratum->Input[j]);
+			RelationSchema = this->FindRelationSchema(this->StratumSchema[i]->Input[j]);
 			if (RelationSchema == NULL) {
 				this->Lexicon->IO->WriteToLog(0, false, "Error: null relationschema in hsfcSchema::IdentifyRelationTypes\n");
 				return false;
@@ -1516,65 +1651,34 @@ bool hsfcSchema::IdentifyRelationTypes() {
 			// Ignore Distinct
 			if (this->Lexicon->PartialMatch(RelationSchema->NameID, "distinct")) continue;
 			// Test if it might be rigid; if the input is already classified non rigid, then it fails
-			if ((RelationSchema->Fact != hsfcFactNone) && (RelationSchema->Fact != hsfcFactRigid)) {
-				this->StratumSchema[i]->IsRigid = false;
-				break;
+			if (RelationSchema->Rigidity != hsfcRigidityFull) {
+				this->StratumSchema[i]->Rigidity = hsfcRigidityNone;
 			}
+			// Its an input so its in the state
+			RelationSchema->IsInState = true;
 		}
 
-		// Classify the outputs
-		for (unsigned int j = 0; j < this->StratumSchema[i]->SCLStratum->Output.size(); j++) {
+		// Classify the outputs from the strata
+		// Some may be partially rigid
+		for (unsigned int j = 0; j < this->StratumSchema[i]->Output.size(); j++) {
 			// Find the relation schema
-			RelationSchema = this->FindRelationSchema(this->StratumSchema[i]->SCLStratum->Output[j]);
+			RelationSchema = this->FindRelationSchema(this->StratumSchema[i]->Output[j]);
 			if (RelationSchema == NULL) {
 				this->Lexicon->IO->WriteToLog(0, false, "Error: null relationschema in hsfcSchema::IdentifyRelationTypes\n");
 				return false;
 			}
+			// Is the rigidity partial
+			if ((RelationSchema->Rigidity == hsfcRigidityFull) && (this->StratumSchema[i]->Rigidity != hsfcRigidityFull)) {
+				RelationSchema->Rigidity = hsfcRigiditySome;
+			}
+			// Is the fact yet to be classified
+			if (RelationSchema->Fact == hsfcFactNone) {
+				RelationSchema->Fact = hsfcFactAux;
+			}
 			// Its an output so its in the state
 			RelationSchema->IsInState = true;
-			// Is it yet to be classified
-			if (RelationSchema->Fact == hsfcFactNone) {
-				if (this->StratumSchema[i]->IsRigid) {
-					RelationSchema->Fact = hsfcFactRigid;
-				} else {
-					RelationSchema->Fact = hsfcFactAux;
-				}
-			}
 		}
 
-		// Now classify all the inputs
-		// Remember the strata are ordered
-		for (unsigned int j = 0; j < this->StratumSchema[i]->SCLStratum->Input.size(); j++) {
-			// Find the relation schema
-			RelationSchema = this->FindRelationSchema(this->StratumSchema[i]->SCLStratum->Input[j]);
-			// Ignore Distinct
-			if (this->Lexicon->PartialMatch(RelationSchema->NameID, "distinct")) continue;
-			// If the statum is rigid then all the inputs are rigid
-			// If the input is not yet classified then its cyclic rigid or declared rigid
-			if (RelationSchema->Fact == hsfcFactNone) {
-				RelationSchema->Fact = hsfcFactRigid;
-			}
-			// All rule inputs are in the state
-			RelationSchema->IsInState = true;
-
-		}
-
-	}
-
-	// Look for any fact that is declared rigid
-	for (unsigned int j = 0; j < this->SCL->Statement.size(); j++) {
-		// Find the relation
-		RelationSchema = this->FindRelationSchema(this->SCL->Statement[j]->NameID);
-		if (RelationSchema == NULL) {
-			this->Lexicon->IO->WriteToLog(0, false, "Error: null relationschema in hsfcSchema::IdentifyRelationTypes\n");
-			return false;
-		}
-		// Is it yet to be classified
-		if (RelationSchema->Fact == hsfcFactNone) {
-			// All declared rigids are in the state
-			RelationSchema->Fact = hsfcFactRigid;
-			RelationSchema->IsInState = true;
-		}
 	}
 
 	// Lastly everything else is embedded
@@ -1588,31 +1692,4 @@ bool hsfcSchema::IdentifyRelationTypes() {
 	return true;
 
 }
-
-//-----------------------------------------------------------------------------
-// SetNextReferences
-//-----------------------------------------------------------------------------
-void hsfcSchema::SetNextReferences(){
-
-	int TrueIndex;
-	hsfcReference NewReference;
-
-	// Reset the list
-	this->Next.clear();
-
-	// Link all Next --> True
-	for (unsigned int i = 1; i < this->RelationSchema.size(); i++) {
-		// Is this a (next ...)
-		if (this->RelationSchema[i]->Fact == hsfcFactNext) {
-			// Create the reference
-			TrueIndex = this->Lexicon->TrueFrom(this->RelationSchema[i]->Index);
-			NewReference.SourceIndex = this->RelationSchema[i]->Index;
-			NewReference.DestinationIndex = TrueIndex;
-			this->Next.push_back(NewReference);
-		}
-	}
-
-}
-
-
 

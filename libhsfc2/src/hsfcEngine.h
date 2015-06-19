@@ -16,9 +16,7 @@
 
 using namespace std;
 
-
 namespace HSFC { class HSFCManager; };
-
 
 //=============================================================================
 // CLASS: hsfcEngine
@@ -31,8 +29,8 @@ public:
 	hsfcEngine(void);
 	~hsfcEngine(void);
 
-	bool Initialise(string* Script, hsfcParameters& Parameters);
-	bool InitialiseFromFile(string* GDLFileName, hsfcParameters& Parameters);
+	bool Initialise(string* Script, hsfcParameters* Parameters);
+	bool InitialiseFromFile(string* GDLFileName, hsfcParameters* Parameters);
 	bool CreateGameState(hsfcState** GameState);
 	void FreeGameState(hsfcState* GameState);
 	void SetInitialGameState(hsfcState* GameState);

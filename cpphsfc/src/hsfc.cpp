@@ -114,28 +114,57 @@ std::ostream& operator<<(std::ostream& os, const Player& player)
 
 Move::Move(boost::shared_ptr<HSFCManager> manager, const hsfcLegalMove& move):
     manager_(manager), move_(move)
-{ }
+{
+#if HSFC_VERSION > 1
+    if (move.Text != NULL)
+    {
+        move_.Text = new char[strlen(move.Text)+1];
+        strcpy(move_.Text, move.Text);
+    }
+#endif
+}
 
 Move::Move(const Move& other): manager_(other.manager_), move_(other.move_)
-{ }
+{
+#if HSFC_VERSION > 1
+    if (other.move_.Text != NULL)
+    {
+        move_.Text = new char[strlen(other.move_.Text)+1];
+        strcpy(move_.Text, other.move_.Text);
+    }
+#endif
+}
 
 Move::Move(Game& game, const PortableMove& pm) : manager_(game.manager_)
 {
+#if HSFC_VERSION == 1
     // Some validity checks of the PortableMove object
     if (pm.RoleIndex_ < 0 || pm.RelationIndex_ < 0 ||
         pm.ID_ < 0 || pm.Text_.empty())
         throw HSFCValueError() <<
             ErrorMsgInfo("Cannot create a Move from an uintialised PortableMove");
 
+    move_.Tuple.RelationIndex = pm.RelationIndex_;
+    move_.Tuple.ID = pm.ID_;
     move_.RoleIndex = pm.RoleIndex_;
     strcpy(move_.Text, pm.Text_.c_str());
-
-#if HSFC_VERSION == 1
-    move_.Tuple.RelationIndex = pm.RelationIndex_;
 #else
+    // Some validity checks of the PortableMove object
+    if (pm.RoleIndex_ < 0 || pm.RelationIndex_ < 0 || pm.ID_ < 0)
+        throw HSFCValueError() <<
+            ErrorMsgInfo("Cannot create a Move from an uintialised PortableMove");
+
     move_.Tuple.Index = pm.RelationIndex_;
-#endif
     move_.Tuple.ID = pm.ID_;
+    move_.RoleIndex = pm.RoleIndex_;
+
+    move_.Text = NULL;
+    if (!pm.Text_.empty())
+    {
+        move_.Text = new char[strlen(pm.Text_.c_str())+1];
+        strcpy(move_.Text, pm.Text_.c_str());
+    }
+#endif
 }
 
 std::string Move::tostring() const
@@ -147,14 +176,16 @@ std::string Move::tostring() const
 
 bool operator==(const hsfcLegalMove& a, const hsfcLegalMove& b)
 {
-    return (a.RoleIndex == b.RoleIndex &&
 #if HSFC_VERSION == 1
+    return (a.RoleIndex == b.RoleIndex &&
             strcmp(a.Text, b.Text) == 0 &&
             a.Tuple.RelationIndex == b.Tuple.RelationIndex &&
-#else
-            a.Tuple.Index == b.Tuple.Index &&
-#endif
             a.Tuple.ID == b.Tuple.ID);
+#else
+    return (a.RoleIndex == b.RoleIndex &&
+            a.Tuple.Index == b.Tuple.Index &&
+            a.Tuple.ID == b.Tuple.ID);
+#endif
 }
 
 bool operator!=(const hsfcLegalMove& a, const hsfcLegalMove& b)
@@ -177,9 +208,27 @@ bool Move::operator!=(const Move& other) const
 Move& Move::operator=(const Move& other)
 {
     manager_ = other.manager_;
+#if HSFC_VERSION == 1
     move_ = other.move_;
+#else
+    if (move_.Text != NULL) delete[] move_.Text;
+    move_ = other.move_;
+    if (other.move_.Text != NULL)
+    {
+        move_.Text = new char[strlen(other.move_.Text)+1];
+        strcpy(move_.Text, other.move_.Text);
+    }
+#endif
+
     return *this;
 }
+
+#if HSFC_VERSION > 1
+Move::~Move()
+{
+    if (move_.Text != NULL) delete[] move_.Text;
+}
+#endif
 
 std::size_t Move::hash_value() const
 {
@@ -190,12 +239,12 @@ std::size_t Move::hash_value() const
     size_t seed = 0;
     boost::hash_combine(seed, manager_.get());
     boost::hash_combine(seed, move_.RoleIndex);
+    boost::hash_combine(seed, move_.Tuple.ID);
 #if HSFC_VERSION == 1
     boost::hash_combine(seed, move_.Tuple.RelationIndex);
 #else
     boost::hash_combine(seed, move_.Tuple.Index);
 #endif
-    boost::hash_combine(seed, move_.Tuple.ID);
     return seed;
 }
 
@@ -283,7 +332,7 @@ Game::Game(const boost::filesystem::path& gdlfile, bool usegadelac)
 
 void Game::initialise(const std::string& gdldescription, bool usegadelac)
 {
-    hsfcGDLParamaters params;
+    hsfcGDLParameters params;
     initInternals(params);
 
     manager_->Initialise(gdldescription, params, usegadelac);
@@ -292,7 +341,7 @@ void Game::initialise(const std::string& gdldescription, bool usegadelac)
 
 void Game::initialise(const boost::filesystem::path& gdlfile, bool usegadelac)
 {
-    hsfcGDLParamaters params;
+    hsfcGDLParameters params;
     initInternals(params);
 
     manager_->Initialise(gdlfile, params, usegadelac);
@@ -300,7 +349,7 @@ void Game::initialise(const boost::filesystem::path& gdlfile, bool usegadelac)
 }
 
 
-void Game::initInternals(hsfcGDLParamaters& params)
+void Game::initInternals(hsfcGDLParameters& params)
 {
     // Note: not really sure what are sane options here so copying
     // from Michael's example code.
@@ -313,14 +362,14 @@ void Game::initInternals(hsfcGDLParamaters& params)
     params.OrderRules = true;      // Optimise the rule execution cost
 
 #else
-    params.LogDetail = 2;
-    params.LogFileName = NULL;
-    params.LowSpeedOnly = false;
-    params.MaxReferenceSize = 100000000;
-    params.MaxRelationSize = 1000000;
-    params.MaxStateSize = 100000000;
-    params.SCLOnly = false;
-    params.SchemaOnly = false;
+	params.LogDetail = 2;
+	params.LogFileName = NULL;
+	params.LowSpeedOnly = false;
+	params.MaxLookupSize = 30000000;
+	params.MaxRelationSize = 1000000;
+	params.MaxStateSize = 30000000;
+	params.SCLOnly = false;
+	params.SchemaOnly = false;
 #endif
 }
 
@@ -352,6 +401,27 @@ bool Game::operator!=(const Game& other) const
 {
     return this != &other;
 }
+
+#if HSFC_VERSION > 1
+void validate(const std::string& gdldescription)
+{
+    std::string& tmp = const_cast<std::string&>(gdldescription);
+
+    hsfcGDLParameters params;
+	params.LogDetail = 2;
+	params.LogFileName = NULL;
+	params.LowSpeedOnly = false;
+	params.MaxLookupSize = 30000000;
+	params.MaxRelationSize = 1000000;
+	params.MaxStateSize = 30000000;
+	params.SCLOnly = false;
+	params.SchemaOnly = false;
+
+    hsfcEngine engine;
+    engine.Validate(&tmp, params);
+}
+#endif
+
 
 /*****************************************************************************************
  * Implementation of State
@@ -542,6 +612,11 @@ void State::throw_on_illegal_move(const PlayerMove& pm,
     {
         throw HSFCValueError() << ErrorMsgInfo("Illegal PlayerMove: unknown move");
     }
+}
+
+void State::display(bool rigids) const
+{
+    manager_->DisplayState(*state_, rigids);
 }
 
 std::ostream& operator<<(std::ostream& os, const State& state)

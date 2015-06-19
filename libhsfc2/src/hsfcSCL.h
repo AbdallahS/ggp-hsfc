@@ -29,6 +29,8 @@ public:
 	bool Read(hsfcGDLAtom* GDLAtom);
 	void SetQualifiedName(unsigned int ParentNameID, unsigned int ArgumentIndex);
 	bool RequiredFor(vector<hsfcSCLAtom*>& Rule);
+	void ResetEnumeration();
+	hsfcSCLAtom* EnumerateTerms();
 	void DeleteTerms();
 	void Print();
 
@@ -42,6 +44,7 @@ protected:
 
 private:
 	hsfcLexicon* Lexicon;
+	unsigned int Cursor;
 
 };
 
@@ -98,6 +101,9 @@ public:
 	vector<hsfcSCLAtom*> Statement;
 	vector<hsfcSCLAtom*> Rule;
 	vector<hsfcSCLStratum*> Stratum;
+	vector<int> RigidNameID;
+
+	bool NameIDisRigid(int NameID);
 
 protected:
 
@@ -106,8 +112,12 @@ private:
 	void DeleteStatements();
 	void DeleteStrata();
 	void DeleteTerm(vector<hsfcSCLAtom*>& Terms, int Index, bool DeleteChildren);
+	void NameIDisNotRigid(int NameID);
 	bool Normalise();
 	bool Stratify();
+	bool IdentifyRigids();
+	bool IdentifyComplexRigids();
+	void BuildComplexRigid(unsigned int StratumIndex, unsigned int RuleIndex, unsigned int Rigid1Index, unsigned int Rigid2Index);
 
 	hsfcLexicon* Lexicon;
 

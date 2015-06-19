@@ -116,6 +116,7 @@ void breakthrough_playout_check(const State &state,
     results.clear();
     tmpstate.playout(results);
     BOOST_CHECK_EQUAL(results.size(), 2);
+
     BOOST_CHECK((results[0].second == 100 && results[1].second == 0) ||
                 (results[1].second == 100 && results[0].second == 0));
 }
@@ -202,8 +203,16 @@ BOOST_AUTO_TEST_CASE(tictactoe_test)
 
 BOOST_AUTO_TEST_CASE(breakthrough_test)
 {
+//    validate(std::string(g_breakthrough));
+//    return;
+
     Game game(std::string(g_breakthrough), true);
+
     State state1(game);
+    std::vector<PlayerGoal> result1;
+
+    breakthrough_playout_check(state1, result1);
+
     BOOST_CHECK(!state1.isTerminal());
 
     boost::unordered_map<Player, std::vector<unsigned int> > results;
@@ -251,7 +260,6 @@ BOOST_AUTO_TEST_CASE(breakthrough_test)
     std::cout << std::endl;
     BOOST_CHECK_EQUAL(sum_ave, 100.0);
 }
-
 
 
 /****************************************************************

@@ -28,6 +28,7 @@ public:
 	~hsfcDomainSchema(void);
 
 	void Initialise(unsigned int NameID);
+	void FromDomainSchema(hsfcDomainSchema* Source);
 	bool AddTerm(hsfcTuple& NewTerm);
 	bool AddTerms(vector<hsfcTuple>& Term);
 	void Copy(vector<hsfcTuple>& Destination);
@@ -36,6 +37,7 @@ public:
 
 	unsigned int NameID;
 	vector<hsfcTuple> Term;
+	bool Rigid;
 
 protected:
 
@@ -57,6 +59,7 @@ public:
 	void Copy(vector<hsfcTuple>& Destination, unsigned int DomainIndex);
 	void Intersection(vector<hsfcTuple>& Destination, unsigned int DomainIndex);
 	bool AddTerms(vector<hsfcTuple>& Term, unsigned int DomainIndex);
+	bool AddRigidTerms(hsfcTuple Term[]);
 	void Print();
 
 	unsigned int NameID;
@@ -65,6 +68,8 @@ public:
 	unsigned int Index;
 	bool IsInState;
 	hsfcFactType Fact;
+	hsfcRigidity Rigidity;
+	hsfcStatistic Statistics;
 
 protected:
 
@@ -85,11 +90,11 @@ public:
 	hsfcRuleRelationSchema(hsfcLexicon* Lexicon);
 	~hsfcRuleRelationSchema(void);
 
-	void Initialise(hsfcSCLAtom* SCL);
+	void Initialise();
+	void FromRelationSchema(hsfcRuleRelationSchema* Source);
 	void Print();
 
 	vector<hsfcRuleTermSchema> TermSchema;
-	hsfcSCLAtom* SCL;
 	int Function;
 	hsfcRuleRelationType Type;
 	unsigned int ReferenceSize;
@@ -111,6 +116,7 @@ public:
 	~hsfcRuleSchema(void);
 
 	void Initialise();
+	void FromRuleSchema(hsfcRuleSchema* Source);
 	void Print();
 
 	vector<hsfcRuleRelationSchema*> RelationSchema;
@@ -139,8 +145,10 @@ public:
 	void Print();
 
 	vector<hsfcRuleSchema*> RuleSchema;
-	hsfcSCLStratum* SCLStratum;
-	bool IsRigid;
+	vector<int> Input;
+	vector<int> Output;
+	hsfcRigidity Rigidity;
+	int SelfReferenceCount;
 	hsfcStratumType Type;
 
 protected:
@@ -168,11 +176,7 @@ public:
 
 	vector<hsfcRelationSchema*> RelationSchema;
 	vector<hsfcStratumSchema*> StratumSchema;
-	vector<hsfcTuple> Rigid;
-	vector<hsfcTuple> Permanent;
-	vector<hsfcTuple> Initial;
-	vector<hsfcReference> Next;
-	hsfcSCL* SCL;
+	vector<hsfcSCLAtom*> Rigid;
 
 protected:
 
@@ -198,9 +202,7 @@ private:
 	bool BuildRuleDomainsVar(hsfcRuleSchema* RuleSchema, int* NewEntryCount);
 	bool OptimiseRuleSchema(hsfcRuleSchema* RuleSchema);
 
-	bool IdentifyRelationTypes();
-	void SetNextReferences();
-
+	bool IdentifyRelationTypes(hsfcSCL* SCL);
 	hsfcLexicon* Lexicon;
 
 };
