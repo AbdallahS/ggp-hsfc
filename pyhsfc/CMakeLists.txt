@@ -47,4 +47,10 @@ add_test(
   NAME PyHSFCTest
   COMMAND python "${PROJECT_SOURCE_DIR}/test/pyhsfc-test.py"
 )
+
+add_test(
+  NAME PyHSFCTictactoeTest
+  COMMAND python "${PROJECT_SOURCE_DIR}/test/pyhsfc-tictactoe-test.py"
+)
+
 set_tests_properties(PyHSFCTest PROPERTIES ENVIRONMENT "PYTHONPATH=PYTHONPATH:${PROJECT_BINARY_DIR}")

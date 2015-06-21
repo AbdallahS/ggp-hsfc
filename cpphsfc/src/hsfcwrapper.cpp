@@ -237,14 +237,7 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
     namespace bfs=boost::filesystem;
     bfs::path gadfile;
     bfs::path infile;
-
-#if HSFC_VERSION > 1
-    if (usegadelac)
-    {
-        std::cerr << "Gadelac is disabled for HSFC > 1" << std::endl;
-        usegadelac = false;
-    }
-#endif
+    bfs::path nocommentfile;
 
     try
     {
@@ -256,6 +249,7 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
             throw HSFCValueError() << ErrorMsgInfo(ss.str());
         }
 
+#if HSFC_VERSION == 1
         // If we need to use gadelac then use a temporary output file
         if (usegadelac)
         {
@@ -272,6 +266,26 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
         {
             infile = gdlfile;
         }
+#else
+
+        if (usegadelac)
+        {
+            std::cerr << "Gadelac is disabled for HSFC > 1" << std::endl;
+            usegadelac = false;
+        }
+        nocommentfile = bfs::unique_path();
+        std::ifstream ts(gdlfile.native().c_str());
+        std::string tmpgdl;
+        ts.seekg(0, std::ios::end);
+        tmpgdl.reserve(ts.tellg());
+        ts.seekg(0, std::ios::beg);
+        tmpgdl.assign((std::istreambuf_iterator<char>(ts)),
+            std::istreambuf_iterator<char>());
+        std::ofstream os(nocommentfile.native().c_str());
+        os << gdl_keywords_to_lowercase(tmpgdl);
+        os.close();
+        infile = nocommentfile;
+#endif
 
         // needed to avoid non-const in hsfcGDLManager::Initialise
         std::string tmpstr(infile.native());
@@ -299,9 +313,14 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
         PopulatePlayerNamesFromLegalMoves();
 
         if (usegadelac) bfs::remove(gadfile);
+        bfs::remove(nocommentfile);
     } catch (...)
     {
+#if HSFC_VERSION == 1
         if (usegadelac && bfs::is_regular_file(gadfile)) bfs::remove(gadfile);
+#else
+        bfs::remove(nocommentfile);
+#endif
         throw;
     }
 }
@@ -326,6 +345,16 @@ void HSFCManager::Initialise(const std::string& gdldescription,
         if (bfs::is_regular_file(tmppath)) bfs::remove(tmppath);
         throw;
     }
+/*#else
+    params_.reset(new hsfcGDLParameters(Parameters));
+    std::string tmp = gdl_keywords_to_lowercase(gdldescription);
+    if (!internal_->Initialise(&tmp, params_.get()))
+    {
+        std::ostringstream ss;
+        ss << "Failed to initialise the HSFC engine.";
+        throw HSFCInternalError() << ErrorMsgInfo(ss.str());
+    }
+    #endif*/
 }
 
 

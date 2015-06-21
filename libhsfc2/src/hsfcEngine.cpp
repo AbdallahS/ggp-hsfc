@@ -793,9 +793,9 @@ bool hsfcEngine::Create(const char* Script) {
 	for (unsigned int i = 0; i < Length; i ++) {
 		CleanScript[i] = Script[i];
 		// Make everything lower case
-		if ((Script[i] >= 'A') && (Script[i] <= 'Z')) {
-			CleanScript[i] = Script[i] + ('a' - 'A');
-		}
+//		if ((Script[i] >= 'A') && (Script[i] <= 'Z')) {
+//			CleanScript[i] = Script[i] + ('a' - 'A');
+//		}
 	}
 
 	// Create the High Speed Forward Chaining engine

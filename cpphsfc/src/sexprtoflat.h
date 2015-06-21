@@ -1,19 +1,19 @@
 /*****************************************************************************************
  * This module provides converters between text formatted as S-expressions and the flat
- * string format used by the internals of the HSFC. In the latter case the  arity of 
+ * string format used by the internals of the HSFC. In the latter case the  arity of
  * predicate/functions is supplied to provide the appropriate associations of terms.
  * Each term is given an arity (although an arity of 0 can be dropped).
  *
- * For example: 
+ * For example:
  *                S-expression                       flat format
  *                ------------                       -----------
- *                 (single)             <=>           single       (note: dropped 0 arity)     
+ *                 (single)             <=>           single       (note: dropped 0 arity)
  * (this (is an) (example (of a text))) <=> this|2 is|1 an|0 example|1 of|2 a|0 text|0
  *
- * Notes/limitations: 
+ * Notes/limitations:
  *
- * 1) in its current form the flat format is not quite as general as S-expression since 
- *    it assumes that the first element is a simple term. For example, "((a b) c)" cannot 
+ * 1) in its current form the flat format is not quite as general as S-expression since
+ *    it assumes that the first element is a simple term. For example, "((a b) c)" cannot
  *    be represented in the flat format. To do so would need to allow for "a|1|1 b c".
  *
  * 2) Not going to handle character escaping. So we disallow "|" in S-expressions, and
@@ -31,7 +31,13 @@ namespace HSFC
 {
 
 /*****************************************************************
- * Term is defined recursively
+ * Term is defined recursively.
+ * NOTE:
+ * The definition below is crappy! It makes more sense to have
+ * Term containing a bunch of SubTerm and not the other way around.
+ * In the current setup the outer Term will always be a subterm, so
+ * the implementation is more tricky and always has an unnecessary
+ * level of recursion.
  *****************************************************************/
 
 struct SubTerms;
@@ -40,7 +46,7 @@ typedef boost::variant<
 	std::string,
 	boost::recursive_wrapper<SubTerms>
 	> Term;
-					   
+
 struct SubTerms
 {
 	std::vector<Term> children_;
@@ -58,6 +64,9 @@ void parse_flat(const std::string& flat, Term& term);
 
 std::ostream& generate_sexpr(const Term& term, std::ostream& os);
 std::ostream& generate_flat(const Term& term, std::ostream& os);
+
+// Normalises GDL by converting all GDL keywords to lowercase
+std::string gdl_keywords_to_lowercase(const std::string& gdl);
 
 };
 

@@ -134,392 +134,392 @@ BOOST_AUTO_TEST_CASE(send_initial_state_across_game)
  * present for the unit test to work.
  ****************************************************************/
 
-std::string g_nineboardttt=" \
-;;;; RULES \
- \
-(init (control xPlayer)) \
-(role oPlayer) \
-(role xPlayer) \
-(index 1) \
-(index 2) \
-(index 3) \
-(<= (legal xPlayer noop) (true (control oPlayer))) \
-(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) firstMove (emptyCell ?i ?j ?k ?l)) \
-(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) (true (currentBoard ?i ?j)) (emptyCell ?i ?j ?k ?l)) \
-(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) currentBoardClosed (emptyCell ?i ?j ?k ?l)) \
-(<= (legal oPlayer noop) (true (control xPlayer))) \
-(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) firstMove (emptyCell ?i ?j ?k ?l)) \
-(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) (true (currentBoard ?i ?j)) (emptyCell ?i ?j ?k ?l)) \
-(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) currentBoardClosed (emptyCell ?i ?j ?k ?l)) \
-(<= (next (mark ?i ?j ?k ?l ?mark)) (does ?player (play ?i ?j ?k ?l ?mark))) \
-(<= (next (mark ?i ?j ?k ?l ?mark)) (true (mark ?i ?j ?k ?l ?mark))) \
-(<= (next (currentBoard ?k ?l)) (does ?player (play ?i ?j ?k ?l ?mark))) \
-(<= (next (control xPlayer)) (true (control oPlayer))) \
-(<= (next (control oPlayer)) (true (control xPlayer))) \
-(<= (goal xPlayer 0) (not (line x)) (not (line o)) open) \
-(<= (goal xPlayer 100) (line x)) \
-(<= (goal xPlayer 50) (not (line x)) (not (line o)) (not open)) \
-(<= (goal xPlayer 0) (line o)) \
-(<= (goal oPlayer 0) (not (line x)) (not (line o)) open) \
-(<= (goal oPlayer 100) (line o)) \
-(<= (goal oPlayer 50) (not (line x)) (not (line o)) (not open)) \
-(<= (goal oPlayer 0) (line x)) \
-(<= terminal (line x)) \
-(<= terminal (line o)) \
-(<= terminal (not open)) \
-(<= (row ?i ?j ?k ?mark) (true (mark ?i ?j ?k 1 ?mark)) (true (mark ?i ?j ?k 2 ?mark)) (true (mark ?i ?j ?k 3 ?mark))) \
-(<= (col ?i ?j ?k ?mark) (true (mark ?i ?j 1 ?k ?mark)) (true (mark ?i ?j 2 ?k ?mark)) (true (mark ?i ?j 3 ?k ?mark))) \
-(<= (diag ?i ?j ?mark) (true (mark ?i ?j 1 1 ?mark)) (true (mark ?i ?j 2 2 ?mark)) (true (mark ?i ?j 3 3 ?mark))) \
-(<= (diag ?i ?j ?mark) (true (mark ?i ?j 1 3 ?mark)) (true (mark ?i ?j 2 2 ?mark)) (true (mark ?i ?j 3 1 ?mark))) \
-(<= (line ?mark) (index ?i) (index ?j) (index ?k) (row ?i ?j ?k ?mark)) \
-(<= (line ?mark) (index ?i) (index ?j) (index ?k) (col ?i ?j ?k ?mark)) \
-(<= (line ?mark) (index ?i) (index ?j) (diag ?i ?j ?mark)) \
-(<= (emptyCell ?i ?j ?k ?l) (index ?i) (index ?j) (index ?k) (index ?l) (not (true (mark ?i ?j ?k ?l x))) (not (true (mark ?i ?j ?k ?l o)))) \
-(<= open (emptyCell ?i ?j ?k ?l)) \
-(<= currentBoardClosed (true (currentBoard ?i ?j)) (not (emptyCell ?i ?j 1 1)) (not (emptyCell ?i ?j 1 2)) (not (emptyCell ?i ?j 1 3)) (not (emptyCell ?i ?j 2 1)) (not (emptyCell ?i ?j 2 2)) (not (emptyCell ?i ?j 2 3)) (not (emptyCell ?i ?j 3 1)) (not (emptyCell ?i ?j 3 2)) (not (emptyCell ?i ?j 3 3))) \
-(<= firstMove (not (true (currentBoard 1 1))) (not (true (currentBoard 1 2))) (not (true (currentBoard 1 3))) (not (true (currentBoard 2 1))) (not (true (currentBoard 2 2))) (not (true (currentBoard 2 3))) (not (true (currentBoard 3 1))) (not (true (currentBoard 3 2))) (not (true (currentBoard 3 3)))) \
- \
-;;;; STRATS \
- \
-(strat 0 true/1) \
-(strat 1 index/1) \
-(strat 2 emptyCell/4) \
-(strat 3 currentBoardClosed/0) \
-(strat 4 firstMove/0) \
-(strat 5 legal/2) \
-(strat 6 col/4) \
-(strat 7 diag/3) \
-(strat 8 row/4) \
-(strat 9 line/1) \
-(strat 10 open/0) \
-(strat 11 terminal/0) \
-(strat 12 does/2) \
-(strat 13 goal/2) \
-(strat 14 init/1) \
-(strat 15 next/1) \
-(strat 16 role/1) \
- \
-;;;; PATHS \
- \
-(arg terminal/0) \
-(arg currentBoardClosed/0) \
-(arg firstMove/0) \
-(arg open/0) \
-(arg does/2 0 oPlayer/0) \
-(arg does/2 0 xPlayer/0) \
-(arg does/2 1 noop/0) \
-(arg does/2 1 play/5 0 1/0) \
-(arg does/2 1 play/5 0 2/0) \
-(arg does/2 1 play/5 0 3/0) \
-(arg does/2 1 play/5 1 1/0) \
-(arg does/2 1 play/5 1 2/0) \
-(arg does/2 1 play/5 1 3/0) \
-(arg does/2 1 play/5 2 1/0) \
-(arg does/2 1 play/5 2 2/0) \
-(arg does/2 1 play/5 2 3/0) \
-(arg does/2 1 play/5 3 1/0) \
-(arg does/2 1 play/5 3 2/0) \
-(arg does/2 1 play/5 3 3/0) \
-(arg does/2 1 play/5 4 o/0) \
-(arg does/2 1 play/5 4 x/0) \
-(arg goal/2 0 oPlayer/0) \
-(arg goal/2 0 xPlayer/0) \
-(arg goal/2 1 0/0) \
-(arg goal/2 1 100/0) \
-(arg goal/2 1 50/0) \
-(arg init/1 0 control/1 0 xPlayer/0) \
-(arg legal/2 0 oPlayer/0) \
-(arg legal/2 0 xPlayer/0) \
-(arg legal/2 1 noop/0) \
-(arg legal/2 1 play/5 0 1/0) \
-(arg legal/2 1 play/5 0 2/0) \
-(arg legal/2 1 play/5 0 3/0) \
-(arg legal/2 1 play/5 1 1/0) \
-(arg legal/2 1 play/5 1 2/0) \
-(arg legal/2 1 play/5 1 3/0) \
-(arg legal/2 1 play/5 2 1/0) \
-(arg legal/2 1 play/5 2 2/0) \
-(arg legal/2 1 play/5 2 3/0) \
-(arg legal/2 1 play/5 3 1/0) \
-(arg legal/2 1 play/5 3 2/0) \
-(arg legal/2 1 play/5 3 3/0) \
-(arg legal/2 1 play/5 4 o/0) \
-(arg legal/2 1 play/5 4 x/0) \
-(arg next/1 0 control/1 0 oPlayer/0) \
-(arg next/1 0 control/1 0 xPlayer/0) \
-(arg next/1 0 currentBoard/2 0 1/0) \
-(arg next/1 0 currentBoard/2 0 2/0) \
-(arg next/1 0 currentBoard/2 0 3/0) \
-(arg next/1 0 currentBoard/2 1 1/0) \
-(arg next/1 0 currentBoard/2 1 2/0) \
-(arg next/1 0 currentBoard/2 1 3/0) \
-(arg next/1 0 mark/5 0 1/0) \
-(arg next/1 0 mark/5 0 2/0) \
-(arg next/1 0 mark/5 0 3/0) \
-(arg next/1 0 mark/5 1 1/0) \
-(arg next/1 0 mark/5 1 2/0) \
-(arg next/1 0 mark/5 1 3/0) \
-(arg next/1 0 mark/5 2 1/0) \
-(arg next/1 0 mark/5 2 2/0) \
-(arg next/1 0 mark/5 2 3/0) \
-(arg next/1 0 mark/5 3 1/0) \
-(arg next/1 0 mark/5 3 2/0) \
-(arg next/1 0 mark/5 3 3/0) \
-(arg next/1 0 mark/5 4 o/0) \
-(arg next/1 0 mark/5 4 x/0) \
-(arg role/1 0 oPlayer/0) \
-(arg role/1 0 xPlayer/0) \
-(arg true/1 0 control/1 0 oPlayer/0) \
-(arg true/1 0 control/1 0 xPlayer/0) \
-(arg true/1 0 currentBoard/2 0 1/0) \
-(arg true/1 0 currentBoard/2 0 2/0) \
-(arg true/1 0 currentBoard/2 0 3/0) \
-(arg true/1 0 currentBoard/2 1 1/0) \
-(arg true/1 0 currentBoard/2 1 2/0) \
-(arg true/1 0 currentBoard/2 1 3/0) \
-(arg true/1 0 mark/5 0 1/0) \
-(arg true/1 0 mark/5 0 2/0) \
-(arg true/1 0 mark/5 0 3/0) \
-(arg true/1 0 mark/5 1 1/0) \
-(arg true/1 0 mark/5 1 2/0) \
-(arg true/1 0 mark/5 1 3/0) \
-(arg true/1 0 mark/5 2 1/0) \
-(arg true/1 0 mark/5 2 2/0) \
-(arg true/1 0 mark/5 2 3/0) \
-(arg true/1 0 mark/5 3 1/0) \
-(arg true/1 0 mark/5 3 2/0) \
-(arg true/1 0 mark/5 3 3/0) \
-(arg true/1 0 mark/5 4 o/0) \
-(arg true/1 0 mark/5 4 x/0) \
-(arg col/4 0 1/0) \
-(arg col/4 0 2/0) \
-(arg col/4 0 3/0) \
-(arg col/4 1 1/0) \
-(arg col/4 1 2/0) \
-(arg col/4 1 3/0) \
-(arg col/4 2 1/0) \
-(arg col/4 2 2/0) \
-(arg col/4 2 3/0) \
-(arg col/4 3 o/0) \
-(arg col/4 3 x/0) \
-(arg diag/3 0 1/0) \
-(arg diag/3 0 2/0) \
-(arg diag/3 0 3/0) \
-(arg diag/3 1 1/0) \
-(arg diag/3 1 2/0) \
-(arg diag/3 1 3/0) \
-(arg diag/3 2 o/0) \
-(arg diag/3 2 x/0) \
-(arg emptyCell/4 0 1/0) \
-(arg emptyCell/4 0 2/0) \
-(arg emptyCell/4 0 3/0) \
-(arg emptyCell/4 1 1/0) \
-(arg emptyCell/4 1 2/0) \
-(arg emptyCell/4 1 3/0) \
-(arg emptyCell/4 2 1/0) \
-(arg emptyCell/4 2 2/0) \
-(arg emptyCell/4 2 3/0) \
-(arg emptyCell/4 3 1/0) \
-(arg emptyCell/4 3 2/0) \
-(arg emptyCell/4 3 3/0) \
-(arg index/1 0 1/0) \
-(arg index/1 0 2/0) \
-(arg index/1 0 3/0) \
-(arg line/1 0 o/0) \
-(arg line/1 0 x/0) \
-(arg row/4 0 1/0) \
-(arg row/4 0 2/0) \
-(arg row/4 0 3/0) \
-(arg row/4 1 1/0) \
-(arg row/4 1 2/0) \
-(arg row/4 1 3/0) \
-(arg row/4 2 1/0) \
-(arg row/4 2 2/0) \
-(arg row/4 2 3/0) \
-(arg row/4 3 o/0) \
-(arg row/4 3 x/0) \
+std::string g_nineboardttt=" \n\
+;;;; RULES \n\
+ \n\
+(init (control xPlayer)) \n\
+(role oPlayer) \n\
+(role xPlayer) \n\
+(index 1) \n\
+(index 2) \n\
+(index 3) \n\
+(<= (legal xPlayer noop) (true (control oPlayer))) \n\
+(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) firstMove (emptyCell ?i ?j ?k ?l)) \n\
+(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) (true (currentBoard ?i ?j)) (emptyCell ?i ?j ?k ?l)) \n\
+(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) currentBoardClosed (emptyCell ?i ?j ?k ?l)) \n\
+(<= (legal oPlayer noop) (true (control xPlayer))) \n\
+(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) firstMove (emptyCell ?i ?j ?k ?l)) \n\
+(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) (true (currentBoard ?i ?j)) (emptyCell ?i ?j ?k ?l)) \n\
+(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) currentBoardClosed (emptyCell ?i ?j ?k ?l)) \n\
+(<= (next (mark ?i ?j ?k ?l ?mark)) (does ?player (play ?i ?j ?k ?l ?mark))) \n\
+(<= (next (mark ?i ?j ?k ?l ?mark)) (true (mark ?i ?j ?k ?l ?mark))) \n\
+(<= (next (currentBoard ?k ?l)) (does ?player (play ?i ?j ?k ?l ?mark))) \n\
+(<= (next (control xPlayer)) (true (control oPlayer))) \n\
+(<= (next (control oPlayer)) (true (control xPlayer))) \n\
+(<= (goal xPlayer 0) (not (line x)) (not (line o)) open) \n\
+(<= (goal xPlayer 100) (line x)) \n\
+(<= (goal xPlayer 50) (not (line x)) (not (line o)) (not open)) \n\
+(<= (goal xPlayer 0) (line o)) \n\
+(<= (goal oPlayer 0) (not (line x)) (not (line o)) open) \n\
+(<= (goal oPlayer 100) (line o)) \n\
+(<= (goal oPlayer 50) (not (line x)) (not (line o)) (not open)) \n\
+(<= (goal oPlayer 0) (line x)) \n\
+(<= terminal (line x)) \n\
+(<= terminal (line o)) \n\
+(<= terminal (not open)) \n\
+(<= (row ?i ?j ?k ?mark) (true (mark ?i ?j ?k 1 ?mark)) (true (mark ?i ?j ?k 2 ?mark)) (true (mark ?i ?j ?k 3 ?mark))) \n\
+(<= (col ?i ?j ?k ?mark) (true (mark ?i ?j 1 ?k ?mark)) (true (mark ?i ?j 2 ?k ?mark)) (true (mark ?i ?j 3 ?k ?mark))) \n\
+(<= (diag ?i ?j ?mark) (true (mark ?i ?j 1 1 ?mark)) (true (mark ?i ?j 2 2 ?mark)) (true (mark ?i ?j 3 3 ?mark))) \n\
+(<= (diag ?i ?j ?mark) (true (mark ?i ?j 1 3 ?mark)) (true (mark ?i ?j 2 2 ?mark)) (true (mark ?i ?j 3 1 ?mark))) \n\
+(<= (line ?mark) (index ?i) (index ?j) (index ?k) (row ?i ?j ?k ?mark)) \n\
+(<= (line ?mark) (index ?i) (index ?j) (index ?k) (col ?i ?j ?k ?mark)) \n\
+(<= (line ?mark) (index ?i) (index ?j) (diag ?i ?j ?mark)) \n\
+(<= (emptyCell ?i ?j ?k ?l) (index ?i) (index ?j) (index ?k) (index ?l) (not (true (mark ?i ?j ?k ?l x))) (not (true (mark ?i ?j ?k ?l o)))) \n\
+(<= open (emptyCell ?i ?j ?k ?l)) \n\
+(<= currentBoardClosed (true (currentBoard ?i ?j)) (not (emptyCell ?i ?j 1 1)) (not (emptyCell ?i ?j 1 2)) (not (emptyCell ?i ?j 1 3)) (not (emptyCell ?i ?j 2 1)) (not (emptyCell ?i ?j 2 2)) (not (emptyCell ?i ?j 2 3)) (not (emptyCell ?i ?j 3 1)) (not (emptyCell ?i ?j 3 2)) (not (emptyCell ?i ?j 3 3))) \n\
+(<= firstMove (not (true (currentBoard 1 1))) (not (true (currentBoard 1 2))) (not (true (currentBoard 1 3))) (not (true (currentBoard 2 1))) (not (true (currentBoard 2 2))) (not (true (currentBoard 2 3))) (not (true (currentBoard 3 1))) (not (true (currentBoard 3 2))) (not (true (currentBoard 3 3)))) \n\
+ \n\
+;;;; STRATS \n\
+ \n\
+(strat 0 true/1) \n\
+(strat 1 index/1) \n\
+(strat 2 emptyCell/4) \n\
+(strat 3 currentBoardClosed/0) \n\
+(strat 4 firstMove/0) \n\
+(strat 5 legal/2) \n\
+(strat 6 col/4) \n\
+(strat 7 diag/3) \n\
+(strat 8 row/4) \n\
+(strat 9 line/1) \n\
+(strat 10 open/0) \n\
+(strat 11 terminal/0) \n\
+(strat 12 does/2) \n\
+(strat 13 goal/2) \n\
+(strat 14 init/1) \n\
+(strat 15 next/1) \n\
+(strat 16 role/1) \n\
+ \n\
+;;;; PATHS \n\
+ \n\
+(arg terminal/0) \n\
+(arg currentBoardClosed/0) \n\
+(arg firstMove/0) \n\
+(arg open/0) \n\
+(arg does/2 0 oPlayer/0) \n\
+(arg does/2 0 xPlayer/0) \n\
+(arg does/2 1 noop/0) \n\
+(arg does/2 1 play/5 0 1/0) \n\
+(arg does/2 1 play/5 0 2/0) \n\
+(arg does/2 1 play/5 0 3/0) \n\
+(arg does/2 1 play/5 1 1/0) \n\
+(arg does/2 1 play/5 1 2/0) \n\
+(arg does/2 1 play/5 1 3/0) \n\
+(arg does/2 1 play/5 2 1/0) \n\
+(arg does/2 1 play/5 2 2/0) \n\
+(arg does/2 1 play/5 2 3/0) \n\
+(arg does/2 1 play/5 3 1/0) \n\
+(arg does/2 1 play/5 3 2/0) \n\
+(arg does/2 1 play/5 3 3/0) \n\
+(arg does/2 1 play/5 4 o/0) \n\
+(arg does/2 1 play/5 4 x/0) \n\
+(arg goal/2 0 oPlayer/0) \n\
+(arg goal/2 0 xPlayer/0) \n\
+(arg goal/2 1 0/0) \n\
+(arg goal/2 1 100/0) \n\
+(arg goal/2 1 50/0) \n\
+(arg init/1 0 control/1 0 xPlayer/0) \n\
+(arg legal/2 0 oPlayer/0) \n\
+(arg legal/2 0 xPlayer/0) \n\
+(arg legal/2 1 noop/0) \n\
+(arg legal/2 1 play/5 0 1/0) \n\
+(arg legal/2 1 play/5 0 2/0) \n\
+(arg legal/2 1 play/5 0 3/0) \n\
+(arg legal/2 1 play/5 1 1/0) \n\
+(arg legal/2 1 play/5 1 2/0) \n\
+(arg legal/2 1 play/5 1 3/0) \n\
+(arg legal/2 1 play/5 2 1/0) \n\
+(arg legal/2 1 play/5 2 2/0) \n\
+(arg legal/2 1 play/5 2 3/0) \n\
+(arg legal/2 1 play/5 3 1/0) \n\
+(arg legal/2 1 play/5 3 2/0) \n\
+(arg legal/2 1 play/5 3 3/0) \n\
+(arg legal/2 1 play/5 4 o/0) \n\
+(arg legal/2 1 play/5 4 x/0) \n\
+(arg next/1 0 control/1 0 oPlayer/0) \n\
+(arg next/1 0 control/1 0 xPlayer/0) \n\
+(arg next/1 0 currentBoard/2 0 1/0) \n\
+(arg next/1 0 currentBoard/2 0 2/0) \n\
+(arg next/1 0 currentBoard/2 0 3/0) \n\
+(arg next/1 0 currentBoard/2 1 1/0) \n\
+(arg next/1 0 currentBoard/2 1 2/0) \n\
+(arg next/1 0 currentBoard/2 1 3/0) \n\
+(arg next/1 0 mark/5 0 1/0) \n\
+(arg next/1 0 mark/5 0 2/0) \n\
+(arg next/1 0 mark/5 0 3/0) \n\
+(arg next/1 0 mark/5 1 1/0) \n\
+(arg next/1 0 mark/5 1 2/0) \n\
+(arg next/1 0 mark/5 1 3/0) \n\
+(arg next/1 0 mark/5 2 1/0) \n\
+(arg next/1 0 mark/5 2 2/0) \n\
+(arg next/1 0 mark/5 2 3/0) \n\
+(arg next/1 0 mark/5 3 1/0) \n\
+(arg next/1 0 mark/5 3 2/0) \n\
+(arg next/1 0 mark/5 3 3/0) \n\
+(arg next/1 0 mark/5 4 o/0) \n\
+(arg next/1 0 mark/5 4 x/0) \n\
+(arg role/1 0 oPlayer/0) \n\
+(arg role/1 0 xPlayer/0) \n\
+(arg true/1 0 control/1 0 oPlayer/0) \n\
+(arg true/1 0 control/1 0 xPlayer/0) \n\
+(arg true/1 0 currentBoard/2 0 1/0) \n\
+(arg true/1 0 currentBoard/2 0 2/0) \n\
+(arg true/1 0 currentBoard/2 0 3/0) \n\
+(arg true/1 0 currentBoard/2 1 1/0) \n\
+(arg true/1 0 currentBoard/2 1 2/0) \n\
+(arg true/1 0 currentBoard/2 1 3/0) \n\
+(arg true/1 0 mark/5 0 1/0) \n\
+(arg true/1 0 mark/5 0 2/0) \n\
+(arg true/1 0 mark/5 0 3/0) \n\
+(arg true/1 0 mark/5 1 1/0) \n\
+(arg true/1 0 mark/5 1 2/0) \n\
+(arg true/1 0 mark/5 1 3/0) \n\
+(arg true/1 0 mark/5 2 1/0) \n\
+(arg true/1 0 mark/5 2 2/0) \n\
+(arg true/1 0 mark/5 2 3/0) \n\
+(arg true/1 0 mark/5 3 1/0) \n\
+(arg true/1 0 mark/5 3 2/0) \n\
+(arg true/1 0 mark/5 3 3/0) \n\
+(arg true/1 0 mark/5 4 o/0) \n\
+(arg true/1 0 mark/5 4 x/0) \n\
+(arg col/4 0 1/0) \n\
+(arg col/4 0 2/0) \n\
+(arg col/4 0 3/0) \n\
+(arg col/4 1 1/0) \n\
+(arg col/4 1 2/0) \n\
+(arg col/4 1 3/0) \n\
+(arg col/4 2 1/0) \n\
+(arg col/4 2 2/0) \n\
+(arg col/4 2 3/0) \n\
+(arg col/4 3 o/0) \n\
+(arg col/4 3 x/0) \n\
+(arg diag/3 0 1/0) \n\
+(arg diag/3 0 2/0) \n\
+(arg diag/3 0 3/0) \n\
+(arg diag/3 1 1/0) \n\
+(arg diag/3 1 2/0) \n\
+(arg diag/3 1 3/0) \n\
+(arg diag/3 2 o/0) \n\
+(arg diag/3 2 x/0) \n\
+(arg emptyCell/4 0 1/0) \n\
+(arg emptyCell/4 0 2/0) \n\
+(arg emptyCell/4 0 3/0) \n\
+(arg emptyCell/4 1 1/0) \n\
+(arg emptyCell/4 1 2/0) \n\
+(arg emptyCell/4 1 3/0) \n\
+(arg emptyCell/4 2 1/0) \n\
+(arg emptyCell/4 2 2/0) \n\
+(arg emptyCell/4 2 3/0) \n\
+(arg emptyCell/4 3 1/0) \n\
+(arg emptyCell/4 3 2/0) \n\
+(arg emptyCell/4 3 3/0) \n\
+(arg index/1 0 1/0) \n\
+(arg index/1 0 2/0) \n\
+(arg index/1 0 3/0) \n\
+(arg line/1 0 o/0) \n\
+(arg line/1 0 x/0) \n\
+(arg row/4 0 1/0) \n\
+(arg row/4 0 2/0) \n\
+(arg row/4 0 3/0) \n\
+(arg row/4 1 1/0) \n\
+(arg row/4 1 2/0) \n\
+(arg row/4 1 3/0) \n\
+(arg row/4 2 1/0) \n\
+(arg row/4 2 2/0) \n\
+(arg row/4 2 3/0) \n\
+(arg row/4 3 o/0) \n\
+(arg row/4 3 x/0) \n\
 ";
 
-std::string g_nineboardttt2=" \
-(init (control xPlayer)) \
-(role oPlayer) \
-(role xPlayer) \
-(index 1) \
-(index 2) \
-(index 3) \
-(<= (legal xPlayer noop) (true (control oPlayer))) \
-(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) firstMove (emptyCell ?i ?j ?k ?l)) \
-(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) (true (currentBoard ?i ?j)) (emptyCell ?i ?j ?k ?l)) \
-(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) currentBoardClosed (emptyCell ?i ?j ?k ?l)) \
-(<= (legal oPlayer noop) (true (control xPlayer))) \
-(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) firstMove (emptyCell ?i ?j ?k ?l)) \
-(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) (true (currentBoard ?i ?j)) (emptyCell ?i ?j ?k ?l)) \
-(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) currentBoardClosed (emptyCell ?i ?j ?k ?l)) \
-(<= (next (mark ?i ?j ?k ?l ?mark)) (does ?player (play ?i ?j ?k ?l ?mark))) \
-(<= (next (mark ?i ?j ?k ?l ?mark)) (true (mark ?i ?j ?k ?l ?mark))) \
-(<= (next (currentBoard ?k ?l)) (does ?player (play ?i ?j ?k ?l ?mark))) \
-(<= (next (control xPlayer)) (true (control oPlayer))) \
-(<= (next (control oPlayer)) (true (control xPlayer))) \
-(<= (goal xPlayer 0) (not (line x)) (not (line o)) open) \
-(<= (goal xPlayer 100) (line x)) \
-(<= (goal xPlayer 50) (not (line x)) (not (line o)) (not open)) \
-(<= (goal xPlayer 0) (line o)) \
-(<= (goal oPlayer 0) (not (line x)) (not (line o)) open) \
-(<= (goal oPlayer 100) (line o)) \
-(<= (goal oPlayer 50) (not (line x)) (not (line o)) (not open)) \
-(<= (goal oPlayer 0) (line x)) \
-(<= terminal (line x)) \
-(<= terminal (line o)) \
-(<= terminal (not open)) \
-(<= (row ?i ?j ?k ?mark) (true (mark ?i ?j ?k 1 ?mark)) (true (mark ?i ?j ?k 2 ?mark)) (true (mark ?i ?j ?k 3 ?mark))) \
-(<= (col ?i ?j ?k ?mark) (true (mark ?i ?j 1 ?k ?mark)) (true (mark ?i ?j 2 ?k ?mark)) (true (mark ?i ?j 3 ?k ?mark))) \
-(<= (diag ?i ?j ?mark) (true (mark ?i ?j 1 1 ?mark)) (true (mark ?i ?j 2 2 ?mark)) (true (mark ?i ?j 3 3 ?mark))) \
-(<= (diag ?i ?j ?mark) (true (mark ?i ?j 1 3 ?mark)) (true (mark ?i ?j 2 2 ?mark)) (true (mark ?i ?j 3 1 ?mark))) \
-(<= (line ?mark) (index ?i) (index ?j) (index ?k) (row ?i ?j ?k ?mark)) \
-(<= (line ?mark) (index ?i) (index ?j) (index ?k) (col ?i ?j ?k ?mark)) \
-(<= (line ?mark) (index ?i) (index ?j) (diag ?i ?j ?mark)) \
-(<= (emptyCell ?i ?j ?k ?l) (index ?i) (index ?j) (index ?k) (index ?l) (not (true (mark ?i ?j ?k ?l x))) (not (true (mark ?i ?j ?k ?l o)))) \
-(<= open (emptyCell ?i ?j ?k ?l)) \
-(<= currentBoardClosed (true (currentBoard ?i ?j)) (not (emptyCell ?i ?j 1 1)) (not (emptyCell ?i ?j 1 2)) (not (emptyCell ?i ?j 1 3)) (not (emptyCell ?i ?j 2 1)) (not (emptyCell ?i ?j 2 2)) (not (emptyCell ?i ?j 2 3)) (not (emptyCell ?i ?j 3 1)) (not (emptyCell ?i ?j 3 2)) (not (emptyCell ?i ?j 3 3))) \
-(<= firstMove (not (true (currentBoard 1 1))) (not (true (currentBoard 1 2))) (not (true (currentBoard 1 3))) (not (true (currentBoard 2 1))) (not (true (currentBoard 2 2))) (not (true (currentBoard 2 3))) (not (true (currentBoard 3 1))) (not (true (currentBoard 3 2))) (not (true (currentBoard 3 3)))) \
+std::string g_nineboardttt2=" \n\
+(init (control xPlayer)) \n\
+(role oPlayer) \n\
+(role xPlayer) \n\
+(index 1) \n\
+(index 2) \n\
+(index 3) \n\
+(<= (legal xPlayer noop) (true (control oPlayer))) \n\
+(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) firstMove (emptyCell ?i ?j ?k ?l)) \n\
+(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) (true (currentBoard ?i ?j)) (emptyCell ?i ?j ?k ?l)) \n\
+(<= (legal xPlayer (play ?i ?j ?k ?l x)) (true (control xPlayer)) currentBoardClosed (emptyCell ?i ?j ?k ?l)) \n\
+(<= (legal oPlayer noop) (true (control xPlayer))) \n\
+(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) firstMove (emptyCell ?i ?j ?k ?l)) \n\
+(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) (true (currentBoard ?i ?j)) (emptyCell ?i ?j ?k ?l)) \n\
+(<= (legal oPlayer (play ?i ?j ?k ?l o)) (true (control oPlayer)) currentBoardClosed (emptyCell ?i ?j ?k ?l)) \n\
+(<= (next (mark ?i ?j ?k ?l ?mark)) (does ?player (play ?i ?j ?k ?l ?mark))) \n\
+(<= (next (mark ?i ?j ?k ?l ?mark)) (true (mark ?i ?j ?k ?l ?mark))) \n\
+(<= (next (currentBoard ?k ?l)) (does ?player (play ?i ?j ?k ?l ?mark))) \n\
+(<= (next (control xPlayer)) (true (control oPlayer))) \n\
+(<= (next (control oPlayer)) (true (control xPlayer))) \n\
+(<= (goal xPlayer 0) (not (line x)) (not (line o)) open) \n\
+(<= (goal xPlayer 100) (line x)) \n\
+(<= (goal xPlayer 50) (not (line x)) (not (line o)) (not open)) \n\
+(<= (goal xPlayer 0) (line o)) \n\
+(<= (goal oPlayer 0) (not (line x)) (not (line o)) open) \n\
+(<= (goal oPlayer 100) (line o)) \n\
+(<= (goal oPlayer 50) (not (line x)) (not (line o)) (not open)) \n\
+(<= (goal oPlayer 0) (line x)) \n\
+(<= terminal (line x)) \n\
+(<= terminal (line o)) \n\
+(<= terminal (not open)) \n\
+(<= (row ?i ?j ?k ?mark) (true (mark ?i ?j ?k 1 ?mark)) (true (mark ?i ?j ?k 2 ?mark)) (true (mark ?i ?j ?k 3 ?mark))) \n\
+(<= (col ?i ?j ?k ?mark) (true (mark ?i ?j 1 ?k ?mark)) (true (mark ?i ?j 2 ?k ?mark)) (true (mark ?i ?j 3 ?k ?mark))) \n\
+(<= (diag ?i ?j ?mark) (true (mark ?i ?j 1 1 ?mark)) (true (mark ?i ?j 2 2 ?mark)) (true (mark ?i ?j 3 3 ?mark))) \n\
+(<= (diag ?i ?j ?mark) (true (mark ?i ?j 1 3 ?mark)) (true (mark ?i ?j 2 2 ?mark)) (true (mark ?i ?j 3 1 ?mark))) \n\
+(<= (line ?mark) (index ?i) (index ?j) (index ?k) (row ?i ?j ?k ?mark)) \n\
+(<= (line ?mark) (index ?i) (index ?j) (index ?k) (col ?i ?j ?k ?mark)) \n\
+(<= (line ?mark) (index ?i) (index ?j) (diag ?i ?j ?mark)) \n\
+(<= (emptyCell ?i ?j ?k ?l) (index ?i) (index ?j) (index ?k) (index ?l) (not (true (mark ?i ?j ?k ?l x))) (not (true (mark ?i ?j ?k ?l o)))) \n\
+(<= open (emptyCell ?i ?j ?k ?l)) \n\
+(<= currentBoardClosed (true (currentBoard ?i ?j)) (not (emptyCell ?i ?j 1 1)) (not (emptyCell ?i ?j 1 2)) (not (emptyCell ?i ?j 1 3)) (not (emptyCell ?i ?j 2 1)) (not (emptyCell ?i ?j 2 2)) (not (emptyCell ?i ?j 2 3)) (not (emptyCell ?i ?j 3 1)) (not (emptyCell ?i ?j 3 2)) (not (emptyCell ?i ?j 3 3))) \n\
+(<= firstMove (not (true (currentBoard 1 1))) (not (true (currentBoard 1 2))) (not (true (currentBoard 1 3))) (not (true (currentBoard 2 1))) (not (true (currentBoard 2 2))) (not (true (currentBoard 2 3))) (not (true (currentBoard 3 1))) (not (true (currentBoard 3 2))) (not (true (currentBoard 3 3)))) \n\
 ";
 
-std::string g_ttt=" \
-;;;; RULES \
- \
-(role xplayer) \
-(role oplayer) \
-(init (cell 1 1 b)) \
-(init (cell 1 2 b)) \
-(init (cell 1 3 b)) \
-(init (cell 2 1 b)) \
-(init (cell 2 2 b)) \
-(init (cell 2 3 b)) \
-(init (cell 3 1 b)) \
-(init (cell 3 2 b)) \
-(init (cell 3 3 b)) \
-(init (control xplayer)) \
-(<= (next (cell ?m ?n x)) (does xplayer (mark ?m ?n)) (true (cell ?m ?n b))) \
-(<= (next (cell ?m ?n o)) (does oplayer (mark ?m ?n)) (true (cell ?m ?n b))) \
-(<= (next (cell ?m ?n ?w)) (true (cell ?m ?n ?w)) (distinct ?w b)) \
-(<= (next (cell ?m ?n b)) (does ?w (mark ?j ?k)) (true (cell ?m ?n b)) (distinct ?m ?j)) \
-(<= (next (cell ?m ?n b)) (does ?w (mark ?j ?k)) (true (cell ?m ?n b)) (distinct ?n ?k)) \
-(<= (next (control xplayer)) (true (control oplayer))) \
-(<= (next (control oplayer)) (true (control xplayer))) \
-(<= (row ?m ?x) (true (cell ?m 1 ?x)) (true (cell ?m 2 ?x)) (true (cell ?m 3 ?x))) \
-(<= (column ?n ?x) (true (cell 1 ?n ?x)) (true (cell 2 ?n ?x)) (true (cell 3 ?n ?x))) \
-(<= (diagonal ?x) (true (cell 1 1 ?x)) (true (cell 2 2 ?x)) (true (cell 3 3 ?x))) \
-(<= (diagonal ?x) (true (cell 1 3 ?x)) (true (cell 2 2 ?x)) (true (cell 3 1 ?x))) \
-(<= (line ?x) (row ?m ?x)) \
-(<= (line ?x) (column ?m ?x)) \
-(<= (line ?x) (diagonal ?x)) \
-(<= open (true (cell ?m ?n b))) \
-(<= (legal ?w (mark ?x ?y)) (true (cell ?x ?y b)) (true (control ?w))) \
-(<= (legal xplayer noop) (true (control oplayer))) \
-(<= (legal oplayer noop) (true (control xplayer))) \
-(<= (goal xplayer 100) (line x)) \
-(<= (goal xplayer 50) (not (line x)) (not (line o)) (not open)) \
-(<= (goal xplayer 0) (line o)) \
-(<= (goal oplayer 100) (line o)) \
-(<= (goal oplayer 50) (not (line x)) (not (line o)) (not open)) \
-(<= (goal oplayer 0) (line x)) \
-(<= terminal (line x)) \
-(<= terminal (line o)) \
-(<= terminal (not open)) \
- \
-;;;; STRATS \
- \
-(strat does 0) \
-(strat goal 1) \
-(strat init 0) \
-(strat legal 0) \
-(strat next 0) \
-(strat role 0) \
-(strat terminal 1) \
-(strat true 0) \
-(strat cell 0) \
-(strat column 0) \
-(strat control 0) \
-(strat diagonal 0) \
-(strat line 0) \
-(strat open 0) \
-(strat row 0) \
- \
-;;;; PATHS \
- \
-(arg does/2 0 oplayer/0) \
-(arg does/2 0 xplayer/0) \
-(arg does/2 1 mark/2 0 1/0) \
-(arg does/2 1 mark/2 0 2/0) \
-(arg does/2 1 mark/2 0 3/0) \
-(arg does/2 1 mark/2 1 1/0) \
-(arg does/2 1 mark/2 1 2/0) \
-(arg does/2 1 mark/2 1 3/0) \
-(arg does/2 1 noop/0) \
-(arg goal/2 0 oplayer/0) \
-(arg goal/2 0 xplayer/0) \
-(arg goal/2 1 0/0) \
-(arg goal/2 1 100/0) \
-(arg goal/2 1 50/0) \
-(arg init/1 0 cell/3 0 1/0) \
-(arg init/1 0 cell/3 0 2/0) \
-(arg init/1 0 cell/3 0 3/0) \
-(arg init/1 0 cell/3 1 1/0) \
-(arg init/1 0 cell/3 1 2/0) \
-(arg init/1 0 cell/3 1 3/0) \
-(arg init/1 0 cell/3 2 b/0) \
-(arg init/1 0 control/1 0 xplayer/0) \
-(arg legal/2 0 oplayer/0) \
-(arg legal/2 0 xplayer/0) \
-(arg legal/2 1 mark/2 0 1/0) \
-(arg legal/2 1 mark/2 0 2/0) \
-(arg legal/2 1 mark/2 0 3/0) \
-(arg legal/2 1 mark/2 1 1/0) \
-(arg legal/2 1 mark/2 1 2/0) \
-(arg legal/2 1 mark/2 1 3/0) \
-(arg legal/2 1 noop/0) \
-(arg next/1 0 cell/3 0 1/0) \
-(arg next/1 0 cell/3 0 2/0) \
-(arg next/1 0 cell/3 0 3/0) \
-(arg next/1 0 cell/3 1 1/0) \
-(arg next/1 0 cell/3 1 2/0) \
-(arg next/1 0 cell/3 1 3/0) \
-(arg next/1 0 cell/3 2 b/0) \
-(arg next/1 0 cell/3 2 o/0) \
-(arg next/1 0 cell/3 2 x/0) \
-(arg next/1 0 control/1 0 oplayer/0) \
-(arg next/1 0 control/1 0 xplayer/0) \
-(arg role/1 0 oplayer/0) \
-(arg role/1 0 xplayer/0) \
-(arg terminal/0) \
-(arg true/1 0 cell/3 0 1/0) \
-(arg true/1 0 cell/3 0 2/0) \
-(arg true/1 0 cell/3 0 3/0) \
-(arg true/1 0 cell/3 1 1/0) \
-(arg true/1 0 cell/3 1 2/0) \
-(arg true/1 0 cell/3 1 3/0) \
-(arg true/1 0 cell/3 2 b/0) \
-(arg true/1 0 cell/3 2 o/0) \
-(arg true/1 0 cell/3 2 x/0) \
-(arg true/1 0 control/1 0 oplayer/0) \
-(arg true/1 0 control/1 0 xplayer/0) \
-(arg column/2 0 1/0) \
-(arg column/2 0 2/0) \
-(arg column/2 0 3/0) \
-(arg column/2 1 b/0) \
-(arg column/2 1 o/0) \
-(arg column/2 1 x/0) \
-(arg diagonal/1 0 b/0) \
-(arg diagonal/1 0 o/0) \
-(arg diagonal/1 0 x/0) \
-(arg line/1 0 b/0) \
-(arg line/1 0 o/0) \
-(arg line/1 0 x/0) \
-(arg open/0) \
-(arg row/2 0 1/0) \
-(arg row/2 0 2/0) \
-(arg row/2 0 3/0) \
-(arg row/2 1 b/0) \
-(arg row/2 1 o/0) \
-(arg row/2 1 x/0) \
+std::string g_ttt=" \n\
+;;;; RULES \n\
+ \n\
+(role xplayer) \n\
+(role oplayer) \n\
+(init (cell 1 1 b)) \n\
+(init (cell 1 2 b)) \n\
+(init (cell 1 3 b)) \n\
+(init (cell 2 1 b)) \n\
+(init (cell 2 2 b)) \n\
+(init (cell 2 3 b)) \n\
+(init (cell 3 1 b)) \n\
+(init (cell 3 2 b)) \n\
+(init (cell 3 3 b)) \n\
+(init (control xplayer)) \n\
+(<= (next (cell ?m ?n x)) (does xplayer (mark ?m ?n)) (true (cell ?m ?n b))) \n\
+(<= (next (cell ?m ?n o)) (does oplayer (mark ?m ?n)) (true (cell ?m ?n b))) \n\
+(<= (next (cell ?m ?n ?w)) (true (cell ?m ?n ?w)) (distinct ?w b)) \n\
+(<= (next (cell ?m ?n b)) (does ?w (mark ?j ?k)) (true (cell ?m ?n b)) (distinct ?m ?j)) \n\
+(<= (next (cell ?m ?n b)) (does ?w (mark ?j ?k)) (true (cell ?m ?n b)) (distinct ?n ?k)) \n\
+(<= (next (control xplayer)) (true (control oplayer))) \n\
+(<= (next (control oplayer)) (true (control xplayer))) \n\
+(<= (row ?m ?x) (true (cell ?m 1 ?x)) (true (cell ?m 2 ?x)) (true (cell ?m 3 ?x))) \n\
+(<= (column ?n ?x) (true (cell 1 ?n ?x)) (true (cell 2 ?n ?x)) (true (cell 3 ?n ?x))) \n\
+(<= (diagonal ?x) (true (cell 1 1 ?x)) (true (cell 2 2 ?x)) (true (cell 3 3 ?x))) \n\
+(<= (diagonal ?x) (true (cell 1 3 ?x)) (true (cell 2 2 ?x)) (true (cell 3 1 ?x))) \n\
+(<= (line ?x) (row ?m ?x)) \n\
+(<= (line ?x) (column ?m ?x)) \n\
+(<= (line ?x) (diagonal ?x)) \n\
+(<= open (true (cell ?m ?n b))) \n\
+(<= (legal ?w (mark ?x ?y)) (true (cell ?x ?y b)) (true (control ?w))) \n\
+(<= (legal xplayer noop) (true (control oplayer))) \n\
+(<= (legal oplayer noop) (true (control xplayer))) \n\
+(<= (goal xplayer 100) (line x)) \n\
+(<= (goal xplayer 50) (not (line x)) (not (line o)) (not open)) \n\
+(<= (goal xplayer 0) (line o)) \n\
+(<= (goal oplayer 100) (line o)) \n\
+(<= (goal oplayer 50) (not (line x)) (not (line o)) (not open)) \n\
+(<= (goal oplayer 0) (line x)) \n\
+(<= terminal (line x)) \n\
+(<= terminal (line o)) \n\
+(<= terminal (not open)) \n\
+ \n\
+;;;; STRATS \n\
+ \n\
+(strat does 0) \n\
+(strat goal 1) \n\
+(strat init 0) \n\
+(strat legal 0) \n\
+(strat next 0) \n\
+(strat role 0) \n\
+(strat terminal 1) \n\
+(strat true 0) \n\
+(strat cell 0) \n\
+(strat column 0) \n\
+(strat control 0) \n\
+(strat diagonal 0) \n\
+(strat line 0) \n\
+(strat open 0) \n\
+(strat row 0) \n\
+ \n\
+;;;; PATHS \n\
+ \n\
+(arg does/2 0 oplayer/0) \n\
+(arg does/2 0 xplayer/0) \n\
+(arg does/2 1 mark/2 0 1/0) \n\
+(arg does/2 1 mark/2 0 2/0) \n\
+(arg does/2 1 mark/2 0 3/0) \n\
+(arg does/2 1 mark/2 1 1/0) \n\
+(arg does/2 1 mark/2 1 2/0) \n\
+(arg does/2 1 mark/2 1 3/0) \n\
+(arg does/2 1 noop/0) \n\
+(arg goal/2 0 oplayer/0) \n\
+(arg goal/2 0 xplayer/0) \n\
+(arg goal/2 1 0/0) \n\
+(arg goal/2 1 100/0) \n\
+(arg goal/2 1 50/0) \n\
+(arg init/1 0 cell/3 0 1/0) \n\
+(arg init/1 0 cell/3 0 2/0) \n\
+(arg init/1 0 cell/3 0 3/0) \n\
+(arg init/1 0 cell/3 1 1/0) \n\
+(arg init/1 0 cell/3 1 2/0) \n\
+(arg init/1 0 cell/3 1 3/0) \n\
+(arg init/1 0 cell/3 2 b/0) \n\
+(arg init/1 0 control/1 0 xplayer/0) \n\
+(arg legal/2 0 oplayer/0) \n\
+(arg legal/2 0 xplayer/0) \n\
+(arg legal/2 1 mark/2 0 1/0) \n\
+(arg legal/2 1 mark/2 0 2/0) \n\
+(arg legal/2 1 mark/2 0 3/0) \n\
+(arg legal/2 1 mark/2 1 1/0) \n\
+(arg legal/2 1 mark/2 1 2/0) \n\
+(arg legal/2 1 mark/2 1 3/0) \n\
+(arg legal/2 1 noop/0) \n\
+(arg next/1 0 cell/3 0 1/0) \n\
+(arg next/1 0 cell/3 0 2/0) \n\
+(arg next/1 0 cell/3 0 3/0) \n\
+(arg next/1 0 cell/3 1 1/0) \n\
+(arg next/1 0 cell/3 1 2/0) \n\
+(arg next/1 0 cell/3 1 3/0) \n\
+(arg next/1 0 cell/3 2 b/0) \n\
+(arg next/1 0 cell/3 2 o/0) \n\
+(arg next/1 0 cell/3 2 x/0) \n\
+(arg next/1 0 control/1 0 oplayer/0) \n\
+(arg next/1 0 control/1 0 xplayer/0) \n\
+(arg role/1 0 oplayer/0) \n\
+(arg role/1 0 xplayer/0) \n\
+(arg terminal/0) \n\
+(arg true/1 0 cell/3 0 1/0) \n\
+(arg true/1 0 cell/3 0 2/0) \n\
+(arg true/1 0 cell/3 0 3/0) \n\
+(arg true/1 0 cell/3 1 1/0) \n\
+(arg true/1 0 cell/3 1 2/0) \n\
+(arg true/1 0 cell/3 1 3/0) \n\
+(arg true/1 0 cell/3 2 b/0) \n\
+(arg true/1 0 cell/3 2 o/0) \n\
+(arg true/1 0 cell/3 2 x/0) \n\
+(arg true/1 0 control/1 0 oplayer/0) \n\
+(arg true/1 0 control/1 0 xplayer/0) \n\
+(arg column/2 0 1/0) \n\
+(arg column/2 0 2/0) \n\
+(arg column/2 0 3/0) \n\
+(arg column/2 1 b/0) \n\
+(arg column/2 1 o/0) \n\
+(arg column/2 1 x/0) \n\
+(arg diagonal/1 0 b/0) \n\
+(arg diagonal/1 0 o/0) \n\
+(arg diagonal/1 0 x/0) \n\
+(arg line/1 0 b/0) \n\
+(arg line/1 0 o/0) \n\
+(arg line/1 0 x/0) \n\
+(arg open/0) \n\
+(arg row/2 0 1/0) \n\
+(arg row/2 0 2/0) \n\
+(arg row/2 0 3/0) \n\
+(arg row/2 1 b/0) \n\
+(arg row/2 1 o/0) \n\
+(arg row/2 1 x/0) \n\
 ";
