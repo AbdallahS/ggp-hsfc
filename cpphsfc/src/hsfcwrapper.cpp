@@ -41,6 +41,11 @@ void HSFCManager::PopulatePlayerNamesFromLegalMoves()
 
         std::vector<hsfcLegalMove> legalmoves;
         this->GetLegalMoves(*tmpstate, legalmoves);
+        if (legalmoves.empty())
+        {
+            throw HSFCInternalError()
+                << ErrorMsgInfo("HSFC internal error: initial state contains no legal moves");
+        }
         BOOST_FOREACH(hsfcLegalMove& lm, legalmoves)
         {
             Term term;

@@ -201,9 +201,10 @@ BOOST_AUTO_TEST_CASE(tictactoe_test)
     BOOST_CHECK_EQUAL(sum_ave, 100.0);
 }
 
+const unsigned int NUM_BREAKTHROUGH_PLAYOUTS=1000;
+
 BOOST_AUTO_TEST_CASE(breakthrough_test)
 {
-
     Game game(std::string(g_breakthrough), true);
 
     std::cerr << "Breakthrough loaded. Now to run the playout test" << std::endl;
@@ -215,7 +216,7 @@ BOOST_AUTO_TEST_CASE(breakthrough_test)
 
     boost::unordered_map<Player, std::vector<unsigned int> > results;
     boost::unordered_map<Player, float> average;
-    for (int i = 0; i < 1000; ++i)
+    for (int i = 0; i < NUM_BREAKTHROUGH_PLAYOUTS; ++i)
     {
         std::vector<PlayerGoal> result;
         State state2(game);
@@ -248,7 +249,8 @@ BOOST_AUTO_TEST_CASE(breakthrough_test)
 
     // Sum of the averages should equal 100.
     float sum_ave = 0.0;
-    std::cout << "Breakthrough average scores from 1000 playouts: ";
+    std::cout << "Breakthrough average scores from "
+              << NUM_BREAKTHROUGH_PLAYOUTS << " playouts: ";
     for (boost::unordered_map<Player, float>::iterator i = average.begin();
          i != average.end(); ++i)
     {
