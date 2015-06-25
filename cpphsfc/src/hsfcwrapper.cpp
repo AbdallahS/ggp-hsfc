@@ -272,7 +272,8 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
             infile = gdlfile;
         }
 #else
-
+        // For HSFC2 at the moment we need to do some preprocessing to
+        // turn the gdl keywords into lower case.
         if (usegadelac)
         {
             std::cerr << "Gadelac is disabled for HSFC > 1" << std::endl;
@@ -313,7 +314,6 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
             throw HSFCInternalError() << ErrorMsgInfo(ss.str());
         }
 #endif
-
         // Now jump through hoops to workout the names of the players.
         PopulatePlayerNamesFromLegalMoves();
 
