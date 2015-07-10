@@ -216,7 +216,7 @@ bool hsfcDomainManager::BuildDomain(hsfcRelationSchema* RelationSchema, unsigned
 		this->Domain[Index].Size[j] = IndexBase;
 		SizeCheck = (float)this->Domain[Index].IDCount;
 		SizeCheck = SizeCheck * (float)IndexBase;
-		if (SizeCheck == MAX_RELATION_SIZE) {
+		if (SizeCheck == MAX_ID_COUNT) {
 			this->Lexicon->IO->WriteToLog(0, false, "Error: exceeded maximum relation size in hsfcDomainManager::BuildDomains\n");
 			return false; 
 		}
@@ -526,6 +526,7 @@ bool hsfcDomainManager::LoadTerms(hsfcSCLAtom* SCLAtom, hsfcTuple Term[]) {
 //-----------------------------------------------------------------------------
 // KIFLength
 //-----------------------------------------------------------------------------
+//unsigned int hsfcDomainManager::RelationAsKIF(hsfcTuple& Relation, char** KIF, bool AsGDL) {
 unsigned int hsfcDomainManager::RelationAsKIF(hsfcTuple& Relation, char** KIF) {
 
 	hsfcTuple Term[MAX_RELATION_ARITY + 1];
@@ -633,19 +634,19 @@ void hsfcDomainManager::Print() {
 		this->Lexicon->IO->FormatToLog(2, true, "\n%s\n", this->Lexicon->Text(this->Domain[i].NameID));
 		if (this->Domain[i].Rigid) {
 			for (unsigned int k = 0; k < this->Domain[i].RecordSize[0]; k++) {
-				this->Lexicon->IO->FormatToLog(2, true, "%4d:", k); 
+				this->Lexicon->IO->FormatToLog(2, true, "%4lu:", k); 
 				for (unsigned int j = 0; j < this->Domain[i].Arity; j++) {
-					this->Lexicon->IO->FormatToLog(2, false, "\t%4d.%d", this->Domain[i].Record[j][k].Relation.Index, this->Domain[i].Record[j][k].Relation.ID); 
+					this->Lexicon->IO->FormatToLog(2, false, "\t%4lu.%lu", this->Domain[i].Record[j][k].Relation.Index, this->Domain[i].Record[j][k].Relation.ID); 
 				}
 				this->Lexicon->IO->FormatToLog(2, false, "%s", "\n"); 
 			}
 		} else {
 			for (unsigned int j = 0; j < this->Domain[i].Arity; j++) {
-				this->Lexicon->IO->FormatToLog(2, true, "Argument %d\n", j);
+				this->Lexicon->IO->FormatToLog(2, true, "Argument %lu\n", j);
 				for (unsigned int k = 0; k < this->Domain[i].RecordSize[j]; k++) {
-					this->Lexicon->IO->FormatToLog(2, true, "%4d:", k); 
-					this->Lexicon->IO->FormatToLog(2, true, "%4d.%d", this->Domain[i].Record[j][k].Relation.Index, this->Domain[i].Record[j][k].Relation.ID); 
-					this->Lexicon->IO->FormatToLog(2, true, "\t%6d", this->Domain[i].Record[j][k].IndexBase); 
+					this->Lexicon->IO->FormatToLog(2, true, "%4lu:", k); 
+					this->Lexicon->IO->FormatToLog(2, true, "%4lu.%lu", this->Domain[i].Record[j][k].Relation.Index, this->Domain[i].Record[j][k].Relation.ID); 
+					this->Lexicon->IO->FormatToLog(2, true, "\t%6lu", this->Domain[i].Record[j][k].IndexBase); 
 					if (this->Domain[i].Record[j][k].Relation.Index == 0) {
 						this->Lexicon->IO->FormatToLog(2, true, "  %s\n", this->Lexicon->Text(this->Domain[i].Record[j][k].Relation.ID)); 
 					} else {

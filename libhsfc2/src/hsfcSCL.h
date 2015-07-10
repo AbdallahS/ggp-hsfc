@@ -113,6 +113,9 @@ private:
 	void DeleteStrata();
 	void DeleteTerm(vector<hsfcSCLAtom*>& Terms, int Index, bool DeleteChildren);
 	void NameIDisNotRigid(int NameID);
+	bool WrapLegals();
+	bool WrapGoals();
+	bool WrapFluents();
 	bool Normalise();
 	bool Stratify();
 	bool IdentifyRigids();

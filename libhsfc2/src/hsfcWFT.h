@@ -88,7 +88,7 @@ public:
 	void Initialise();
 	void Load(const char* Script, const char* CommentPrefix);
 	void ReadFile(const char* FileName, const char* CommentPrefix);
-	void RemoveComments(const char* Prefix);
+	//void RemoveComments(const char* Prefix);
 	char* AsText();
 	void Print();
 
@@ -98,6 +98,9 @@ protected:
 
 private:
 	hsfcLexicon* Lexicon;
+
+	char* CleanUpKeywords(const char* Script);
+	void Replace(char* Text, char* Pattern);
 
 };
 

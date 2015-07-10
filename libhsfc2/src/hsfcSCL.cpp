@@ -130,14 +130,14 @@ void hsfcSCLAtom::SetQualifiedName(unsigned int ParentNameID, unsigned int Argum
 	// Is it a state relation or an embedded relation
 	if (ParentNameID == 0) {
 		QualifiedName = new char[strlen(this->Lexicon->Text(this->PredicateIndex)) + 12];
-		sprintf(QualifiedName, "%s/%lu", this->Lexicon->Text(this->PredicateIndex), this->Term.size());
+		sprintf(QualifiedName, "%s/%d", this->Lexicon->Text(this->PredicateIndex), this->Term.size());
 		this->NameID = this->Lexicon->Index(QualifiedName);
 		delete[] QualifiedName;
 	} else {
 		QualifiedName = new char[strlen(this->Lexicon->Text(ParentNameID)) + strlen(this->Lexicon->Text(this->PredicateIndex)) + 12];
 		//sprintf(QualifiedName, "%s:%d:%s/%d", this->Lexicon->Text(ParentNameID), ArgumentIndex, this->Lexicon->Text(this->PredicateIndex), this->Term.size());
 		// This is easier in Schema to create joins in rule inputs
-		sprintf(QualifiedName, "%s/%lu", this->Lexicon->Text(this->PredicateIndex), this->Term.size());
+		sprintf(QualifiedName, "%s/%d", this->Lexicon->Text(this->PredicateIndex), this->Term.size());
 		this->NameID = this->Lexicon->Index(QualifiedName);
 		delete[] QualifiedName;
 	}
@@ -779,6 +779,333 @@ void hsfcSCL::NameIDisNotRigid(int NameID) {
 }
 
 //-----------------------------------------------------------------------------
+// WrapLegals
+//-----------------------------------------------------------------------------
+bool hsfcSCL::WrapLegals() {
+
+
+	bool Found;
+	hsfcSCLAtom* NewTerm;
+	hsfcSCLAtom* NewRule;
+	unsigned int OldIndex;
+	unsigned int NewIndex;
+
+	this->Lexicon->IO->WriteToLog(2, true, "  Wrapping Legal\n");
+
+	// Check each rule for legal as input
+	Found = false;
+	for (unsigned int i = 0; i < this->Rule.size(); i++) {
+		// Check each (legal ...) input for a ?variable as an argument
+		for (unsigned int j = 1; j < this->Rule[i]->Term.size(); j++) {
+			if (this->Lexicon->Match(this->Rule[i]->Term[j]->PredicateIndex, "legal")) {
+				Found = true;
+				break;
+			}
+		}
+
+		if (Found) break;
+
+	}
+
+	// Any legal input found?
+	if (!Found) {
+		this->Lexicon->IO->WriteToLog(2, true, "     not required\n");
+		return true;
+	}
+
+	// Remedy:
+	// Change every legal to an auxilliary and add a new rule
+	// (legal ?r ?m) ==> (hsfcLegal ?r ?m)
+	// (<= (legal ?r ?m) (hsfcLegal ?r ?m))
+
+	// Change the lexical reference
+	OldIndex = this->Lexicon->Index("legal");
+	NewIndex = this->Lexicon->Index("hsfcLegal");
+
+	// Check each rule for fluents
+	for (unsigned int i = 0; i < this->Rule.size(); i++) {
+
+		// Process each statement
+		for (unsigned int j = 0; j < this->Rule[i]->Term.size(); j++) {
+			if (this->Rule[i]->Term[j]->PredicateIndex == OldIndex) {
+				this->Rule[i]->Term[j]->PredicateIndex = NewIndex;
+			}
+		}
+
+	}
+
+	// Check each statement as well
+	for (unsigned int i = 0; i < this->Statement.size(); i++) {
+
+		if (this->Statement[i]->PredicateIndex == OldIndex) {
+			this->Statement[i]->PredicateIndex = NewIndex;
+		}
+
+	}
+
+	// Add in the new rule
+	NewRule = new hsfcSCLAtom(this->Lexicon);
+	NewRule->Initialise();
+	NewRule->PredicateIndex = this->Lexicon->Index("<=");
+	// Add the legal output
+	NewTerm = new hsfcSCLAtom(this->Lexicon);
+	NewTerm->Initialise();
+	NewTerm->PredicateIndex = this->Lexicon->Index("legal");
+	NewRule->Term.push_back(NewTerm);
+	this->Rule.push_back(NewRule);
+	// Add the variables
+	NewTerm = new hsfcSCLAtom(this->Lexicon);
+	NewTerm->Initialise();
+	NewTerm->PredicateIndex = this->Lexicon->Index("?r");
+	NewRule->Term[0]->Term.push_back(NewTerm);
+	NewTerm = new hsfcSCLAtom(this->Lexicon);
+	NewTerm->Initialise();
+	NewTerm->PredicateIndex = this->Lexicon->Index("?m");
+	NewRule->Term[0]->Term.push_back(NewTerm);
+	// Add the fshcLegal injput
+	NewTerm = new hsfcSCLAtom(this->Lexicon);
+	NewTerm->Initialise();
+	NewTerm->PredicateIndex = this->Lexicon->Index("hsfcLegal");
+	NewRule->Term.push_back(NewTerm);
+	// Add the variables
+	NewTerm = new hsfcSCLAtom(this->Lexicon);
+	NewTerm->Initialise();
+	NewTerm->PredicateIndex = this->Lexicon->Index("?r");
+	NewRule->Term[1]->Term.push_back(NewTerm);
+	NewTerm = new hsfcSCLAtom(this->Lexicon);
+	NewTerm->Initialise();
+	NewTerm->PredicateIndex = this->Lexicon->Index("?m");
+	NewRule->Term[1]->Term.push_back(NewTerm);
+
+	// Success
+	this->Lexicon->IO->WriteToLog(2, true, "     succeeded\n");
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// WrapGoals
+//-----------------------------------------------------------------------------
+bool hsfcSCL::WrapGoals() {
+
+
+	bool Found;
+	hsfcSCLAtom* NewTerm;
+	hsfcSCLAtom* NewRule;
+	unsigned int OldIndex;
+	unsigned int NewIndex;
+
+	this->Lexicon->IO->WriteToLog(2, true, "  Wrapping Goal\n");
+
+	// Check each rule for legal as input
+	Found = false;
+	for (unsigned int i = 0; i < this->Rule.size(); i++) {
+		// Check each (legal ...) input for a ?variable as an argument
+		for (unsigned int j = 1; j < this->Rule[i]->Term.size(); j++) {
+			if (this->Lexicon->Match(this->Rule[i]->Term[j]->PredicateIndex, "goal")) {
+				Found = true;
+				break;
+			}
+		}
+
+		if (Found) break;
+
+	}
+
+	// Any legal input found?
+	if (!Found) {
+		this->Lexicon->IO->WriteToLog(2, true, "     not required\n");
+		return true;
+	}
+
+	// Remedy:
+	// Change every legal to an auxilliary and add a new rule
+	// (legal ?r ?m) ==> (hsfcLegal ?r ?m)
+	// (<= (legal ?r ?m) (hsfcLegal ?r ?m))
+
+	// Change the lexical reference
+	OldIndex = this->Lexicon->Index("goal");
+	NewIndex = this->Lexicon->Index("hsfcGoal");
+
+	// Check each rule for fluents
+	for (unsigned int i = 0; i < this->Rule.size(); i++) {
+
+		// Process each statement
+		for (unsigned int j = 0; j < this->Rule[i]->Term.size(); j++) {
+			if (this->Rule[i]->Term[j]->PredicateIndex == OldIndex) {
+				this->Rule[i]->Term[j]->PredicateIndex = NewIndex;
+			}
+		}
+
+	}
+
+	// Check each statement as well
+	for (unsigned int i = 0; i < this->Statement.size(); i++) {
+
+		if (this->Statement[i]->PredicateIndex == OldIndex) {
+			this->Statement[i]->PredicateIndex = NewIndex;
+		}
+
+	}
+
+	// Add in the new rule
+	NewRule = new hsfcSCLAtom(this->Lexicon);
+	NewRule->Initialise();
+	NewRule->PredicateIndex = this->Lexicon->Index("<=");
+	// Add the legal output
+	NewTerm = new hsfcSCLAtom(this->Lexicon);
+	NewTerm->Initialise();
+	NewTerm->PredicateIndex = this->Lexicon->Index("goal");
+	NewRule->Term.push_back(NewTerm);
+	this->Rule.push_back(NewRule);
+	// Add the variables
+	NewTerm = new hsfcSCLAtom(this->Lexicon);
+	NewTerm->Initialise();
+	NewTerm->PredicateIndex = this->Lexicon->Index("?r");
+	NewRule->Term[0]->Term.push_back(NewTerm);
+	NewTerm = new hsfcSCLAtom(this->Lexicon);
+	NewTerm->Initialise();
+	NewTerm->PredicateIndex = this->Lexicon->Index("?g");
+	NewRule->Term[0]->Term.push_back(NewTerm);
+	// Add the fshcLegal injput
+	NewTerm = new hsfcSCLAtom(this->Lexicon);
+	NewTerm->Initialise();
+	NewTerm->PredicateIndex = this->Lexicon->Index("hsfcGoal");
+	NewRule->Term.push_back(NewTerm);
+	// Add the variables
+	NewTerm = new hsfcSCLAtom(this->Lexicon);
+	NewTerm->Initialise();
+	NewTerm->PredicateIndex = this->Lexicon->Index("?r");
+	NewRule->Term[1]->Term.push_back(NewTerm);
+	NewTerm = new hsfcSCLAtom(this->Lexicon);
+	NewTerm->Initialise();
+	NewTerm->PredicateIndex = this->Lexicon->Index("?g");
+	NewRule->Term[1]->Term.push_back(NewTerm);
+
+	// Success
+	this->Lexicon->IO->WriteToLog(2, true, "     succeeded\n");
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// WrapFluents
+//-----------------------------------------------------------------------------
+bool hsfcSCL::WrapFluents() {
+
+	bool Found;
+	hsfcSCLAtom* NewTerm;
+
+	this->Lexicon->IO->WriteToLog(2, true, "  Wrapping Fluents\n");
+
+	// Check each rule for fluent variables
+	Found = false;
+	for (unsigned int i = 0; i < this->Rule.size(); i++) {
+		// Check each (next ...) rule for a ?variable as an argument
+		if (this->Lexicon->Match(this->Rule[i]->Term[0]->PredicateIndex, "next")) {
+			if (this->Lexicon->PartialMatch(this->Rule[i]->Term[0]->Term[0]->PredicateIndex, "?")) {
+				Found = true;
+				break;
+			}
+		}
+		// Check each (init ...) rule for a ?variable as an argument
+		if (this->Lexicon->Match(this->Rule[i]->Term[0]->PredicateIndex, "init")) {
+			if (this->Lexicon->PartialMatch(this->Rule[i]->Term[0]->Term[0]->PredicateIndex, "?")) {
+				Found = true;
+				break;
+			}
+		}
+		// Check each (true ...) input for a ?variable as an argument
+		for (unsigned int j = 1; j < this->Rule[i]->Term.size(); j++) {
+			if (this->Lexicon->Match(this->Rule[i]->Term[j]->PredicateIndex, "true")) {
+				if (this->Lexicon->PartialMatch(this->Rule[i]->Term[j]->Term[0]->PredicateIndex, "?")) {
+					Found = true;
+					break;
+				}
+			}
+		}
+
+		if (Found) break;
+
+	}
+
+	// Any fluent variqables found?
+	if (!Found) {
+		this->Lexicon->IO->WriteToLog(2, true, "     not required\n");
+		return true;
+	}
+
+	// Remedy:
+	// Wrap every fluent in a metafluent
+	// (next (fluent)) ==> (next (hscf:fluent (fluent)))
+	// (next (?f)) ==> (next (hscf:fluent (?f)))
+	// (true (fluent)) ==> (true (hscf:fluent (fluent)))
+	// (init (fluent)) ==> (init (hscf:fluent (fluent)))
+
+	// Check each rule for fluents
+	for (unsigned int i = 0; i < this->Rule.size(); i++) {
+
+		// Process each (next ...) rule 
+		if (this->Lexicon->Match(this->Rule[i]->Term[0]->PredicateIndex, "next")) {
+			// Create the new term
+			NewTerm = new hsfcSCLAtom(this->Lexicon);
+			NewTerm->Initialise();
+			NewTerm->PredicateIndex = this->Lexicon->Index("hsfcFluent");
+			// Link in the new term
+			NewTerm->Term.push_back(this->Rule[i]->Term[0]->Term[0]);
+			this->Rule[i]->Term[0]->Term[0] = NewTerm;
+		}
+
+		// Process each (init ...) rule 
+		if (this->Lexicon->Match(this->Rule[i]->Term[0]->PredicateIndex, "init")) {
+			// Create the new term
+			NewTerm = new hsfcSCLAtom(this->Lexicon);
+			NewTerm->Initialise();
+			NewTerm->PredicateIndex = this->Lexicon->Index("hsfcFluent");
+			// Link in the new term
+			NewTerm->Term.push_back(this->Rule[i]->Term[0]->Term[0]);
+			this->Rule[i]->Term[0]->Term[0] = NewTerm;
+		}
+
+		// Process each (true ...) input
+		for (unsigned int j = 1; j < this->Rule[i]->Term.size(); j++) {
+			if (this->Lexicon->Match(this->Rule[i]->Term[j]->PredicateIndex, "true")) {
+				// Create the new term
+				NewTerm = new hsfcSCLAtom(this->Lexicon);
+				NewTerm->Initialise();
+				NewTerm->PredicateIndex = this->Lexicon->Index("hsfcFluent");
+				// Link in the new term
+				NewTerm->Term.push_back(this->Rule[i]->Term[j]->Term[0]);
+				this->Rule[i]->Term[j]->Term[0] = NewTerm;
+			}
+		}
+
+	}
+
+	// Check each statement for fluents
+	for (unsigned int i = 0; i < this->Statement.size(); i++) {
+
+		// Process each (init ...) statement 
+		if (this->Lexicon->Match(this->Statement[i]->PredicateIndex, "init")) {
+			// Create the new term
+			NewTerm = new hsfcSCLAtom(this->Lexicon);
+			NewTerm->Initialise();
+			NewTerm->PredicateIndex = this->Lexicon->Index("hsfcFluent");
+			// Link in the new term
+			NewTerm->Term.push_back(this->Statement[i]->Term[0]);
+			this->Statement[i]->Term[0] = NewTerm;
+		}
+
+	}
+
+	// Success
+	this->Lexicon->IO->WriteToLog(2, true, "     succeeded\n");
+	return true;
+
+
+}
+
+//-----------------------------------------------------------------------------
 // Normalise
 //-----------------------------------------------------------------------------
 bool hsfcSCL::Normalise() {
@@ -788,14 +1115,14 @@ bool hsfcSCL::Normalise() {
 	char* Predicate;
 
 	// Rules are guaranteed to have more than one statement from hsfcGDL::Read
+	
 	// Remove any logical functions
-
-	this->Lexicon->IO->WriteToLog(2, true, "  Flattening\n");
+	this->Lexicon->IO->WriteToLog(2, true, "  Flattening Functions\n");
 
 	// Check each statement in each rule; not the output 
 	for (unsigned int i = 0; i < this->Rule.size(); i++) {
 
-		this->Lexicon->IO->FormatToLog(3, true, "    Rule %d\n", i);
+		this->Lexicon->IO->FormatToLog(3, true, "    Rule %lu\n", i);
 
 		for (unsigned int j = 1; j < this->Rule[i]->Term.size(); j++) {
 
@@ -881,6 +1208,31 @@ bool hsfcSCL::Normalise() {
 
 		}
 
+		// Next Rule
+		continue;
+
+		// Repeat this rule
+		RepeatRule:
+		i--;
+
+	}
+
+	// Check to see if there are any fluent variables
+	if (!this->WrapFluents()) return false;
+
+	// Check to see if there are any legal as inputs to rules
+	if (!this->WrapLegals()) return false;
+
+	// Check to see if there are any goal as inputs to rules
+	if (!this->WrapGoals()) return false;
+
+	this->Lexicon->IO->WriteToLog(2, true, "  Flattening Fluents\n");
+
+	// Check each statement in each rule 
+	for (unsigned int i = 0; i < this->Rule.size(); i++) {
+
+		this->Lexicon->IO->FormatToLog(3, true, "    Rule %lu\n", i);
+
 		// Remove any (next (...)) statements
 		if (this->Lexicon->Match(this->Rule[i]->Term[0]->PredicateIndex, "next")) {
 			// Check for the correct number of arguments
@@ -942,13 +1294,6 @@ bool hsfcSCL::Normalise() {
 			}
 		}
 
-		// Next Rule
-		continue;
-
-		// Repeat this rule
-		RepeatRule:
-		i--;
-
 	}
 
 	this->Lexicon->IO->WriteToLog(2, true, "  Finding (init ...)\n");
@@ -988,6 +1333,31 @@ bool hsfcSCL::Normalise() {
 		this->Rule[i]->NameID = this->Rule[i]->PredicateIndex;
 		for (unsigned int j = 0; j < this->Rule[i]->Term.size(); j++) {
 			this->Rule[i]->Term[j]->SetQualifiedName(0, 0);
+		}
+	}
+
+
+	this->Lexicon->IO->WriteToLog(2, true, "  Integrity Check\n");
+
+	// Check each rule for illegal inputs
+	for (unsigned int i = 0; i < this->Rule.size(); i++) {
+		for (unsigned int j = 1; j < this->Rule[i]->Term.size(); j++) {
+			if (this->Lexicon->Match(this->Rule[i]->Term[j]->NameID, "legal/2")) {
+				this->Lexicon->IO->WriteToLog(0, true, "Error: Illegal GDL 'legal/2' as rule input in hsfcSCL::Normalise\n");
+				return false;
+			}
+			if (this->Lexicon->Match(this->Rule[i]->Term[j]->NameID, "goal/2")) {
+				this->Lexicon->IO->WriteToLog(0, true, "Error: Illegal GDL 'goal/2' as rule input in hsfcSCL::Normalise\n");
+				return false;
+			}
+			if (this->Lexicon->Match(this->Rule[i]->Term[j]->NameID, "sees/2")) {
+				this->Lexicon->IO->WriteToLog(0, true, "Error: Illegal GDL 'sees/2' as rule input in hsfcSCL::Normalise\n");
+				return false;
+			}
+			if (this->Lexicon->PartialMatch(this->Rule[i]->Term[j]->NameID, "next:")) {
+				this->Lexicon->IO->WriteToLog(0, true, "Error: Illegal GDL 'next/1' as rule input in hsfcSCL::Normalise\n");
+				return false;
+			}
 		}
 	}
 
@@ -1108,7 +1478,7 @@ RepeatStratum:
 
 	// Sort strata
 	StratumSortIndex = this->Stratum.size();
-	if (StratumSortIndex < 4) {
+	if (StratumSortIndex < 3) {
 		this->Lexicon->IO->WriteToLog(0, false, "Error: not enough rules in hsfcSCL::Stratify\n");
 		return false;
 	}

@@ -34,6 +34,7 @@ public:
 	bool TermsToID(int RelationIndex, hsfcTuple Term[], unsigned int& ID);
 	bool IDToTerms(int RelationIndex, hsfcTuple Term[], unsigned int ID);
 	bool LoadTerms(hsfcSCLAtom* SCLAtom, hsfcTuple Term[]);
+	//unsigned int RelationAsKIF(hsfcTuple& Relation, char** KIF, bool AsGDL);
 	unsigned int RelationAsKIF(hsfcTuple& Relation, char** KIF);
 	void Print();
 

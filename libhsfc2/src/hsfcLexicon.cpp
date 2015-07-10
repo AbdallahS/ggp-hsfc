@@ -153,12 +153,15 @@ unsigned int hsfcLexicon::Index(const char* Value) {
 	while (LowerBound <= UpperBound) {
 		Target = (LowerBound + UpperBound) / 2;
 		Compare = strcmp(Value, this->Term[this->TermIndex[Target]].c_str());
-		if (Compare == 0) return this->TermIndex[Target];
+		if (Compare == 0) {
+			return this->TermIndex[Target];
+		}
 		if (Compare < 0) UpperBound = Target - 1;
 		if (Compare > 0) LowerBound = Target + 1;
 	}
 
 	// Not found
+	//delete[] lcText;
 	return this->AddTerm(Value);
 
 }
@@ -420,10 +423,9 @@ char* hsfcLexicon::Copy(unsigned int ID, bool WithArity) {
 	// Is the index ok
 	if (ID >= this->Term.size()) ID = 0;
 
-	// Create the new string
 	Result = new char[strlen(this->Term[ID].c_str()) + 1];
 
-	// Copy
+
 	strcpy(Result, this->Term[ID].c_str());
 
 	// Remove the '/n' arity
@@ -659,4 +661,26 @@ unsigned int hsfcLexicon::AddName(const char* Value) {
 	return Index;
 
 }
+
+////-----------------------------------------------------------------------------
+//// LowerCaseCopy
+////-----------------------------------------------------------------------------
+//char* hsfcLexicon::LowerCaseCopy(const char* Value) {
+//
+//	char* Result;
+//
+//	// Create a lower case value
+//	Result = new char[strlen(Value)+1];
+//	for (unsigned int i = 0; i < strlen(Value); i++) {
+//		if ((Value[i] >= 'A') && (Value[i] <= 'Z')) {
+//			Result[i] = Value[i] + ('a' - 'A');
+//		} else {
+//			Result[i] = Value[i];
+//		}
+//	}
+//	Result[strlen(Value)] = 0;
+//
+//	return Result;
+//
+//}
 

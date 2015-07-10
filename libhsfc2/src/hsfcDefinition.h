@@ -20,12 +20,12 @@
 
 #define MAX_RELATION_SCHEMAS 16384
 #define MAX_RELATION_ARITY 128
-#define MAX_RELATION_SIZE INT_MAX
+#define MAX_ID_COUNT INT_MAX
 #define MAX_DOMAIN_SIZE INT_MAX / 2
 #define MAX_DOMAIN_ENTRIES 16384
 #define MAX_NO_OF_INPUTS 32
 
-#define MAX_GAME_ROUNDS 1000
+#define XMAX_GAME_ROUNDS 1000
 
 using namespace std;
 
@@ -77,6 +77,7 @@ typedef struct hsfcParameters {
 	unsigned int MaxRelationSize;
 	unsigned int MaxLookupSize;
 	unsigned int MaxStateSize;
+	unsigned int MaxPlayoutRound;
 	bool LowSpeedOnly;
 	bool SCLOnly;
 	bool SchemaOnly;
@@ -94,6 +95,10 @@ typedef struct hsfcParameters {
 	double TreeNodes1;
 	double TreeNodes2;
 	double TreeNodes3;
+	double TreeAveRounds;
+	double TreeStDevRounds;
+	double TreeAveScore0;
+	double TreeStDevScore0;
 } hsfcParameters;
 
 //=============================================================================

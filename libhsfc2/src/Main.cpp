@@ -39,11 +39,13 @@ void ValidateGame(char* GDLFileName) {
 
 	// Initialise the Engine with the game rules and game Parameters
 	Parameters.LogDetail = 2;
+	//Parameters.LogFileName = "J:\\HSFC\\Testing\\HSFC_Test.log";
 	Parameters.LogFileName = NULL;
 	Parameters.LowSpeedOnly = false;
-	Parameters.MaxLookupSize = 30000000;
-	Parameters.MaxRelationSize = 1000000;
-	Parameters.MaxStateSize = 30000000;
+	Parameters.MaxLookupSize = 100000000;
+	Parameters.MaxRelationSize = 5000000;
+	Parameters.MaxStateSize = 20000000;
+	Parameters.MaxPlayoutRound = 1000;
 	Parameters.SCLOnly = false;
 	Parameters.SchemaOnly = false;
 
@@ -57,20 +59,24 @@ void ValidateGame(char* GDLFileName) {
 		fprintf(SummaryFile, "%s", GDLFileName);
 		if (Parameters.SCLOnly) fprintf(SummaryFile, "\tfalse"); else fprintf(SummaryFile, "\ttrue");
 		if (Parameters.SchemaOnly) fprintf(SummaryFile, "\tfalse"); else fprintf(SummaryFile, "\ttrue");
-		fprintf(SummaryFile, "\t%f", Parameters.TimeBuildSchema);
-		fprintf(SummaryFile, "\t%f", Parameters.TimeOptimise);
-		fprintf(SummaryFile, "\t%f", Parameters.TimeBuildLookup);
+		fprintf(SummaryFile, "\t%.3f", Parameters.TimeBuildSchema);
+		fprintf(SummaryFile, "\t%.3f", Parameters.TimeOptimise);
+		fprintf(SummaryFile, "\t%.3f", Parameters.TimeBuildLookup);
 		fprintf(SummaryFile, "\t%lu", Parameters.StateSize);
 		fprintf(SummaryFile, "\t%lu", Parameters.TotalLookupSize);
-		fprintf(SummaryFile, "\t%f", Parameters.Playouts);
-		fprintf(SummaryFile, "\t%f", Parameters.GamesPerSec);
-		fprintf(SummaryFile, "\t%f", Parameters.AveRounds);
-		fprintf(SummaryFile, "\t%f", Parameters.StDevRounds);
-		fprintf(SummaryFile, "\t%f", Parameters.AveScore0);
-		fprintf(SummaryFile, "\t%f", Parameters.StDevScore0);
-		fprintf(SummaryFile, "\t%f", Parameters.TreeNodes1);
-		fprintf(SummaryFile, "\t%f", Parameters.TreeNodes2);
-		fprintf(SummaryFile, "\t%f\n", Parameters.TreeNodes3);
+		fprintf(SummaryFile, "\t%.0f", Parameters.Playouts);
+		fprintf(SummaryFile, "\t%.3f", Parameters.GamesPerSec);
+		fprintf(SummaryFile, "\t%.2f", Parameters.AveRounds);
+		fprintf(SummaryFile, "\t%.2f", Parameters.StDevRounds);
+		fprintf(SummaryFile, "\t%.2f", Parameters.AveScore0);
+		fprintf(SummaryFile, "\t%.2f", Parameters.StDevScore0);
+		fprintf(SummaryFile, "\t%.0f", Parameters.TreeNodes1);
+		fprintf(SummaryFile, "\t%.0f", Parameters.TreeNodes2);
+		fprintf(SummaryFile, "\t%.0f", Parameters.TreeNodes3);
+		fprintf(SummaryFile, "\t%.2f", Parameters.TreeAveRounds);
+		fprintf(SummaryFile, "\t%.2f", Parameters.TreeStDevRounds);
+		fprintf(SummaryFile, "\t%.2f", Parameters.TreeAveScore0);
+		fprintf(SummaryFile, "\t%.2f\n", Parameters.TreeStDevScore0);
 		fflush(SummaryFile);
 		fclose(SummaryFile);
 	}
@@ -86,7 +92,7 @@ void ValidateGame(char* GDLFileName) {
 //-----------------------------------------------------------------------------
 void TestFilesDebug(char* FileName) {
 
-  ValidateGame(FileName);
+	 ValidateGame(FileName);
 
 }
   
@@ -187,7 +193,6 @@ void TestFilesStanford() {
 //-----------------------------------------------------------------------------
 void TestFiles() {
 
-	goto Start;
 	ValidateGame("J:\\GGP\\GameController\\GDL Games\\2player_normal_form_2010.gdl");
 	ValidateGame("J:\\GGP\\GameController\\GDL Games\\3conn3.gdl");
 	ValidateGame("J:\\GGP\\GameController\\GDL Games\\3pffa.gdl");
@@ -332,7 +337,6 @@ void TestFiles() {
 	ValidateGame("J:\\GGP\\GameController\\GDL Games\\logistics.gdl");
 	ValidateGame("J:\\GGP\\GameController\\GDL Games\\max_knights.gdl");
 	ValidateGame("J:\\GGP\\GameController\\GDL Games\\maze.gdl");
-Start:
 	//ValidateGame("J:\\GGP\\GameController\\GDL Games\\merrills.gdl");
 	ValidateGame("J:\\GGP\\GameController\\GDL Games\\mimikry.gdl");
 	ValidateGame("J:\\GGP\\GameController\\GDL Games\\minichess.gdl");
@@ -467,14 +471,15 @@ int main(int argc, char* argv[]) {
 
 	for (int i = 0; i < 1; i++) {
 		//TestFilesDebug("J:\\GGP\\GameController\\GDL Games\\Debug.gdl");
-		//TestFilesDebug("J:\\GGP\\GameController\\Stanford\\pilgrimage.gdl");
-		//TestFilesDebug("J:\\GGP\\GameController\\GDL Games\\breakthrough.gdl");
-		//TestFilesDebug("J:\\GGP\\GameController\\GDL Games\\alquerque.gdl");
-		//TestFilesDebug("J:\\GGP\\GameController\\GDL Games\\tictactoe.gdl");
-		//TestFilesStanford();
+		//TestFilesDebug("J:\\GGP\\GameController\\Stanford\\chinesecheckers.gdl");
+		//TestFilesDebug("J:\\GGP\\GameController\\GDL Games\\amazons_8x8.gdl");
+		//TestFilesDebug("J:\\GGP\\GameController\\GDL Games\\babel.gdl");
+		//TestFilesDebug("J:\\GGP\\GameController\\GDL Games\\tictactoetest.gdl");
+		TestFilesStanford();
 		//TestFilesSmall();
-		TestFiles();
+		//TestFiles();
 	}
+
 
 	return 0;
 

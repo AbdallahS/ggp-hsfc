@@ -324,6 +324,7 @@ void hsfcWFT::Load(const char* Script, const char* CommentPrefix) {
 	const char* Start;
 	int Length;
 	hsfcWFTElement* Parent;
+	char* CleanScript;
 
 	// Rules for parsing
 	// {/ # ; : '} . . . . . {\r \n} = comment
@@ -332,9 +333,12 @@ void hsfcWFT::Load(const char* Script, const char* CommentPrefix) {
 	// ( indent
 	// ) outdent
 
+	// Clean up the script making all keywords lower case
+	CleanScript = this->CleanUpKeywords(Script);
+
 	// Process the script
 	Parent = this->Structure->RootElement;
-	Start = Script;
+	Start = CleanScript;
 	while (Start[0] != 0) {
 
 		// Ignore leading white space or control characters, but not end of text marker
@@ -356,7 +360,9 @@ void hsfcWFT::Load(const char* Script, const char* CommentPrefix) {
 				Index++;
 			}
 			Length = Index;
-			goto ProcessSubString;
+			// Reposition the start
+			Start = Start + Length;
+			continue;
 		}
 
 		// Does the first character signal a literal
@@ -399,6 +405,8 @@ ProcessSubString:
 		Start = Start + Length;
 
 	}
+
+	delete[] CleanScript;
 
 	// Print the WFT
 	if (this->Lexicon->IO->Parameters->LogDetail > 3) {
@@ -445,12 +453,14 @@ void hsfcWFT::ReadFile(const char* FileName, const char* CommentPrefix) {
 
     // Load the file into memory
     Script = new char[FileSize + 1];
+
 	// Get the description from the file
 	Length = 0;
 	while ((!feof(InputFile)) && (Length < FileSize)) {
 
 		// Read a letter from the file
 		fscanf(InputFile, "%c", &Letter);
+
 		Script[Length] = Letter;
 		Length++;
 
@@ -466,21 +476,21 @@ void hsfcWFT::ReadFile(const char* FileName, const char* CommentPrefix) {
 
 }
 
-//-----------------------------------------------------------------------------
-// RemoveComments
-//-----------------------------------------------------------------------------
-void hsfcWFT::RemoveComments(const char* Prefix) {
-
-	// Check each element
-	this->Structure->RemoveComments(Prefix);
-
-	// Print the WFT
-	if (this->Lexicon->IO->Parameters->LogDetail > 3) {
-		this->Lexicon->IO->LogIndent = 0;
-		this->Print();
-	}
-
-}
+////-----------------------------------------------------------------------------
+//// RemoveComments
+////-----------------------------------------------------------------------------
+//void hsfcWFT::RemoveComments(const char* Prefix) {
+//
+//	// Check each element
+//	this->Structure->RemoveComments(Prefix);
+//
+//	// Print the WFT
+//	if (this->Lexicon->IO->Parameters->LogDetail > 3) {
+//		this->Lexicon->IO->LogIndent = 0;
+//		this->Print();
+//	}
+//
+//}
 
 //-----------------------------------------------------------------------------
 // AsText
@@ -501,4 +511,145 @@ void hsfcWFT::Print() {
 	this->Structure->Print();
 
 }
+
+//-----------------------------------------------------------------------------
+// CleanUpKeywords
+//-----------------------------------------------------------------------------
+char* hsfcWFT::CleanUpKeywords(const char* Script) {
+
+	char* Result;
+	char* Substring;
+
+	// Create the new script
+	Result = new char[strlen(Script) + 1];
+	strcpy(Result, Script);
+
+	// Replace all of the keywords with lower case versions
+	this->Replace(Result, "(true ");
+	this->Replace(Result, "(true(");
+	this->Replace(Result, "(not ");
+	this->Replace(Result, "(not(");
+	this->Replace(Result, "(and ");
+	this->Replace(Result, "(and(");
+	this->Replace(Result, "(or ");
+	this->Replace(Result, "(or(");
+	this->Replace(Result, "(distinct ");
+	this->Replace(Result, "(distinct(");
+	this->Replace(Result, "(role ");
+	this->Replace(Result, "(role(");
+	this->Replace(Result, "(init ");
+	this->Replace(Result, "(init(");
+	this->Replace(Result, " terminal ");
+	this->Replace(Result, " terminal\r");
+	this->Replace(Result, " terminal\n");
+	this->Replace(Result, "(terminal)");
+	this->Replace(Result, "(goal ");
+	this->Replace(Result, "(goal(");
+	this->Replace(Result, "(legal ");
+	this->Replace(Result, "(legal(");
+	this->Replace(Result, "(sees ");
+	this->Replace(Result, "(sees(");
+	this->Replace(Result, "(does ");
+	this->Replace(Result, "(does(");
+	this->Replace(Result, "(next ");
+	this->Replace(Result, "(next(");
+
+	return Result;
+
+}
+
+//-----------------------------------------------------------------------------
+// ToLowerCase
+//-----------------------------------------------------------------------------
+void hsfcWFT::Replace(char* Text, char* Pattern) {
+
+	unsigned int Length;
+	unsigned int TextLength;
+	unsigned int PatternLength;
+	bool Match;
+
+	// Get the lengths of the strings
+	TextLength = strlen(Text);
+	PatternLength = strlen(Pattern);
+
+	// Integrity check
+	if (TextLength == 0) return;
+	if (PatternLength == 0) return;
+	if (PatternLength >= TextLength) return;
+
+	// Look for the pattern
+	Length = TextLength - PatternLength + 1; 
+	for (unsigned int i = 0; i < Length; i++) {
+
+		// Check for a pattern match
+		Match = true;
+		for (unsigned int j = 0; j < PatternLength; j++) {
+
+			// Pattern is not a letter
+			if ((Pattern[j] < 'A') || ((Pattern[j] > 'Z') && (Pattern[j] < 'a')) || (Pattern[j] > 'z')) {
+				if (Text[i+j] != Pattern[j]) {
+					Match = false;
+					break;
+				}
+				continue;
+			}
+
+			// Pattern is UpperCase
+			if ((Pattern[j] >= 'A') && (Pattern[j] <= 'Z')) {
+				// Text is UpperCase
+				if ((Text[i+j] >= 'A') && (Text[i+j] <= 'Z')) {
+					if (Text[i+j] != Pattern[j]) {
+						Match = false;
+						break;
+					}
+					continue;
+				} 
+				// Text is LowerCase
+				if ((Text[i+j] >= 'a') && (Text[i+j] <= 'z')) {
+					if (Text[i+j] != Pattern[j] - 'A' + 'a') {
+						Match = false;
+						break;
+					}
+					continue;
+				} 
+				Match = false;
+				break;
+			}
+
+			// Pattern is LowerCase
+			if ((Pattern[j] >= 'a') && (Pattern[j] <= 'z')) {
+				// Text is UpperCase
+				if ((Text[i+j] >= 'A') && (Text[i+j] <= 'Z')) {
+					if (Text[i+j] != Pattern[j] - 'a' + 'A') {
+						Match = false;
+						break;
+					}
+					continue;
+				} 
+				// Text is LowerCase
+				if ((Text[i+j] >= 'a') && (Text[i+j] <= 'z')) {
+					if (Text[i+j] != Pattern[j]) {
+						Match = false;
+						break;
+					}
+					continue;
+				} 
+				Match = false;
+				break;
+			}
+
+		}
+
+		// Was it a match
+		if (Match) {
+			for (unsigned int j = 0; j < PatternLength; j++) {
+				Text[i+j] = Pattern[j];
+			}
+			i = i + PatternLength - 1;
+		}
+
+	}
+
+}
+
 

@@ -413,23 +413,26 @@ void hsfcEngine::PlayOut(hsfcState* GameState, vector<int>& GoalValue) {
 
 	try {
 
-        // Do an integrity check on the state
-        if (GameState->CurrentStep > 2) {
-            this->Lexicon->IO->WriteToLog(0, false, "Error: State at wrong step in hsfcEngine::PlayOut\n");
-            return;
-        }
+		// Clear the goal values
+		GoalValue.clear();
+		for (unsigned int i = 0; i < GameState->NumRelations[this->StateManager->RoleRelationIndex]; i++) {
+			GoalValue.push_back(0);
+		}
+
+		// Do an integrity check on the state
+		if (GameState->CurrentStep > 2) {
+			this->Lexicon->IO->WriteToLog(0, false, "Error: State at wrong step in hsfcEngine::PlayOut\n");
+			return;
+		}
 
 		// Advance the state to create the terminal relation tuple
 		if (GameState->CurrentStep < 1) this->RulesEngine->AdvanceState(GameState, 1, false);
 
 		// Play until the game is terminal
-		while (!this->RulesEngine->IsTerminal(GameState)) {
+		while ((!this->RulesEngine->IsTerminal(GameState)) && (GameState->Round <= this->Parameters->MaxPlayoutRound)) {
 
-            // BUG FIX: The first iteration may already have calcuated
-			// legal moves - so we don't want to advance again.
-            // Advance to calculate all the legal moves
-            if (GameState->CurrentStep < 2)
-                this->RulesEngine->AdvanceState(GameState, 2, false);
+			// Advance to calculate all the legal moves
+			if (GameState->CurrentStep < 2) this->RulesEngine->AdvanceState(GameState, 2, false);
 
 			// Get the legal move tuples
 			this->RulesEngine->ChooseRandomMoves(GameState);
@@ -443,10 +446,8 @@ void hsfcEngine::PlayOut(hsfcState* GameState, vector<int>& GoalValue) {
 
 		}
 
-		// Clear the goal values
-		GoalValue.clear();
-
 		// Go through all of the roles
+		GoalValue.clear();
 		for (unsigned int i = 0; i < GameState->NumRelations[this->StateManager->RoleRelationIndex]; i++) {
 			Value = this->RulesEngine->GoalValue(GameState, i);
 			GoalValue.push_back(Value);
@@ -470,6 +471,7 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 	hsfcState* Node1;
 	hsfcState* Node2;
 	hsfcState* Node3;
+	hsfcState* Playout;
 	vector< vector<hsfcLegalMove> > LegalMove;
 	vector<hsfcLegalMove> DoesMove;
 	vector< vector<hsfcLegalMove> > Node1RoleMove;
@@ -510,10 +512,13 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 	Parameters.TreeNodes1 = 0;
 	Parameters.TreeNodes2 = 0;
 	Parameters.TreeNodes3 = 0;
+	Parameters.TreeAveRounds = 0;
+	Parameters.TreeStDevRounds = 0;
+	Parameters.TreeAveScore0 = 0;
+	Parameters.TreeStDevScore0 = 0;
 
 	// Initialise the this with the game rules and game Parameters
-//	if (!this->InitialiseFromFile(GDLFileName, &Parameters)) {
-	if (!this->Initialise(GDLFileName, &Parameters)) {
+	if (!this->InitialiseFromFile(GDLFileName, &Parameters)) {
 		this->Lexicon->IO->WriteToLog(0, false, "Fatal Error: failed to create Engine\n");
 		return;
 	}
@@ -539,6 +544,7 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 
 	// Get the legal moves from the initial game state and print them out
 	this->GetLegalMoves(GameState, LegalMove);
+	if (this->Lexicon->IO->Parameters->LogDetail > 2) this->StateManager->PrintRelations(GameState, true);
 	if (Parameters.LogDetail > 1) {
 		this->Lexicon->IO->WriteToLog(1, true, "Legal Moves\n");
 		for (unsigned int i = 0; i < LegalMove.size(); i++) {
@@ -553,7 +559,6 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 	// Choose some moves
 	this->RulesEngine->ChooseRandomMoves(GameState);
 	this->RulesEngine->AdvanceState(GameState, 4, true);
-	if (this->Lexicon->IO->Parameters->LogDetail > 2) this->StateManager->PrintRelations(GameState, false);
 
 	// Perform tests to gain the following statistics
 	// Average & StdDeviation for Random Playout Depth
@@ -573,18 +578,25 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 	this->PlayOut(GameState, GoalValue);
 	Finish = clock();
 
+	// Include these games in the stats
+	Count++;
+	SumGoalValue += (double)GoalValue[0];
+	SumGoalValue2 += (double)GoalValue[0] * (double)GoalValue[0];
+	SumRounds += (double)GameState->Round;
+	SumRounds2 += (double)GameState->Round * (double)GameState->Round;
+
 	// Set the number of games for the test
 	NumGames = 1000;
-/*	if ((Finish - Start) > 10) NumGames = 300;
+	if ((Finish - Start) > 10) NumGames = 300;
 	if ((Finish - Start) > 40) NumGames = 100;
 	if ((Finish - Start) > 160) NumGames = 30;
 	if ((Finish - Start) > 640) NumGames = 10;
 	if ((Finish - Start) > 2560) NumGames = 3;
 	if ((Finish - Start) > 10240) NumGames = 1;
-*/
+
 	// Play the game
 	Start = clock();
-	for (int i = 0; i < NumGames; i ++) {
+	for (int i = 1; i < NumGames; i ++) {
 
 		// Reset the game state
 		this->SetInitialGameState(GameState);
@@ -604,7 +616,7 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 	GamesPerSecond = (double)TICKS_PER_SECOND * (double)Count / ((double)Finish - (double)Start + 0.5);
 
 	// Calculate statistics
-	this->Lexicon->IO->WriteToLog(1, true, "Game Statistics\n");
+	this->Lexicon->IO->WriteToLog(1, true, "\nGame Statistics\n");
 	this->Lexicon->IO->LogIndent = 4;
 	this->Lexicon->IO->FormatToLog(1, true, "From %d Playouts\n", Count);
 	this->Lexicon->IO->FormatToLog(1, true, "  Games Per Second %.3f\n", GamesPerSecond);
@@ -633,18 +645,25 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 	Node1Count = 0;
 	Node2Count = 0;
 	Node3Count = 0;
+	Count = 0;
+	SumGoalValue = 0;
+	SumGoalValue2 = 0;
+	SumRounds = 0;
+	SumRounds2 = 0;
 
 	// Initialise the state in the game
 	this->SetInitialGameState(GameState);
 	this->CreateGameState(&Node1);
 	this->CreateGameState(&Node2);
+	this->CreateGameState(&Playout);
+	this->SetInitialGameState(Playout);
 
 	// Get the legal moves from the game state for depth = 1
 	this->TreeGetMoves(this, GameState, Node1RoleMove, Node1RoleMoveIndex, Node1MoveCount);
 	Node1Count += Node1MoveCount;
 
 	// Count the depth = 2 nodes if reasonable to do so
-	if ((Node1MoveCount < 100) && (Node1MoveCount > 0)) {
+	if ((NumGames > 10) && (Node1MoveCount < 100) && (Node1MoveCount > 0)) {
 
 		// Record the state so we can enumerate the moves
 		this->CopyGameState(Node1, GameState);
@@ -656,13 +675,23 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 			this->TreeSelectMoves(this, DoesMove, Node1RoleMove, Node1RoleMoveIndex);
 			this->DoMove(GameState, DoesMove);
 
+			// Copy the state and do a playout
+			this->CopyGameState(Playout, GameState);
+			this->PlayOut(Playout, GoalValue);
+			// Record the stats
+			Count++;
+			SumGoalValue += (double)GoalValue[0];
+			SumGoalValue2 += (double)GoalValue[0] * (double)GoalValue[0];
+			SumRounds += (double)Playout->Round;
+			SumRounds2 += (double)Playout->Round * (double)Playout->Round;
+
 			// Get the legal moves from the game state 
 			this->TreeGetMoves(this, GameState, Node2RoleMove, Node2RoleMoveIndex, Node2MoveCount);
 			Node2Count += Node2MoveCount;
 
 			// Third layer
 			// Count the depth = 3 nodes if reasonable to do so
-			if ((Node1MoveCount < 30) && (Node2MoveCount > 0)) {
+			if ((NumGames > 30) && (Node1MoveCount < 30) && (Node2MoveCount > 0)) {
 
 				// Record the state so we can enumerate the moves
 				this->CopyGameState(Node2, GameState);
@@ -673,6 +702,16 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 					// Select the next set of moves
 					this->TreeSelectMoves(this, DoesMove, Node2RoleMove, Node2RoleMoveIndex);
 					this->DoMove(GameState, DoesMove);
+
+					// Copy the state and do a playout
+					this->CopyGameState(Playout, GameState);
+					this->PlayOut(Playout, GoalValue);
+					// Record the stats
+					Count++;
+					SumGoalValue += (double)GoalValue[0];
+					SumGoalValue2 += (double)GoalValue[0] * (double)GoalValue[0];
+					SumRounds += (double)Playout->Round;
+					SumRounds2 += (double)Playout->Round * (double)Playout->Round;
 
 					// Get the legal moves from the game state 
 					this->TreeGetMoves(this, GameState, Node3RoleMove, Node3RoleMoveIndex, Node3MoveCount);
@@ -696,7 +735,7 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 
 	// Print the node statistics
 	this->Lexicon->IO->LogIndent = 2;
-	this->Lexicon->IO->WriteToLog(1, true, "Game Tree\n");
+	this->Lexicon->IO->WriteToLog(1, true, "\nGame Tree\n");
 	this->Lexicon->IO->WriteToLog(1, true, "  Tree Nodes\n");
 	this->Lexicon->IO->FormatToLog(1, true, "    Depth 1 = %d\n", Node1Count);
 	this->Lexicon->IO->FormatToLog(1, true, "    Depth 2 = %d\n", Node2Count);
@@ -704,6 +743,28 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 	Parameters.TreeNodes1 = Node1Count;
 	Parameters.TreeNodes2 = Node2Count;
 	Parameters.TreeNodes3 = Node3Count;
+
+	// Stats from depth 1 playouts
+	this->Lexicon->IO->WriteToLog(1, true, "\nGame Statistics From Tree\n");
+	this->Lexicon->IO->LogIndent = 4;
+	this->Lexicon->IO->FormatToLog(1, true, "From %d Playouts\n", Count);
+	if (Count > 0) {
+		Average = SumRounds / (double)Count;
+		StdDev = sqrt((SumRounds2 / (double)Count) - (Average * Average));
+		this->Lexicon->IO->WriteToLog(1, true, "Rounds Per Game\n");
+		this->Lexicon->IO->FormatToLog(1, true, "  Average = %f\n", Average);
+		this->Lexicon->IO->FormatToLog(1, true, "   StdDev = %f\n", StdDev);
+		Parameters.TreeAveRounds = Average;
+		Parameters.TreeStDevRounds = StdDev;
+		Average = SumGoalValue / (double)Count;
+		StdDev = sqrt((SumGoalValue2 / (double)Count) - (Average * Average));
+		this->Lexicon->IO->WriteToLog(1, true, "Role[0] Score\n");
+		this->Lexicon->IO->FormatToLog(1, true, "  Average = %f\n", Average);
+		this->Lexicon->IO->FormatToLog(1, true, "   StdDev = %f\n", StdDev);
+		Parameters.TreeAveScore0 = Average;
+		Parameters.TreeStDevScore0 = StdDev;
+	}
+
 
 	// Clean up the objects
 	this->FreeGameState(GameState);
@@ -760,6 +821,8 @@ bool hsfcEngine::CreateFromFile(const char* FileName) {
 	char* Script;
 	bool Result;
 
+	this->Lexicon->IO->FormatToLog(1, true, "\n%s\n", FileName);
+
 	// Read the file
 	Script = NULL;
 	if (!this->ReadFile(FileName, &Script)) {
@@ -785,18 +848,6 @@ bool hsfcEngine::Create(const char* Script) {
 	clock_t Start;
 	clock_t Finish;
 	int Length;
-	char* CleanScript;
-
-	// Clean up the script
-	Length = strlen(Script) + 1;
-	CleanScript = new char[Length];
-	for (unsigned int i = 0; i < Length; i ++) {
-		CleanScript[i] = Script[i];
-		// Make everything lower case
-//		if ((Script[i] >= 'A') && (Script[i] <= 'Z')) {
-//			CleanScript[i] = Script[i] + ('a' - 'A');
-//		}
-	}
 
 	// Create the High Speed Forward Chaining engine
 
@@ -808,9 +859,7 @@ bool hsfcEngine::Create(const char* Script) {
 	this->Lexicon->IO->LogIndent = 2;
 	this->WFT = new hsfcWFT(Lexicon);
 	this->WFT->Initialise();
-	this->WFT->Load(CleanScript, "");
-	this->WFT->RemoveComments("/#;:'");
-	delete[] CleanScript;
+	this->WFT->Load(Script, "/#;:'");
 
 	// Create the GDL from the WFT
 	this->Lexicon->IO->WriteToLog(1, false, "\n=== Read GDL ===\n\n");
@@ -895,13 +944,8 @@ bool hsfcEngine::ReadFile(const char* FileName, char** Script) {
 
 		// Read a letter from the file
 		fscanf(InputFile, "%c", &Letter);
-		// Ignore control characters
-		if ((Letter < ' ') || (Letter > '~')) Letter = ' ';
-		// Ignore multiple spaces
-		if ((Letter != ' ') || ((Length != 0) && ((*Script)[Length - 1] != ' '))) {
-			(*Script)[Length] = Letter;
-			Length++;
-		}
+		(*Script)[Length] = Letter;
+		Length++;
 
 	}
 
