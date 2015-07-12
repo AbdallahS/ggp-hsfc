@@ -366,8 +366,12 @@ void Game::initInternals(hsfcGDLParameters& params)
 	params.LogFileName = NULL;
 	params.LowSpeedOnly = false;
 	params.MaxLookupSize = 500000000;
-	params.MaxRelationSize = 10000000;
-	params.MaxStateSize = 50000000;
+//	params.MaxRelationSize = 10000000;
+//	params.MaxStateSize = 50000000;
+
+	params.MaxRelationSize = 1000000;
+	params.MaxStateSize = 100000000;
+
     params.MaxPlayoutRound = 1000;
 	params.SCLOnly = false;
 	params.SchemaOnly = false;
