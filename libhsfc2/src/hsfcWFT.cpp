@@ -460,7 +460,6 @@ void hsfcWFT::ReadFile(const char* FileName, const char* CommentPrefix) {
 
 		// Read a letter from the file
 		fscanf(InputFile, "%c", &Letter);
-
 		Script[Length] = Letter;
 		Length++;
 
@@ -561,7 +560,7 @@ char* hsfcWFT::CleanUpKeywords(const char* Script) {
 //-----------------------------------------------------------------------------
 // ToLowerCase
 //-----------------------------------------------------------------------------
-void hsfcWFT::Replace(char* Text, char* Pattern) {
+void hsfcWFT::Replace(char* Text, const char* Pattern) {
 
 	unsigned int Length;
 	unsigned int TextLength;

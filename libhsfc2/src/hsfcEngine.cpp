@@ -560,6 +560,10 @@ void hsfcEngine::Validate(string* GDLFileName, hsfcParameters& Parameters) {
 	this->RulesEngine->ChooseRandomMoves(GameState);
 	this->RulesEngine->AdvanceState(GameState, 4, true);
 
+	vector<hsfcTuple> Fluent;
+	this->GetStateFluents(GameState, Fluent);
+	this->PrintState(GameState, false);
+
 	// Perform tests to gain the following statistics
 	// Average & StdDeviation for Random Playout Depth
 	// Average & StdDeviation for Role 0 score  ather Random Playouts
@@ -795,6 +799,29 @@ void hsfcEngine::GetMoveText(hsfcLegalMove& Move) {
 }
 
 //-----------------------------------------------------------------------------
+// GetMoveText
+//-----------------------------------------------------------------------------
+void hsfcEngine::GetMoveText(hsfcTuple& Move, string& Text) {
+
+    char* TempText;
+
+	try {
+
+		// Convert the move to text
+        TempText = NULL;
+		this->DomainManager->RelationAsKIF(Move, &TempText);
+        Text.assign(TempText);
+        delete[] TempText;
+	}
+	catch (int e) {
+
+		cout << "GetMoveText::GetMoveText: " << e << endl;
+
+	}
+
+}
+
+//-----------------------------------------------------------------------------
 // PrintState
 //-----------------------------------------------------------------------------
 void hsfcEngine::PrintState(hsfcState* GameState, bool ShowRigids) {
@@ -808,6 +835,31 @@ void hsfcEngine::PrintState(hsfcState* GameState, bool ShowRigids) {
 	catch (int e) {
 
 		cout << "PrintState::Exception: " << e << endl;
+
+	}
+
+}
+
+//-----------------------------------------------------------------------------
+// GetStateFluents
+//-----------------------------------------------------------------------------
+void hsfcEngine::GetStateFluents(hsfcState* GameState, vector<hsfcTuple>& Fluent) {
+
+	try {
+
+		// Clear any fluents
+		Fluent.clear();
+
+		// This call is independent of the Current Step
+		// It will return an empty list if the state hos not been initialised
+
+		// Get the moves
+		this->StateManager->GetFluents(GameState, Fluent);
+
+	}
+	catch (int e) {
+
+		cout << "GetStateFluents::Exception: " << e << endl;
 
 	}
 

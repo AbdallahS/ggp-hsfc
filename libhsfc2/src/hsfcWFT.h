@@ -100,7 +100,7 @@ private:
 	hsfcLexicon* Lexicon;
 
 	char* CleanUpKeywords(const char* Script);
-	void Replace(char* Text, char* Pattern);
+	void Replace(char* Text, const char* Pattern);
 
 };
 

@@ -16,7 +16,7 @@
 
 using namespace std;
 
-namespace HSFC { class HSFCManager; };
+namespace HSFC { class HSFCManager; }
 
 //=============================================================================
 // CLASS: hsfcStateManager
@@ -40,6 +40,7 @@ public:
 	void FromState(hsfcState* State, hsfcState* Source);
 	void SetInitialState(hsfcState* State);
 	void NextState(hsfcState* State);
+	void GetFluents(hsfcState* State, vector<hsfcTuple>& Fluent);
 
 	bool AddRelation(hsfcState* State, hsfcTuple& Tuple);
 	bool RelationExists(hsfcState* State, hsfcTuple& Tuple);

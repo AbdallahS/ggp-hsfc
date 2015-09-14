@@ -16,7 +16,7 @@
 
 using namespace std;
 
-namespace HSFC { class HSFCManager; };
+namespace HSFC { class HSFCManager; }
 
 //=============================================================================
 // CLASS: hsfcEngine
@@ -42,7 +42,9 @@ public:
 	void PlayOut(hsfcState* GameState, vector<int>& GoalValue);
 	void Validate(string* GDLFileName, hsfcParameters& Parameters);
 	void GetMoveText(hsfcLegalMove& Move);
+	void GetMoveText(hsfcTuple& Move, string& Text);
 	void PrintState(hsfcState* GameState, bool ShowRigids);
+	void GetStateFluents(hsfcState* GameState, vector<hsfcTuple>& Fluent);
 
 	unsigned int NumRoles;
 	hsfcParameters* Parameters;

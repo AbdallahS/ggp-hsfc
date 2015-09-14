@@ -611,7 +611,7 @@ void hsfcStratumSchema::Initialise(hsfcSCLStratum* SCLStratum){
 void hsfcStratumSchema::Print(){
 
 	for (unsigned int i = 0; i < this->RuleSchema.size(); i++) {
-		this->Lexicon->IO->FormatToLog(0, false, "\nRule %lu\n", i);
+		this->Lexicon->IO->FormatToLog(0, false, "\nRule %u\n", i);
 		this->RuleSchema[i]->Print();
 	}
 	this->Lexicon->IO->WriteToLog(0, false, "\n-------------------------------\n");

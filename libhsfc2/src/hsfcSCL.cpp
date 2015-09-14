@@ -130,14 +130,14 @@ void hsfcSCLAtom::SetQualifiedName(unsigned int ParentNameID, unsigned int Argum
 	// Is it a state relation or an embedded relation
 	if (ParentNameID == 0) {
 		QualifiedName = new char[strlen(this->Lexicon->Text(this->PredicateIndex)) + 12];
-		sprintf(QualifiedName, "%s/%d", this->Lexicon->Text(this->PredicateIndex), this->Term.size());
+		sprintf(QualifiedName, "%s/%lu", this->Lexicon->Text(this->PredicateIndex), this->Term.size());
 		this->NameID = this->Lexicon->Index(QualifiedName);
 		delete[] QualifiedName;
 	} else {
 		QualifiedName = new char[strlen(this->Lexicon->Text(ParentNameID)) + strlen(this->Lexicon->Text(this->PredicateIndex)) + 12];
 		//sprintf(QualifiedName, "%s:%d:%s/%d", this->Lexicon->Text(ParentNameID), ArgumentIndex, this->Lexicon->Text(this->PredicateIndex), this->Term.size());
 		// This is easier in Schema to create joins in rule inputs
-		sprintf(QualifiedName, "%s/%d", this->Lexicon->Text(this->PredicateIndex), this->Term.size());
+		sprintf(QualifiedName, "%s/%lu", this->Lexicon->Text(this->PredicateIndex), this->Term.size());
 		this->NameID = this->Lexicon->Index(QualifiedName);
 		delete[] QualifiedName;
 	}
@@ -1122,7 +1122,7 @@ bool hsfcSCL::Normalise() {
 	// Check each statement in each rule; not the output 
 	for (unsigned int i = 0; i < this->Rule.size(); i++) {
 
-		this->Lexicon->IO->FormatToLog(3, true, "    Rule %lu\n", i);
+		this->Lexicon->IO->FormatToLog(3, true, "    Rule %u\n", i);
 
 		for (unsigned int j = 1; j < this->Rule[i]->Term.size(); j++) {
 
@@ -1231,7 +1231,7 @@ bool hsfcSCL::Normalise() {
 	// Check each statement in each rule 
 	for (unsigned int i = 0; i < this->Rule.size(); i++) {
 
-		this->Lexicon->IO->FormatToLog(3, true, "    Rule %lu\n", i);
+		this->Lexicon->IO->FormatToLog(3, true, "    Rule %u\n", i);
 
 		// Remove any (next (...)) statements
 		if (this->Lexicon->Match(this->Rule[i]->Term[0]->PredicateIndex, "next")) {
