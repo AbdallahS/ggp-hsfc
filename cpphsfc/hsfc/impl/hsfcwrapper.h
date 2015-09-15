@@ -99,6 +99,9 @@ public:
 
     void SetStateData(const std::set<std::pair<int,int> >& relationset, int round,
                       int currentstep, hsfcState& state);
+
+    void PrintFluent(const hsfcTuple& fluent, std::string& text) const;
+    void GetFluents(const hsfcState& state, std::vector<hsfcTuple>& fluents) const;
 };
 
 };

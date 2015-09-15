@@ -498,5 +498,14 @@ void HSFCManager::SetStateData(const std::set<std::pair<int,int> >& relationset,
 
 }
 
+void HSFCManager::PrintFluent(const hsfcTuple& fluent, std::string& text) const {
+  hsfcTuple& tmp = const_cast<hsfcTuple&>(fluent);
+  internal_->GetMoveText(tmp, text);
+}
+
+void HSFCManager::GetFluents(const hsfcState& state, std::vector<hsfcTuple>& fluents) const {
+  hsfcState& tmp = const_cast<hsfcState&>(state);
+  internal_->GetStateFluents(&tmp, fluents);
+}
 
 }; /* namespace HSFC */

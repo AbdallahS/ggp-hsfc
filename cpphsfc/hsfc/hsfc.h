@@ -99,6 +99,35 @@ std::ostream& operator<<(std::ostream& os, const JointMove& move);
 std::ostream& operator<<(std::ostream& os, const JointGoal& move);
 
 /*****************************************************************************************
+ * Fluent represents a GDL true fact.
+ *****************************************************************************************/
+class Fluent {
+public:
+    Fluent(const Fluent& other);
+    Fluent& operator=(const Fluent& other);
+
+    bool operator==(const Fluent& other) const;
+    bool operator!=(const Fluent& other) const;
+    bool operator<(const Fluent& other) const;
+    bool operator>(const Fluent& other) const;
+
+    std::string tostring() const;
+    std::size_t hash_value() const;
+
+private:
+    friend class State;
+    friend std::ostream& operator<<(std::ostream& os, const Fluent& fluent);
+
+    boost::shared_ptr<const HSFCManager> manager_;
+    uint hsfc_index_;
+    uint hsfc_ID_;
+    Fluent(boost::shared_ptr<const HSFCManager> manager, const hsfcTuple& fluent);
+};
+
+std::size_t hash_value(const Fluent& fluent); /* can be a key in boost::unordered_*  */
+std::ostream& operator<<(std::ostream& os, const Fluent& fluent);
+
+/*****************************************************************************************
  * A game object - only one per loaded GDL game.
  *****************************************************************************************/
 class Game
@@ -196,12 +225,19 @@ public:
 
     /*
      * Return the goals. Must be called only in terminal states.
-     *
      */
     template<typename OutputIterator>
     void goals(OutputIterator dest) const;
 
     JointGoal goals() const;
+
+    /*
+     * Return the fluents.
+     */
+    template<typename OutputIterator>
+    void fluents(OutputIterator dest) const;
+
+    std::vector<Fluent> fluents() const;
 
     /*
      * Return the goals after a playout. There must be exactly one move per player.
@@ -289,6 +325,15 @@ void State::goals(OutputIterator dest) const
     for (unsigned int i = 0; i < vals.size(); ++i)
     {
         *dest++=PlayerGoal(Player(manager_, i), (unsigned int)vals[i]);
+    }
+}
+
+template<typename OutputIterator>
+void State::fluents(OutputIterator dest) const {
+    std::vector<hsfcTuple> vals;
+    manager_->GetFluents(*state_, vals);
+    for (unsigned int i = 0; i < vals.size(); ++i) {
+        *dest++=Fluent(manager_, vals[i]);
     }
 }
 

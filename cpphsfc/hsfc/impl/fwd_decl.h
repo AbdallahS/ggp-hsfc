@@ -16,9 +16,10 @@ class Game;
 class State;
 class Move;
 class Player;
+class Fluent;
 
-typedef std::pair<Player,Move> PlayerMove;
-typedef std::pair<Player,unsigned int> PlayerGoal;
+typedef std::pair<Player, Move> PlayerMove;
+typedef std::pair<Player, unsigned int> PlayerGoal;
 
 typedef boost::unordered_map<Player, Move> JointMove;
 typedef boost::unordered_map<Player, unsigned int> JointGoal;
@@ -32,8 +33,6 @@ typedef std::pair<PortablePlayer, unsigned int> PortablePlayerGoal;
 
 typedef std::map<PortablePlayer, PortableMove> PortableJointMove;
 typedef std::map<PortablePlayer, unsigned int> PortableJointGoal;
-
-
 };
 
 

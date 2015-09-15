@@ -297,6 +297,69 @@ std::ostream& operator<<(std::ostream& os, const JointGoal& jgoal)
     return os;
 }
 
+
+/*****************************************************************************************
+ * Implementation of Fluent
+ *****************************************************************************************/
+Fluent::Fluent(const Fluent& other): manager_(other.manager_), hsfc_index_(other.hsfc_index_), hsfc_ID_(other.hsfc_ID_) {
+}
+
+Fluent& Fluent::operator=(const Fluent& other) {
+    manager_ = other.manager_;
+    hsfc_index_ = other.hsfc_index_;
+    hsfc_ID_ = other.hsfc_ID_;
+    return *this;
+}
+
+bool Fluent::operator==(const Fluent& other) const {
+    BOOST_ASSERT_MSG(manager_ == other.manager_, "Fluent object created with different Game() instances");
+    return hsfc_index_ == other.hsfc_index_ && hsfc_ID_ == other.hsfc_ID_;
+}
+  
+bool Fluent::operator!=(const Fluent& other) const {
+    return !(*this == other);
+}
+
+bool Fluent::operator<(const Fluent& other) const {
+    BOOST_ASSERT_MSG(manager_ == other.manager_, "Fluent object created with different Game() instances");
+    return hsfc_index_ < other.hsfc_index_ || (hsfc_index_ == other.hsfc_index_ && hsfc_ID_ < other.hsfc_ID_);
+}
+  
+bool Fluent::operator>(const Fluent& other) const {
+    return (other < *this);
+}
+
+std::string Fluent::tostring() const {
+    std::ostringstream ss;
+    ss << *this;
+    return ss.str();
+}
+
+std::size_t Fluent::hash_value() const {
+    size_t seed = 0;
+    boost::hash_combine(seed, manager_.get());
+    boost::hash_combine(seed, hsfc_index_);
+    boost::hash_combine(seed, hsfc_ID_);
+    return seed;
+}
+
+Fluent::Fluent(boost::shared_ptr<const HSFCManager> manager, const hsfcTuple& fluent): manager_(manager), hsfc_index_(fluent.Index), hsfc_ID_(fluent.ID) {
+}
+
+std::size_t hash_value(const Fluent& fluent) {
+    return fluent.hash_value();
+}
+
+std::ostream& operator<<(std::ostream& os, const Fluent& fluent) {
+    hsfcTuple tmp;
+    tmp.Index = fluent.hsfc_index_;
+    tmp.ID = fluent.hsfc_ID_;
+    std::string st;
+    fluent.manager_->PrintFluent(tmp, st);
+    return os << st;
+}
+
+
 /*****************************************************************************************
  * Implementation of Game
  *****************************************************************************************/
@@ -552,6 +615,12 @@ std::vector<JointMove> State::joints() const {
 JointGoal State::goals() const {
     JointGoal result;
     this->goals(std::inserter(result, result.begin()));
+    return result;
+}
+
+std::vector<Fluent> State::fluents() const {
+    std::vector<Fluent> result;
+    this->fluents(std::inserter(result, result.begin()));
     return result;
 }
 

@@ -1,6 +1,13 @@
 This repository contains the source code for the High Speed Forward
 Chainer (HSFC) and various extension libraries.
 
+DEPENDENCIES
+------------
+
+cmake
+libboost-all-dev
+
+
 PACKAGE LAYOUT
 --------------
 The subdirectories:
