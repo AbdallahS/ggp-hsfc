@@ -93,6 +93,22 @@ Use the str(object) function to return a GDL formatted string of the action.";
 
 
 /*****************************************************************************************
+ * Support for python Fluent.
+ *****************************************************************************************/
+
+struct PyFluent
+{
+    /* docstrings */
+    static const char* ds_class;
+};
+
+const char* PyFluent::ds_class =
+"Fluent class represents an individual GDL fluent. Instances of the Fluent class are\n\
+not created explicitly but are instead created through queries to State objects.\n\n\
+Use the str(object) function to return a GDL formatted string of the fluent.";
+
+
+/*****************************************************************************************
  * Support for python Game.
  *****************************************************************************************/
 class PyState;
@@ -166,12 +182,14 @@ public:
     static const char* ds_joints;
     static const char* ds_play;
     static const char* ds_playout;
+    static const char* ds_fluents;
     static const char* ds_goals;
 
     py::dict legals();
     py::list joints();
     py::dict goals();
     py::dict playout();
+    py::list fluents();
     void play1(const boost::python::dict& mydict);
     void play2(const boost::python::list& mylist);
 
@@ -199,6 +217,8 @@ const char* PyState::ds_playout =
 "Perform a random playout to termination and return a dict of the goal scores for each player for the terminal state.";
 
 const char* PyState::ds_goals = "Returns the dict of the goal scores for each player for a terminal state.";
+
+const char* PyState::ds_fluents = "Return a list of fluents.";
 
 
 PyState::PyState(PyGame& game) : State(game)
@@ -268,6 +288,18 @@ py::dict PyState::playout()
         pydict[pg.first] = pg.second;
     }
     return pydict;
+}
+
+py::list PyState::fluents()
+{
+    py::list pylist;
+    std::vector<Fluent> fls = State::fluents();
+
+    BOOST_FOREACH(const Fluent& fl, fls)
+    {
+        pylist.append(fl);
+    }
+    return pylist;
 }
 
 void PyState::play1(const boost::python::dict& mydict)
@@ -369,6 +401,15 @@ BOOST_PYTHON_MODULE(pyhsfc)
         .def("__ne__", &Move::operator!=)
         ;
 
+    py::class_<Fluent>
+        ("Fluent", PyFluent::ds_class, py::no_init)
+        .def(py::self_ns::str(py::self_ns::self))
+        .def("__repr__", &Fluent::tostring)
+        .def("__hash__", &Fluent::hash_value)
+        .def("__eq__", &Fluent::operator==)
+        .def("__ne__", &Fluent::operator!=)
+        ;
+
     py::class_<PyGame,boost::noncopyable>
         ("Game", PyGame::ds_class,
          py::init<const std::string&, const std::string&, bool>(
@@ -385,6 +426,7 @@ BOOST_PYTHON_MODULE(pyhsfc)
         .def("joints", &PyState::joints, PyState::ds_joints)
         .def("goals", &PyState::goals, PyState::ds_goals)
         .def("playout", &PyState::playout, PyState::ds_playout)
+        .def("fluents", &PyState::fluents, PyState::ds_fluents)
         .def("play", &PyState::play1, PyState::ds_play)
         .def("play", &PyState::play2, PyState::ds_play)
         ;
