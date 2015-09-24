@@ -7,7 +7,6 @@
 #-------------------------------------------------------------------------------
 import sys
 from pyhsfc import *
-import tools
 
 #-----------------------------------------------------
 # Try to choose a joint move for the state that is best 
