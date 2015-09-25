@@ -19,10 +19,7 @@ namespace HSFC
  *****************************************************************************************/
 
 HSFCManager::HSFCManager() :
-    internal_(new hsfcGDLManager())
-#if HSFC_VERSION > 1
-    , params_(new hsfcGDLParameters())
-#endif
+    internal_(new hsfcGDLManager()), params_(new hsfcGDLParameters())
 {  }
 
 /*****************************************************************************************
@@ -49,13 +46,10 @@ void HSFCManager::PopulatePlayerNamesFromLegalMoves()
         BOOST_FOREACH(hsfcLegalMove& lm, legalmoves)
         {
             Term term;
-#if HSFC_VERSION == 1
-            parse_flat(lm.Text, term);
-#else
             internal_->GetMoveText(lm);
             parse_sexpr(lm.Text,term);
             delete[] lm.Text;
-#endif
+
             if (SubTerms* ts = boost::get<SubTerms>(&term))
             {
                 if (ts->children_.size() != 3)
@@ -134,17 +128,10 @@ hsfcState* HSFCManager::CreateGameState()
 {
     hsfcState* state;
 
-#if HSFC_VERSION == 1
-    if (internal_->CreateGameState(&state))
-    {
-        throw HSFCInternalError() << ErrorMsgInfo("Failed to create HSFC game state");
-    }
-#else
     if (!internal_->CreateGameState(&state))
     {
         throw HSFCInternalError() << ErrorMsgInfo("Failed to create HSFC game state");
     }
-#endif
     return state;
 }
 
@@ -167,9 +154,6 @@ void HSFCManager::SetInitialGameState(hsfcState& GameState)
 void HSFCManager::GetLegalMoves(const hsfcState& GameState,
                                 std::vector<hsfcLegalMove>& LegalMove) const
 {
-#if HSFC_VERSION == 1
-    internal_->GetLegalMoves(const_cast<hsfcState*>(&GameState), LegalMove);
-#else
     std::vector<std::vector<hsfcLegalMove> > tmp;
     internal_->GetLegalMoves(const_cast<hsfcState*>(&GameState), tmp);
 
@@ -180,7 +164,6 @@ void HSFCManager::GetLegalMoves(const hsfcState& GameState,
             LegalMove.push_back(lm);
         }
     }
-#endif
 }
 
 void HSFCManager::DoMove(hsfcState& GameState, const std::vector<hsfcLegalMove>& LegalMove)
@@ -206,26 +189,13 @@ void HSFCManager::PlayOut(hsfcState& GameState, std::vector<int>& GoalValue)
 
 void HSFCManager::DisplayState(const hsfcState& GameState, bool rigids) const
 {
-#if HSFC_VERSION == 1
-    hsfcStateManager* sm = const_cast<hsfcStateManager*>(internal_->StateManager);
-    sm->PrintRelations(const_cast<hsfcState*>(&GameState), rigids);
-#else
     internal_->PrintState(const_cast<hsfcState*>(&GameState), rigids);
-#endif
 }
 
 std::ostream& HSFCManager::PrintState(std::ostream& os, const hsfcState& GameState) const
 {
-#if HSFC_VERSION == 1
-    hsfcStateManager* sm = const_cast<hsfcStateManager*>(internal_->StateManager);
-    char* tmp=sm->StateAsText(const_cast<hsfcState*>(&GameState));
-    os << tmp;
-    delete[] tmp;
-    return os;
-#else
     throw HSFCException()
         << ErrorMsgInfo("HSFCManager::PrintState() not supported for HSFC2");
-#endif
 }
 
 
@@ -236,11 +206,9 @@ std::ostream& HSFCManager::PrintState(std::ostream& os, const hsfcState& GameSta
  *****************************************************************************************/
 
 void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
-                             const hsfcGDLParameters& Parameters,
-                             bool usegadelac)
+                             const hsfcGDLParameters& Parameters)
 {
     namespace bfs=boost::filesystem;
-    bfs::path gadfile;
     bfs::path infile;
     bfs::path nocommentfile;
 
@@ -254,31 +222,6 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
             throw HSFCValueError() << ErrorMsgInfo(ss.str());
         }
 
-#if HSFC_VERSION == 1
-        // If we need to use gadelac then use a temporary output file
-        if (usegadelac)
-        {
-            gadfile = bfs::unique_path();
-//            RunGadelac(gdlfile, gadfile, " --oldhsfc");
-            RunGadelac(gdlfile, gadfile, "");
-            std::ofstream outfile;
-            outfile.open(gadfile.c_str(), std::ios_base::app);
-            outfile << ";;;; DOMAINS";
-
-            infile = gadfile;
-        }
-        else
-        {
-            infile = gdlfile;
-        }
-#else
-        // For HSFC2 at the moment we need to do some preprocessing to
-        // turn the gdl keywords into lower case.
-        if (usegadelac)
-        {
-            std::cerr << "Gadelac is disabled for HSFC > 1" << std::endl;
-            usegadelac = false;
-        }
         nocommentfile = bfs::unique_path();
         std::ifstream ts(gdlfile.native().c_str());
         std::string tmpgdl;
@@ -291,21 +234,10 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
         os << gdl_keywords_to_lowercase(tmpgdl);
         os.close();
         infile = nocommentfile;
-#endif
 
         // needed to avoid non-const in hsfcGDLManager::Initialise
         std::string tmpstr(infile.native());
 
-#if HSFC_VERSION == 1
-        hsfcGDLParameters params(Parameters);
-        int result = internal_->InitialiseFromFile(&tmpstr, params);
-        if (result != 0)
-        {
-            std::ostringstream ss;
-            ss << "Failed to initialise the HSFC engine. Error code: " << result;
-            throw HSFCInternalError() << ErrorMsgInfo(ss.str());
-        }
-#else
         params_.reset(new hsfcGDLParameters(Parameters));
         if (!internal_->InitialiseFromFile(&tmpstr, params_.get()))
         {
@@ -313,26 +245,19 @@ void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
             ss << "Failed to initialise the HSFC engine.";
             throw HSFCInternalError() << ErrorMsgInfo(ss.str());
         }
-#endif
         // Now jump through hoops to workout the names of the players.
         PopulatePlayerNamesFromLegalMoves();
 
-        if (usegadelac) bfs::remove(gadfile);
         bfs::remove(nocommentfile);
     } catch (...)
     {
-#if HSFC_VERSION == 1
-        if (usegadelac && bfs::is_regular_file(gadfile)) bfs::remove(gadfile);
-#else
         bfs::remove(nocommentfile);
-#endif
         throw;
     }
 }
 
 void HSFCManager::Initialise(const std::string& gdldescription,
-                             const hsfcGDLParameters& Parameters,
-                             bool usegadelac)
+                             const hsfcGDLParameters& Parameters)
 {
     namespace bfs=boost::filesystem;
     bfs::path tmppath = bfs::unique_path();
@@ -343,23 +268,13 @@ void HSFCManager::Initialise(const std::string& gdldescription,
 
         gdlfile << gdldescription;
         gdlfile.close();
-        Initialise(tmppath, Parameters, usegadelac);
+        Initialise(tmppath, Parameters);
         bfs::remove(tmppath);
     } catch (...)
     {
         if (bfs::is_regular_file(tmppath)) bfs::remove(tmppath);
         throw;
     }
-/*#else
-    params_.reset(new hsfcGDLParameters(Parameters));
-    std::string tmp = gdl_keywords_to_lowercase(gdldescription);
-    if (!internal_->Initialise(&tmp, params_.get()))
-    {
-        std::ostringstream ss;
-        ss << "Failed to initialise the HSFC engine.";
-        throw HSFCInternalError() << ErrorMsgInfo(ss.str());
-    }
-    #endif*/
 }
 
 
@@ -399,13 +314,9 @@ std::ostream& HSFCManager::PrintMove(std::ostream& os, const hsfcLegalMove& lega
     try
     {
         Term term;
-
-#if HSFC_VERSION == 1
-        parse_flat(legalmove.Text, term);
-#else
         internal_->GetMoveText(const_cast<hsfcLegalMove&>(legalmove));
         parse_sexpr(legalmove.Text,term);
-#endif
+
         if (SubTerms* ts = boost::get<SubTerms>(&term))
         {
             if (ts->children_.size() != 3)
@@ -439,22 +350,6 @@ void HSFCManager::GetStateData(const hsfcState& state,
     round = ts.Round;
     currentstep = ts.CurrentStep;
 
-#if HSFC_VERSION == 1
-    for (int i=0; i < sm->NumRelationLists; ++i)
-    {
-        if (sm->Schema->Relation[i]->Fact != hsfcFactPermanent)
-        {
-            // FIXUP: 20150603. Removed the j <= 32 copied from the
-            // hsfcStateManager::PrintRelations() function. Was there only
-            // reduce verbosity.
-            for (int j=0; j < ts.NumRelations[i]; ++j)
-            {
-                relationset.insert(std::make_pair(i, ts.RelationID[i][j]));
-            }
-        }
-    }
-
-#else
 //    sm->PrintRelations(&ts, true);
 
     for (int i=1; i < sm->NumRelationLists; ++i)
@@ -470,7 +365,6 @@ void HSFCManager::GetStateData(const hsfcState& state,
         }
     }
 
-#endif
 }
 
 void HSFCManager::SetStateData(const std::set<std::pair<int,int> >& relationset,
@@ -485,15 +379,9 @@ void HSFCManager::SetStateData(const std::set<std::pair<int,int> >& relationset,
     BOOST_FOREACH(const ipair_t& pr, relationset)
     {
         hsfcTuple tuple;
-#if HSFC_VERSION == 1
-        tuple.RelationIndex = pr.first;
-        tuple.ID = pr.second;
-        sm->AddRelation(&state, &tuple);
-#else
         tuple.Index = pr.first;
         tuple.ID = pr.second;
         sm->AddRelation(&state, tuple);
-#endif
     }
 
 }

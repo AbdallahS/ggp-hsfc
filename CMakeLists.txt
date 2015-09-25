@@ -21,27 +21,7 @@ set(CMAKE_SHARED_LINKER_FLAGS_RPROFILER "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -p
 
 project(hsfc)
 
-# Set a default HSFC_VERSION
-if(NOT HSFC_VERSION)
-set(HSFC_VERSION 2)
-endif()
-
-#-----------------------------------------------------------------
-# Add options whether to use HSFC2
-# -----------------------------------------------------------------
-if(HSFC_VERSION EQUAL 1)
-  add_definitions(-DHSFC_VERSION=1)
-  message("Using HSFC v1")
-  add_subdirectory(libhsfc)           # Build the base libhsfc
-elseif (HSFC_VERSION EQUAL 2)
-  add_definitions(-DHSFC_VERSION=2)
-  message(WARNING "Selecting HSFC v2: this is highly experimental")
-  add_subdirectory(libhsfc2)           # Build the base libhsfc2
-else()
-  message(WARNING "Unknow HSFC version. Setting to version 1")
-  add_definitions(-DHSFC_VERSION=1)
-endif()
-
+add_subdirectory(libhsfc)           # Build the base libhsfc
 add_subdirectory(cpphsfc)           # Build the cleaner C++ wrapper
 add_subdirectory(pyhsfc)            # Build the Python wrapper
 

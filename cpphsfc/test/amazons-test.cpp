@@ -124,7 +124,8 @@ const unsigned int NUM_AMAZONS_PLAYOUTS=1000;
 
 BOOST_AUTO_TEST_CASE(amazons_test)
 {
-    Game game(std::string(g_amazons), true);
+    std::string amazons(g_amazons);
+    Game game(amazons);
 
     std::cerr << "Amazons loaded. Now to run the playout test" << std::endl;
     State state1(game);

@@ -6,21 +6,212 @@
 //=============================================================================
 #include "stdafx.h"
 #include "hsfcSchema.h"
-#include "hsfc_config.h"
-
-using namespace std;
 
 //=============================================================================
-// Project: High Speed Forward Chaining
-// Module: Relation
-// Authors: Michael Schofield UNSW
-// 
+// CLASS: hsfcDomainSchema
 //=============================================================================
 
-#include "stdafx.h"
-#include "hsfcSchema.h"
+//-----------------------------------------------------------------------------
+// Constructor
+//-----------------------------------------------------------------------------
+hsfcDomainSchema::hsfcDomainSchema(hsfcLexicon* Lexicon){
 
-using namespace std;
+	// Set up the Lexicon
+	this->Lexicon = Lexicon;
+
+}
+
+//-----------------------------------------------------------------------------
+// Destructor
+//-----------------------------------------------------------------------------
+hsfcDomainSchema::~hsfcDomainSchema(void){
+
+
+}
+
+//-----------------------------------------------------------------------------
+// Initialise
+//-----------------------------------------------------------------------------
+void hsfcDomainSchema::Initialise(unsigned int NameID){
+
+	// Clear the schema
+	this->NameID = NameID;
+	this->Term.clear();
+	this->Rigid = false;
+
+}
+
+//-----------------------------------------------------------------------------
+// FromDomainSchema
+//-----------------------------------------------------------------------------
+void hsfcDomainSchema::FromDomainSchema(hsfcDomainSchema* Source) {
+
+	hsfcTuple NewTerm;
+
+	// Copy the terms
+	for (unsigned int i = 0; i < Source->Term.size(); i++) {
+		NewTerm.Index = Source->Term[i].Index;
+		NewTerm.ID = Source->Term[i].ID;
+		this->Term.push_back(NewTerm);
+	}
+
+	// Copy the properties
+	this->NameID = Source->NameID;
+
+}
+
+//-----------------------------------------------------------------------------
+// AddTerm
+//-----------------------------------------------------------------------------
+bool hsfcDomainSchema::AddTerm(hsfcTuple& NewTerm){
+
+	int Target;
+	int LowerBound;
+	int UpperBound;
+	int Compare;
+
+	// Is this domain for a rigid relation
+	if (this->Rigid) {
+		// This is always added to the end of the schema, unsorted, duplicates allowed
+		this->Term.push_back(NewTerm);
+		return true;
+	}
+
+    // Binary search of a specific domain; adding any unfound values in sort order
+	Target = 0;
+	LowerBound = 0;
+	UpperBound = 0;
+	Compare = -1;
+	
+	// Is the domain empty
+	if (this->Term.size() > 0) {
+
+		UpperBound = this->Term.size() - 1;
+
+		// Look for the term according to its value
+		while (LowerBound <= UpperBound) {
+			// Find the target value
+			Target = (LowerBound + UpperBound) / 2;
+			Compare = NewTerm.Index - this->Term[Target].Index;
+			if (Compare == 0) {
+				Compare = NewTerm.ID - this->Term[Target].ID;
+			}
+			// Compare the values
+			if (Compare == 0) return false;
+			if (Compare < 0) UpperBound = Target - 1;
+			if (Compare > 0) LowerBound = Target + 1;
+		}
+	}
+
+	// Not found; so add to domain
+
+	// Last compare will have LowerBound == UpperBound == Target
+	// If Compare > 0 then new value is after Target
+	// If Compare < 0 then new value is before Target
+	if (Compare > 0) Target++;
+
+	// Add the new value to the domain before the Target
+	if (Target == this->Term.size()) {
+		this->Term.push_back(NewTerm);
+	} else {
+		this->Term.insert(this->Term.begin() + Target, NewTerm);
+	}
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// AddTerms
+//-----------------------------------------------------------------------------
+bool hsfcDomainSchema::AddTerms(vector<hsfcTuple>& Term) {
+
+	bool Result;
+
+	// Add each term in the list
+	Result = false;
+	for (unsigned int i = 0; i < Term.size(); i++) {
+		if (this->AddTerm(Term[i])) Result = true;
+	}
+
+	return Result;
+
+}
+
+//-----------------------------------------------------------------------------
+// Copy
+//-----------------------------------------------------------------------------
+void hsfcDomainSchema::Copy(vector<hsfcTuple>& Destination) {
+
+	hsfcTuple NewTerm;
+
+	// Copy all the terms from the domain
+	for (unsigned int i = 0; i < this->Term.size(); i++) {
+		// Is it a simple term or a relation
+		if (this->Term[i].Index == 0) {
+			NewTerm.Index = this->Term[i].Index;
+			NewTerm.ID = this->Term[i].ID;
+		} else {
+			NewTerm.Index = this->Lexicon->GDLIndex(this->Term[i].Index);
+			NewTerm.ID = this->Term[i].ID;
+		}
+		Destination.push_back(NewTerm);
+	}
+
+}
+
+//-----------------------------------------------------------------------------
+// Intersection
+//-----------------------------------------------------------------------------
+void hsfcDomainSchema::Intersection(vector<hsfcTuple>& Destination) {
+
+	unsigned int TermIndex;
+	unsigned int DestinationIndex;
+
+	// Work through the two lists simultaneously
+	TermIndex = 0;
+	DestinationIndex = 0;
+	while ((TermIndex < this->Term.size()) && (DestinationIndex < Destination.size())) {
+
+		// Are the terms the same
+		if ((this->Term[TermIndex].Index == Destination[DestinationIndex].Index) && (this->Term[TermIndex].ID == Destination[DestinationIndex].ID)) {
+			TermIndex++;
+			DestinationIndex++;
+			continue;
+		}
+
+		// Is the local domain term smaller than the outside term
+		if (this->Term[TermIndex].Index < Destination[DestinationIndex].Index) {
+			TermIndex++;
+			continue;
+		} else if ((this->Term[TermIndex].Index == Destination[DestinationIndex].Index) && (this->Term[TermIndex].ID < Destination[DestinationIndex].ID)) {
+			TermIndex++;
+			continue;
+		}
+
+		// The outside term must be smaller and not present in the local domain
+		Destination.erase(Destination.begin() + DestinationIndex);
+
+	}
+
+}
+
+//-----------------------------------------------------------------------------
+// Print
+//-----------------------------------------------------------------------------
+void hsfcDomainSchema::Print(){
+
+	for (unsigned int i = 0; i < this->Term.size(); i++) {
+		if (this->Term[i].Index == 0) {
+			this->Lexicon->IO->FormatToLog(0, false, " %10s", this->Lexicon->Text(this->Term[i].ID));
+		} else {
+			this->Lexicon->IO->FormatToLog(0, false, " %10s", this->Lexicon->Relation(this->Term[i].Index));
+		}
+	}
+	this->Lexicon->IO->WriteToLog(0, false, "\n");
+
+}
+
 
 //=============================================================================
 // CLASS: hsfcRelationSchema
@@ -34,9 +225,6 @@ hsfcRelationSchema::hsfcRelationSchema(hsfcLexicon* Lexicon){
 	// Set up the Lexicon
 	this->Lexicon = Lexicon;
 
-	// Initialise the pointers
-	this->Domain = NULL;
-
 }
 
 //-----------------------------------------------------------------------------
@@ -44,932 +232,137 @@ hsfcRelationSchema::hsfcRelationSchema(hsfcLexicon* Lexicon){
 //-----------------------------------------------------------------------------
 hsfcRelationSchema::~hsfcRelationSchema(void){
 
-	// Free the domains
-	for (unsigned int i = 0; i < this->vDomain.size(); i++) {
-		this->vDomain[i].clear();
-	}
-	this->vDomain.clear();
-	if (this->Domain != NULL) {
-		for (int i = 0; i < this->Arity; i++) {
-			delete[] this->Domain[i]->Entry;
-			delete this->Domain[i];
-		}
-		delete[] this->Domain;
-	}
+	// Clear the schema
+	this->DeleteDomainSchema();
 
 }
 
 //-----------------------------------------------------------------------------
 // Initialise
 //-----------------------------------------------------------------------------
-void hsfcRelationSchema::Initialise(int PredicateIndex, int Arity){
+void hsfcRelationSchema::Initialise(const unsigned int NameID, int Arity, unsigned int Index){
 
-	// Free the domains
-	for (unsigned int i = 0; i < this->vDomain.size(); i++) {
-		this->vDomain[i].clear();
-	}
-	this->vDomain.clear();
-	if (this->Domain != NULL) {
-		for (int i = 0; i < this->Arity; i++) {
-			delete[] this->Domain[i]->Entry;
-			delete this->Domain[i];
-		}
-		delete[] this->Domain;
-	}
-	this->Domain = NULL;
+	hsfcDomainSchema* NewDomainSchema;
 
-	// Allocate the memory
-	this->vDomain.resize(Arity);
+	// Clear the schema
+	this->DeleteDomainSchema();
 
 	// Set the properties
-	this->PredicateIndex = PredicateIndex;
+	this->NameID = NameID;
 	this->Arity = Arity;
-	this->Fact = hsfcFactNone;
-	this->AveListLength = 1;
-	this->Samples = 0;
-	this->Index = 0;
-	this->DomainIsComplete = false;
+	this->Index = Index;
 	this->IsInState = false;
-	this->HasComplexEntries = true;
-	this->IDCount = 0;
-	this->IDCountDbl = 0;
+	this->Fact = hsfcFactNone;
+	this->Rigidity = hsfcRigidityNone;
 
-}
-
-//-----------------------------------------------------------------------------
-// FromRelation
-//-----------------------------------------------------------------------------
-void hsfcRelationSchema::FromRelationSchema(hsfcRelationSchema* Source){
-
-	this->Initialise(Source->PredicateIndex, Source->Arity);
-
-	// Copy the domains
-	for (unsigned int i = 0; i < Source->vDomain.size(); i++) {
-		for (unsigned int j = 0; j < Source->vDomain[i].size(); j++) {
-			this->vDomain[i].push_back(Source->vDomain[i][j]);
-		}
-	}
-
-	// Create the domain arrays
-	if (Source->Domain != NULL) {
-		this->Domain = new hsfcDomain*[Source->Arity];
-		for (int i = 0; i < Source->Arity; i++) {
-			this->Domain[i] = new hsfcDomain();
-			this->Domain[i]->Entry = new hsfcDomainEntry[Source->Domain[i]->Size];
-			this->Domain[i]->Size = Source->Domain[i]->Size;
-			this->Domain[i]->Count = Source->Domain[i]->Count;
-			for (int j = 0; j < Source->Domain[i]->Size; j++) {
-				this->Domain[i]->Entry[j].Tuple.ID = Source->Domain[i]->Entry[j].Tuple.ID;
-				this->Domain[i]->Entry[j].Tuple.RelationIndex = Source->Domain[i]->Entry[j].Tuple.RelationIndex;
-				this->Domain[i]->Entry[j].Count = Source->Domain[i]->Entry[j].Count;
-				this->Domain[i]->Entry[j].Index = Source->Domain[i]->Entry[j].Index;
-			}
-		}
-	}
-
-	// Copy the properties
-	this->PredicateIndex = Source->PredicateIndex;
-	this->Arity = Source->Arity;
-	this->Fact = Source->Fact;
-	this->AveListLength = Source->AveListLength;
-	this->Samples = Source->Samples;
-	this->Index = Source->Index;
-	this->DomainIsComplete = Source->DomainIsComplete;
-	this->IsInState = Source->IsInState;
-
-}
-
-//-----------------------------------------------------------------------------
-// AddToDomain
-//-----------------------------------------------------------------------------
-void hsfcRelationSchema::AddToDomain(int DomainIndex, hsfcDomainEntry* Entry) {
-
-	int Target;
-	int LowerBound;
-	int UpperBound;
-	int Compare;
-
-    // Binary search of a specific domain; adding any unfound values in sort order
-	Target = 0;
-	LowerBound = 0;
-	UpperBound = 0;
-	Compare = -1;
-	
-	// Is the domain empty
-	if (this->vDomain[DomainIndex].size() > 0) {
-
-		UpperBound = this->vDomain[DomainIndex].size() - 1;
-
-		// Look for the term according to its value
-		while (LowerBound <= UpperBound) {
-			// Find the target value
-			Target = (LowerBound + UpperBound) / 2;
-			Compare = Entry->Tuple.RelationIndex - this->vDomain[DomainIndex][Target].Tuple.RelationIndex;
-			if (Compare == 0) {
-				if (this->vDomain[DomainIndex][Target].Tuple.ID == -1) {
-					Compare = 0;
-				} else {
-					Compare = Entry->Tuple.ID - this->vDomain[DomainIndex][Target].Tuple.ID;
-				}
-			}
-			// Compare the values
-			if (Compare == 0) return;
-			if (Compare < 0) UpperBound = Target - 1;
-			if (Compare > 0) LowerBound = Target + 1;
-		}
-	}
-
-	// Not found
-	// Last compare will have LowerBound == UpperBound == Target
-	// If Compare > 0 then new value is after Target
-	// If Compare < 0 then new value is before Target
-	if (Compare > 0) Target++;
-
-	// Add the new value to the domain before the Target
-	if (Target == this->vDomain[DomainIndex].size()) {
-		this->vDomain[DomainIndex].push_back(*Entry);
-	} else {
-		this->vDomain[DomainIndex].insert(this->vDomain[DomainIndex].begin() + Target, *Entry);
+	// Create the domains
+	for (int i = 0; i < Arity; i++) {
+		NewDomainSchema = new hsfcDomainSchema(this->Lexicon);
+		NewDomainSchema->Initialise(NameID);
+		this->DomainSchema.push_back(NewDomainSchema);
 	}
 
 }
 
+////-----------------------------------------------------------------------------
+//// AddDomainTerm
+////-----------------------------------------------------------------------------
+//bool hsfcRelationSchema::AddDomainTerm(hsfcSCLAtom* SCLAtom, unsigned int DomainIndex) {
+//
+//	hsfcTuple Term;
+//
+//	// Check for integtrity
+//	if (DomainIndex >= this->DomainSchema.size()) return false;
+//
+//	// Is it a single term or an embedded relation
+//	if (SCLAtom->Term.size() == 0) {
+//		Term.Index = 0;
+//		Term.ID = SCLAtom->NameID;
+//	} else {
+//		Term.Index = SCLAtom->;
+//		Term.ID = 0;
+//	}
+//
+//	// Add the term
+//	return this->DomainSchema[DomainIndex]->AddTerm(Term);
+//
+//}
+//
 //-----------------------------------------------------------------------------
-// AddToFactDomain
+// Copy
 //-----------------------------------------------------------------------------
-void hsfcRelationSchema::AddToFactDomain(vector<hsfcDomainEntry>& Entry) {
+void hsfcRelationSchema::Copy(vector<hsfcTuple>& Destination, unsigned int DomainIndex) {
 
-	int Target;
-	int LowerBound;
-	int UpperBound;
-	int Compare;
-
-	// TermIndex(0) = Predicate Index
-	// Is there anything to add
-	if (Entry.size() != this->vDomain.size() + 1) return; 
-
-    // Binary search of all domains; adding any unfound values in sort order
-	Target = 0;
-	LowerBound = 0;
-	UpperBound = 0;
-	Compare = -1;
-	
-	// Is the domain empty
-	if (this->vDomain[0].size() > 0) {
-
-		UpperBound = this->vDomain[0].size() - 1;
-
-		// Look for the term according to its value
-		while (LowerBound <= UpperBound) {
-			// Find the target value
-			Target = (LowerBound + UpperBound) / 2;
-
-			// Check all of the domains for a match
-			for (unsigned int j = 0; j < this->vDomain.size(); j++) {
-				Compare = Entry[j+1].Tuple.RelationIndex - this->vDomain[j][Target].Tuple.RelationIndex;
-				if (Compare == 0) Compare = Entry[j+1].Tuple.ID - this->vDomain[j][Target].Tuple.ID;
-				if (Compare != 0) break;
-			}
-
-			// Compare the values
-			if (Compare == 0) return;
-			if (Compare < 0) UpperBound = Target - 1;
-			if (Compare > 0) LowerBound = Target + 1;
-		}
-	}
-
-	// Not found
-	// Last compare will have LowerBound == UpperBound == Target
-	// If Compare > 0 then new value is after Target
-	// If Compare < 0 then new value is before Target
-	if (Compare > 0) Target++;
-
-	// Add the new value to the domain before the Target
-	if (Target == this->vDomain[0].size()) {
-		for (unsigned int j = 0; j < this->vDomain.size(); j++) {
-			this->vDomain[j].push_back(Entry[j+1]);
-		}
-	} else {
-		for (unsigned int j = 0; j < this->vDomain.size(); j++) {
-			this->vDomain[j].insert(this->vDomain[j].begin() + Target, Entry[j+1]);
-		}
-	}
+	// Copy the contents of the domain
+	this->DomainSchema[DomainIndex]->Copy(Destination);
 
 }
 
 //-----------------------------------------------------------------------------
-// AddToDomain
+// Intersection
 //-----------------------------------------------------------------------------
-void hsfcRelationSchema::AddToDomainFromDomain(vector<vector<hsfcDomainEntry> >& Source) {
+void hsfcRelationSchema::Intersection(vector<hsfcTuple>& Destination, unsigned int DomainIndex) {
 
-	// Do an integrity check
-	if (Source.size() != this->vDomain.size()) {
-		printf("Error: Wrong domain size\n");
-		abort();
-	}
-
-	// Transfer the entries from the source
-	for (unsigned int i = 0; i < Source.size(); i++) {
-		for (unsigned int j = 0; j < Source[i].size(); j++) {
-			this->AddToDomain(i, &Source[i][j]);
-		}
-	}
+	// Copy the contents of the domain
+	this->DomainSchema[DomainIndex]->Intersection(Destination);
 
 }
 
 //-----------------------------------------------------------------------------
-// IndexDomains
+// AddTerms
 //-----------------------------------------------------------------------------
-void hsfcRelationSchema::IndexDomains() {
+bool hsfcRelationSchema::AddTerms(vector<hsfcTuple>& Term, unsigned int DomainIndex) {
 
-	int Index;
-	double Count;
-
-	// Is this domain already indexed
-	if (this->Domain != NULL) return;
-	if (DEBUG) printf("Indexing domains for %s\n", this->Lexicon->Text(this->PredicateIndex));
-
-	// Convert the vectors to arrays for faster access
-	this->Domain = new hsfcDomain*[this->Arity];
-	for (int i = 0; i < this->Arity; i++) {
-		this->Domain[i] = new hsfcDomain();
-		this->Domain[i]->Size = this->vDomain[i].size();
-		this->Domain[i]->Entry = new hsfcDomainEntry[this->Domain[i]->Size];
-		for (unsigned int j = 0; j < this->vDomain[i].size(); j++) {
-			this->Domain[i]->Entry[j].Tuple.ID = this->vDomain[i][j].Tuple.ID;
-			this->Domain[i]->Entry[j].Tuple.RelationIndex = this->vDomain[i][j].Tuple.RelationIndex;
-			this->Domain[i]->Entry[j].Count = this->vDomain[i][j].Count;
-			this->Domain[i]->Entry[j].Index = this->vDomain[i][j].Index;
-		}
-		this->vDomain[i].clear();
-	}
-	this->vDomain.clear();
-
-	// Index each domain
-	this->HasComplexEntries = false;
-	for (int i = 0; i < this->Arity; i++) {
-		Index = 0;
-		for (int j = 0; j < this->Domain[i]->Size; j++) {
-			this->Domain[i]->Entry[j].Index = Index;
-			Index += this->Domain[i]->Entry[j].Count;
-			if (this->Domain[i]->Entry[j].Tuple.ID == -1) this->HasComplexEntries = true;
-		}
-		this->Domain[i]->Count = Index;
-	}
-
-	// Caclulate the size of the relation
-	Count = 1;
-	if (this->Fact == hsfcFactPermanent) {
-		// Calculate the number of TupleIDs
-		if (this->Arity > 0) {
-			Count = (double)this->Domain[0]->Count;
-		}
-	} else {
-		// Calculate the number of TupleIDs
-		for (int i = 0; i < this->Arity; i++) {
-			Count = Count * (double)this->Domain[i]->Count;
-		}
-	}
-
-	// Set the size of the relation
-	this->IDCountDbl = Count;
-	if (Count > (double)INT_MAX) {
-		this->IDCount = INT_MAX;
-	} else {
-		this->IDCount = (int)this->IDCountDbl;
-	}
+	// Copy the contents of the domain
+	return this->DomainSchema[DomainIndex]->AddTerms(Term);
 
 }
 
 //-----------------------------------------------------------------------------
-// IntersectBufferDomain
+// AddRigidTerms
 //-----------------------------------------------------------------------------
-void hsfcRelationSchema::IntersectBufferDomain(vector<hsfcTuple>& BufferDomain, unsigned int DomainIndex) {
+bool hsfcRelationSchema::AddRigidTerms(hsfcTuple Term[]) {
 
-	// Return the intersection of the domains
-	// The Buffer domain is sorted, the Schema relation domain may not be
-	// This is a real problem as we need Schema relation domain to be sorted.
+	// Add the contents of the relation
+	// No checking is done for duplicates or sorting
 
-	int Target;
-	int LowerBound;
-	int UpperBound;
-	int Compare;
-	vector<bool> Found;
-
-	// Is the buffer domain empty
-	if (BufferDomain.size() == 0) return;
-
-	// Set the found to false for all buffer domain elements
-	for (unsigned int i = 0; i < BufferDomain.size(); i++) {
-		Found.push_back(false);
+	// Integrity checks
+	if (this->Rigidity != hsfcRigidityFull) {
+		this->Lexicon->IO->WriteToLog(0, false, "Error: wrong rigidity in hsfcRelationSchema::AddRigidTerms\n");
+		return false; 
 	}
 
-    // Go through each term in the domain (may be unsorted if its a permanent fact)
-	for (int i = 0; i < this->Domain[DomainIndex]->Size; i++) {
-	
-		// Binary search buffer domain; adding any unfound values in sort order
-		Target = 0;
-		LowerBound = 0;
-		UpperBound = BufferDomain.size() - 1;
-		Compare = -1;
-		
-		// Look for the term according to its value
-		while (LowerBound <= UpperBound) {
-			// Find the target value
-			Target = (LowerBound + UpperBound) / 2;
-			Compare = this->Domain[DomainIndex]->Entry[i].Tuple.RelationIndex - BufferDomain[Target].RelationIndex;
-			if (Compare == 0) {
-				if (this->Domain[DomainIndex]->Entry[i].Tuple.ID == -1) {
-					Compare = 0;
-				} else {
-					Compare = this->Domain[DomainIndex]->Entry[i].Tuple.ID - BufferDomain[Target].ID;
-				}
-			}
-			// Compare the values
-			if (Compare == 0) break;
-			if (Compare < 0) UpperBound = Target - 1;
-			if (Compare > 0) LowerBound = Target + 1;
-		}
-
-		// Was it in both
-		if (Compare == 0) Found[Target] = true;
-
+	for (int i = 0; i < Arity; i++) {
+		if (!this->DomainSchema[i]->AddTerm(Term[i+1])) return false;
 	}
 
-	// Cull any buffer domain entries not found
-	for (int i = Found.size() - 1; i >= 0; i--) {
-		if (!Found[i]) BufferDomain.erase(BufferDomain.begin() + i);
-	}
-
-}
-
-//-----------------------------------------------------------------------------
-// AddToBufferDomain
-//-----------------------------------------------------------------------------
-void hsfcRelationSchema::AddToBufferDomain(vector<hsfcTuple>& BufferDomain, unsigned int DomainIndex) {
-
-	int Target;
-	int LowerBound;
-	int UpperBound;
-	int Compare;
-	hsfcDomainEntry DomainEntry;
-	int BaseID;
-
-	// Load the domain into the buffer domain, sorted
-
-    // Go through each term in the domain (may be unsorted if its a permanent fact)
-	for (int i = 0; i < this->Domain[DomainIndex]->Size; i++) {
-
-		// Get the domain entry
-		DomainEntry.Tuple.RelationIndex = this->Domain[DomainIndex]->Entry[i].Tuple.RelationIndex;
-		BaseID = this->Domain[DomainIndex]->Entry[i].Tuple.ID;
-		if (BaseID == -1) BaseID = 0;
-		DomainEntry.Count = this->Domain[DomainIndex]->Entry[i].Count;
-
-		// This may be a list of entries
-		for (int j = 0; j < DomainEntry.Count; j++) {
-
-			DomainEntry.Tuple.ID = BaseID + j;
-	
-			// Binary search buffer domain; adding any unfound values in sort order
-			Target = 0;
-			LowerBound = 0;
-			UpperBound = 0;
-			Compare = -1;
-			
-			// Is the domain empty
-			if (BufferDomain.size() > 0) {
-
-				UpperBound = BufferDomain.size() - 1;
-
-				// Look for the term according to its value
-				while (LowerBound <= UpperBound) {
-					// Find the target value
-					Target = (LowerBound + UpperBound) / 2;
-					Compare = DomainEntry.Tuple.RelationIndex - BufferDomain[Target].RelationIndex;
-					if (Compare == 0) Compare = DomainEntry.Tuple.ID - BufferDomain[Target].ID;
-					// Compare the values
-					if (Compare == 0) break;
-					if (Compare < 0) UpperBound = Target - 1;
-					if (Compare > 0) LowerBound = Target + 1;
-				}
-			}
-
-			// Was it added already
-			if (Compare == 0) continue;
-
-			// Not found
-			// Last compare will have LowerBound == UpperBound == Target
-			// If Compare > 0 then new value is after Target
-			// If Compare < 0 then new value is before Target
-			if (Compare > 0) Target++;
-
-			// Add the new value to the domain before the Target
-			if (Target == BufferDomain.size()) {
-				BufferDomain.push_back(DomainEntry.Tuple);
-			} else {
-				BufferDomain.insert(BufferDomain.begin() + Target, DomainEntry.Tuple);
-			}
-
-		}
-
-	}
-
-}
-
-//-----------------------------------------------------------------------------
-// ID
-//-----------------------------------------------------------------------------
-int hsfcRelationSchema::ID(vector<hsfcTuple>& Term) {
-
-	int Index;
-	int Result;
-	int Factor;
-	bool AllMatch;
-
-	// Is this prior to the iindexing of the domains
-	if (this->Domain == NULL) return this->vID(Term);
-
-	// TermIndex(0) = Predicate Index
-	// Initial value
-	Result = -1;
-
-	// Are there some terms
-	if (Term.size() < (unsigned)this->Arity + 1) return Result;
-	
-	// Is it a permanent fact
-	if (this->Fact == hsfcFactPermanent) {
-
-		// Check the domains
-		for (Index = 0; Index < (int)this->Domain[0]->Size; Index++) {
-			// Check that all terms match
-			AllMatch = true;
-			for (int i = 0; i < this->Arity; i++) {
-				// Is it a match
-				if ((Term[i+1].ID != this->Domain[i]->Entry[Index].Tuple.ID) || (Term[i+1].RelationIndex != this->Domain[i]->Entry[Index].Tuple.RelationIndex)) {
-					AllMatch = false;
-					break;
-				}
-			}
-			// Found it so exit
-			if (AllMatch) {
-				Result = Index;
-				break;
-			}
-		}
-
-		return Result;
-
-	} else {
-
-		// Calculate the Relation ID
-		Result = 0;
-		Factor = 1;
-		for (int i = 0; i < this->Arity; i++) {
-			Index = -1;
-			// Look for the tuple in the domain entries
-			for (int j = 0; j < this->Domain[i]->Size; j++) {
-				if (this->Domain[i]->Entry[j].Tuple.ID == -1) {
-					if (this->Domain[i]->Entry[j].Tuple.RelationIndex == Term[i+1].RelationIndex) {
-						Index = this->Domain[i]->Entry[j].Index + Term[i+1].ID;
-						break;
-					}
-				} else {
-					if ((this->Domain[i]->Entry[j].Tuple.ID == Term[i+1].ID) && (this->Domain[i]->Entry[j].Tuple.RelationIndex == Term[i+1].RelationIndex)){
-						Index = this->Domain[i]->Entry[j].Index;
-						break;
-					}
-				}
-			}
-			// Is it an error: this value is used as fail in condition references
-			if (Index == -1) return -1;
-
-			// Calculate the ID
-			Result = Result + Factor * Index;
-			Factor = Factor * this->Domain[i]->Size;
-		}
-
-		return Result;
-
-	}
-
-}
-
-//--- overload ----------------------------------------------------------------
-int hsfcRelationSchema::ID(hsfcRuleCompactTerm Term[], int Offset, int NumTerms) {
-
-	int Index;
-	int Result;
-	int Factor;
-	bool AllMatch;
-
-	// TermIndex(0) = Predicate Index
-	// Initial value
-	Result = -1;
-
-	// Are there some terms
-	if (NumTerms + Offset < (int)this->Arity + 1) return Result;
-	
-	// Is it a permanent fact
-	if (this->Fact == hsfcFactPermanent) {
-
-		// Check the domains
-		for (Index = 0; Index < (int)this->Domain[0]->Size; Index++) {
-			// Check that all terms match
-			AllMatch = true;
-			for (int i = 0; i < this->Arity; i++) {
-				// Is it a match
-				if ((Term[Offset+i+1].Tuple.ID != this->Domain[i]->Entry[Index].Tuple.ID) || (Term[Offset+i+1].Tuple.RelationIndex != this->Domain[i]->Entry[Index].Tuple.RelationIndex)) {
-					AllMatch = false;
-					break;
-				}
-			}
-			// Found it so exit
-			if (AllMatch) {
-				Result = Index;
-				break;
-			}
-		}
-
-		return Result;
-
-	} else {
-
-		// Calculate the Relation ID
-		Result = 0;
-		Factor = 1;
-		for (int i = 0; i < this->Arity; i++) {
-			Index = -1;
-			for (int j = 0; j < this->Domain[i]->Size; j++) {
-				if (this->Domain[i]->Entry[j].Tuple.ID == -1) {
-					if (this->Domain[i]->Entry[j].Tuple.RelationIndex == Term[Offset+i+1].Tuple.RelationIndex) {
-						Index = this->Domain[i]->Entry[j].Index + Term[Offset+i+1].Tuple.ID;
-						break;
-					}
-				} else {
-					if ((this->Domain[i]->Entry[j].Tuple.ID == Term[Offset+i+1].Tuple.ID) && (this->Domain[i]->Entry[j].Tuple.RelationIndex == Term[Offset+i+1].Tuple.RelationIndex)){
-						Index = this->Domain[i]->Entry[j].Index;
-						break;
-					}
-				}
-			}
-			// Is it an error
-			if (Index == -1) return -1;
-			// Calculate the ID
-			Result = Result + Factor * Index;
-			Factor = Factor * this->Domain[i]->Size;
-		}
-
-		return Result;
-
-	}
-
-}
-
-//-----------------------------------------------------------------------------
-// vID
-//-----------------------------------------------------------------------------
-int hsfcRelationSchema::vID(vector<hsfcTuple>& Term) {
-
-	int Index;
-	int Result;
-	int Factor;
-	bool AllMatch;
-
-	// TermIndex(0) = Predicate Index
-	// Initial value
-	Result = -1;
-
-	// Are there some terms
-	if (Term.size() < (unsigned)this->Arity + 1) return Result;
-	
-	// Is it a permanent fact
-	if (this->Fact == hsfcFactPermanent) {
-
-		// Check the domains
-		for (Index = 0; Index < (int)this->vDomain[0].size(); Index++) {
-			// Check that all terms match
-			AllMatch = true;
-			for (int i = 0; i < this->Arity; i++) {
-				// Is it a match
-				if ((Term[i+1].ID != this->vDomain[i][Index].Tuple.ID) || (Term[i+1].RelationIndex != this->vDomain[i][Index].Tuple.RelationIndex)) {
-					AllMatch = false;
-					break;
-				}
-			}
-			// Found it so exit
-			if (AllMatch) {
-				Result = Index;
-				break;
-			}
-		}
-
-		return Result;
-
-	} else {
-
-		// Calculate the Relation ID
-		Result = 0;
-		Factor = 1;
-		for (int i = 0; i < this->Arity; i++) {
-			Index = -1;
-			// Look for the tuple in the domain entries
-			for (unsigned int j = 0; j < this->vDomain[i].size(); j++) {
-				if (this->vDomain[i][j].Tuple.ID == -1) {
-					if (this->vDomain[i][j].Tuple.RelationIndex == Term[i+1].RelationIndex) {
-						Index = this->vDomain[i][j].Index + Term[i+1].ID;
-						break;
-					}
-				} else {
-					if ((this->vDomain[i][j].Tuple.ID == Term[i+1].ID) && (this->vDomain[i][j].Tuple.RelationIndex == Term[i+1].RelationIndex)){
-						Index = this->vDomain[i][j].Index;
-						break;
-					}
-				}
-			}
-			// Is it an error: this value is used as fail in condition references
-			if (Index == -1) return -1;
-
-			// Calculate the ID
-			Result = Result + Factor * Index;
-			Factor = Factor * this->vDomain[i].size();
-		}
-
-		return Result;
-
-	}
-
-}
-
-//-----------------------------------------------------------------------------
-// RelationSize
-//-----------------------------------------------------------------------------
-double hsfcRelationSchema::RelationSize() {
-
-	int Index;
-	double Result;
-
-	Result = 1;
-
-	if (this->Fact == hsfcFactPermanent) {
-
-		// Calculate the number of TupleIDs
-		if (this->Arity > 0) {
-			if (this->Domain == NULL) {
-				Result = (double)this->vDomain[0].size();
-			} else {
-				Result = (double)this->Domain[0]->Size;
-			}
-		}
-
-		return Result;
-
-	} else {
-
-		// Calculate the number of TupleIDs
-		for (int i = 0; i < this->Arity; i++) {
-
-			Index = 0;
-			if (this->Domain == NULL) {
-				for (unsigned int j = 0; j < this->vDomain[i].size(); j++) {
-					Index += this->vDomain[i][j].Count;
-				}
-			} else {
-				for (int j = 0; j < this->Domain[i]->Size; j++) {
-					Index += this->Domain[i]->Entry[j].Count;
-				}
-			}
-			Result = Result * (double)Index;
-		}
-
-		return Result;
-
-	}
-	
-}
-
-//-----------------------------------------------------------------------------
-// Terms
-//-----------------------------------------------------------------------------
-void hsfcRelationSchema::Terms(int ID, vector<hsfcTuple>& Term) {
-
-	int DomainIndex;
-	hsfcTuple NewTerm;
-
-	// Clear the terms
-	Term.clear();
-
-	// Set the terms in the vector
-	NewTerm.RelationIndex = -1;
-	NewTerm.ID = this->PredicateIndex;
-	Term.push_back(NewTerm);
-
-	// Is it a fact
-	if (this->Fact == hsfcFactPermanent) {
-
-		for (int i = 0; i < this->Arity; i++) {
-			Term.push_back(this->Domain[i]->Entry[ID].Tuple);
-		}
-
-	} else {
-
-		// Are there complex entries in the domain
-		if (this->HasComplexEntries) {
-
-			// Calculate the Argument Index
-			NewTerm.ID = -1;
-			for (int i = 0; i < this->Arity; i++) {
-				DomainIndex = ID % this->Domain[i]->Count;
-				for (int j = 0; j < this->Domain[i]->Size; j++) {
-					if (DomainIndex < this->Domain[i]->Entry[j].Index + this->Domain[i]->Entry[j].Count) {
-						NewTerm.RelationIndex = this->Domain[i]->Entry[j].Tuple.RelationIndex;
-						if (this->Domain[i]->Entry[j].Tuple.ID == -1) {
-							NewTerm.ID = DomainIndex - this->Domain[i]->Entry[j].Index;
-						} else {
-							NewTerm.ID = this->Domain[i]->Entry[j].Tuple.ID;
-						}
-						break;
-					}
-				}
-				Term.push_back(NewTerm);
-				ID = ID / this->Domain[i]->Count;
-			}
-
-		} else {
-
-			// Calculate the Argument Index
-			for (int i = 0; i < this->Arity; i++) {
-				DomainIndex = ID % this->Domain[i]->Count;
-				NewTerm.ID = this->Domain[i]->Entry[DomainIndex].Tuple.ID;
-				Term.push_back(NewTerm);
-				ID = ID / this->Domain[i]->Count;
-			}
-
-		}
-
-	}
-
-}
-
-//--- Overload ----------------------------------------------------------------
-void hsfcRelationSchema::Terms(int ID, vector<hsfcRuleTerm>& Term) {
-
-	int DomainIndex;
-	hsfcRuleTerm NewTerm;
-
-	// Clear the terms
-	Term.clear();
-
-	// Set the terms in the vector
-	NewTerm.RelationIndex = this->Index;
-	NewTerm.Tuple.RelationIndex = -1;
-	NewTerm.Tuple.ID = this->PredicateIndex;
-	Term.push_back(NewTerm);
-
-	// Is it a fact
-	if (this->Fact == hsfcFactPermanent) {
-
-		for (int i = 0; i < this->Arity; i++) {
-			NewTerm.Tuple.RelationIndex = this->Domain[i]->Entry[ID].Tuple.RelationIndex;
-			NewTerm.Tuple.ID = this->Domain[i]->Entry[ID].Tuple.ID;
-			Term.push_back(NewTerm);
-		}
-
-	} else {
-
-		// Are there complex entries in the domain
-		if (this->HasComplexEntries) {
-
-			// Calculate the Argument Index
-			NewTerm.Tuple.ID = -1;
-			for (int i = 0; i < this->Arity; i++) {
-				DomainIndex = ID % this->Domain[i]->Count;
-				for (int j = 0; j < this->Domain[i]->Size; j++) {
-					if (DomainIndex < this->Domain[i]->Entry[j].Index + this->Domain[i]->Entry[j].Count) {
-						NewTerm.Tuple.RelationIndex = this->Domain[i]->Entry[j].Tuple.RelationIndex;
-						if (this->Domain[i]->Entry[j].Tuple.ID == -1) {
-							NewTerm.Tuple.ID = DomainIndex - this->Domain[i]->Entry[j].Index;
-						} else {
-							NewTerm.Tuple.ID = this->Domain[i]->Entry[j].Tuple.ID;
-						}
-						break;
-					}
-				}
-				Term.push_back(NewTerm);
-				ID = ID / this->Domain[i]->Count;
-			}
-
-		} else {
-
-			// Calculate the Argument Index
-			for (int i = 0; i < this->Arity; i++) {
-				DomainIndex = ID % this->Domain[i]->Count;
-				NewTerm.Tuple.ID = this->Domain[i]->Entry[DomainIndex].Tuple.ID;
-				Term.push_back(NewTerm);
-				ID = ID / this->Domain[i]->Count;
-			}
-
-		}
-	}
-
-}
-
-//-----------------------------------------------------------------------------
-// GetDomainCount
-//-----------------------------------------------------------------------------
-int hsfcRelationSchema::GetDomainCount(int Index) {
-
-	return this->Domain[Index]->Count;
-
-}
-
-//-----------------------------------------------------------------------------
-// ListDomain
-//-----------------------------------------------------------------------------
-void hsfcRelationSchema::ListDomain(vector<string>& List) {
-
-	// Clear the vector
-	List.clear();
-
-	// Add in the entries
-	if (this->Domain == NULL) {
-
-		for (unsigned int i = 0; i < this->vDomain[0].size(); i++) {
-			if (this->vDomain[0][i].Tuple.ID == -1) {
-				List.push_back(this->Lexicon->Text(this->vDomain[0][i].Tuple.ID));
-			}
-		}
-
-	} else {
-
-		for (int i = 0; i < this->Domain[0]->Size; i++) {
-			if (this->Domain[0]->Entry->Tuple.RelationIndex == -1) {
-				List.push_back(this->Lexicon->Text(this->Domain[0]->Entry[i].Tuple.ID));
-			}
-		}
-
-	}
-
-}
-
-//-----------------------------------------------------------------------------
-// PrintDomains
-//-----------------------------------------------------------------------------
-void hsfcRelationSchema::PrintDomains() {
-
-	bool AllDone;
-
-	if (this->Domain == NULL) {
-
-		// Print the domains up to a limit
-		for (unsigned int n = 0; n < 32; n++) {
-			AllDone = true;
-			for (int i = 0; i < this->Arity; i++) {
-				if (n < this->vDomain[i].size()) {
-					printf("%2d.%d %d %d\t", this->vDomain[i][n].Tuple.RelationIndex, this->vDomain[i][n].Tuple.ID, this->vDomain[i][n].Count, this->vDomain[i][n].Index);
-					AllDone = false;
-				} else {
-					printf("\t");
-				}
-			}
-			printf("\n");
-			if (AllDone) break;
-		}
-
-	} else {
-
-		// Print the domains up to a limit
-		for (int n = 0; n < 32; n++) {
-			AllDone = true;
-			for (int i = 0; i < this->Arity; i++) {
-				if (n < this->Domain[i]->Size) {
-					printf("%2d.%d %d %d\t", this->Domain[i]->Entry[n].Tuple.RelationIndex, this->Domain[i]->Entry[n].Tuple.ID, this->Domain[i]->Entry[n].Count, this->Domain[i]->Entry[n].Index);
-					AllDone = false;
-				} else {
-					printf("\t");
-				}
-			}
-			printf("\n");
-			if (AllDone) break;
-		}
-
-	}
+	return true;
 
 }
 
 //-----------------------------------------------------------------------------
 // Print
 //-----------------------------------------------------------------------------
-void hsfcRelationSchema::Print() {
+void hsfcRelationSchema::Print(){
 
-	// Print the Relation
-	printf("%s\n", this->Lexicon->Text(this->PredicateIndex));
-	printf("     IDCount = %d\n", this->IDCount);
-	printf("        Fact = %d\n", this->Fact);
-	printf("   AveLength = %.2f\n", this->AveListLength);
-	printf(".....................................\n");
-	this->PrintDomains();
-	printf("-------------------------------------\n");
+	this->Lexicon->IO->FormatToLog(0, false, "%s\n", this->Lexicon->Text(this->NameID));
+	for (unsigned int i = 0; i < this->DomainSchema.size(); i++) {
+		this->Lexicon->IO->FormatToLog(0, false, "     %2lu:", i);
+		this->DomainSchema[i]->Print();
+	}
+
+}
+
+//-----------------------------------------------------------------------------
+// DeleteDomainSchema
+//-----------------------------------------------------------------------------
+void hsfcRelationSchema::DeleteDomainSchema(){
+
+	// Destroy all of the relations
+	for (unsigned int i = 0; i < this->DomainSchema.size(); i++) {
+		delete this->DomainSchema[i];
+	}
+	this->DomainSchema.clear();
 
 }
 
@@ -982,9 +375,6 @@ void hsfcRelationSchema::Print() {
 //-----------------------------------------------------------------------------
 hsfcRuleRelationSchema::hsfcRuleRelationSchema(hsfcLexicon* Lexicon){
 
-	// Allocate the memory
-	this->Template.resize(16);
-
 	// Set up the Lexicon
 	this->Lexicon = Lexicon;
 
@@ -995,7 +385,6 @@ hsfcRuleRelationSchema::hsfcRuleRelationSchema(hsfcLexicon* Lexicon){
 //-----------------------------------------------------------------------------
 hsfcRuleRelationSchema::~hsfcRuleRelationSchema(void){
 
-
 }
 
 //-----------------------------------------------------------------------------
@@ -1004,475 +393,41 @@ hsfcRuleRelationSchema::~hsfcRuleRelationSchema(void){
 void hsfcRuleRelationSchema::Initialise(){
 
 	// Initialise
-	this->PredicateIndex = 0;
-	this->Arity = 0;
-	this->Fact = hsfcFactNone;
+	this->TermSchema.clear();
 	this->Function = hsfcFunctionNone;
-	this->Type = hsfcRuleNone;
-	this->SortOrder = 0;
+	this->Type = hsfcRuleInput;
 	this->ReferenceSize = 0;
 
-	// Reset the Terms
-	this->Template.clear();
-
 }
 
 //-----------------------------------------------------------------------------
-// FromRuleRelationSchema
+// FromRelationSchema
 //-----------------------------------------------------------------------------
-void hsfcRuleRelationSchema::FromRuleRelationSchema(hsfcRuleRelationSchema* Source) {
+void hsfcRuleRelationSchema::FromRelationSchema(hsfcRuleRelationSchema* Source) {
 
-	// Initialise the rule relation
+	hsfcRuleTermSchema NewTermSchema;
+
+	// Initialise the schema
 	this->Initialise();
+
+	// Copy the TermSchema
+	for (unsigned int i = 0; i < Source->TermSchema.size(); i++) {
+		NewTermSchema.NameID = Source->TermSchema[i].NameID;
+		NewTermSchema.RelationIndex = Source->TermSchema[i].RelationIndex;
+		NewTermSchema.EmbeddedIndex = Source->TermSchema[i].EmbeddedIndex;
+		NewTermSchema.Arity = Source->TermSchema[i].Arity;
+		NewTermSchema.Type = Source->TermSchema[i].Type;
+		NewTermSchema.VariableIndex = Source->TermSchema[i].VariableIndex;
+		NewTermSchema.ArgumentIndex = Source->TermSchema[i].ArgumentIndex;
+		NewTermSchema.Term.Index = Source->TermSchema[i].Term.Index;
+		NewTermSchema.Term.ID = Source->TermSchema[i].Term.ID;
+		this->TermSchema.push_back(NewTermSchema);
+	}
 
 	// Copy the properties
-	this->PredicateIndex = Source->PredicateIndex;
-	this->Arity = Source->Arity;
-	this->Fact = Source->Fact;
 	this->Function = Source->Function;
-
-	// Copy the Terms
-	for (unsigned int i = 0; i < Source->Template.size(); i++) {
-		this->Template.push_back(Source->Template[i]);
-	}
-
-}
-
-//-----------------------------------------------------------------------------
-// Create
-//-----------------------------------------------------------------------------
-void hsfcRuleRelationSchema::Create(vector<hsfcGDLTerm>& GDLTerm, vector<hsfcBufferTerm>& Buffer) {
-
-	bool Found;
-	hsfcRuleTemplate NewTemplate;
-	hsfcBufferTerm NewBufferTerm;
-	int Index;
-
-	// Validate arguments
-	if (GDLTerm.size() < 1) {
-		printf("Error: No terms\n");
-		abort();
-	}
-
-	// Initialise the rule relation
-	this->Initialise();
-
-	// Is it a DISTINCT function
-	if (this->Lexicon->Match(GDLTerm[0].Tuple.ID, "distinct")) {
-		this->Function = (this->Function | hsfcFunctionDistinct);
-	}
-	
-	// Set the properties
-	this->PredicateIndex = GDLTerm[0].Tuple.ID;
-	this->Arity = GDLTerm.size() - 1;
-
-	// Now get the terms and fill the Term array
-	for (unsigned int i = 0; i < GDLTerm.size(); i++) {
-
-		// Set the new term properties
-		NewTemplate.PredicateIndex = GDLTerm[i].PredicateIndex;
-		NewTemplate.RelationSchema = NULL;
-		NewTemplate.Tuple.RelationIndex = GDLTerm[i].Tuple.RelationIndex;
-		NewTemplate.Tuple.ID = GDLTerm[i].Tuple.ID;
-		NewTemplate.BufferIndex = -1;
-		NewTemplate.ArgumentIndex = -1;
-		NewTemplate.DomainSize = 1;
-		NewTemplate.Fixed = !this->Lexicon->IsVariable(GDLTerm[i].Tuple.ID);
-
-		// Add the new term
-		this->Template.push_back(NewTemplate);
-
-	}
-
-	// Go through the Terms and identify their Argument Number
-	// (legal ?player (mark ?x ?y))
-	// (0      1      (0     1  2))
-	for (unsigned int i = 0; i < this->Template.size(); i++) {
-
-		// Is this part of a new relation
-		if ((i == 0) || (this->Template[i].PredicateIndex != this->Template[i-1].PredicateIndex)) {
-			// Count back and look for this to be an argument of a parent relation
-			Index = 0;
-			if (i > 0) {
-				for (int j = i - 1; j >= 0; j--) {
-					if (this->Template[i].PredicateIndex == this->Template[j].PredicateIndex) {
-						Index = this->Template[j].ArgumentIndex + 1;
-						break;
-					}
-				}
-			}
-		}
-
-		// Set the argument index
-		this->Template[i].ArgumentIndex = Index;
-		Index++;
-	}
-
-	// Correct for rolled up relations
-	// (legal ?player (mark ?x ?y))
-	// (0      1      (0     1  2))
-	// (legal ?player (?mark))
-	// (0      1        2)
-
-
-	// Go through the GDLTerms (Buffer) and align the variables
-	for (unsigned int i = 0; i < this->Template.size(); i++) {
-
-		// Is it a variable
-		if (!this->Template[i].Fixed) {
-
-			// Find it in the rule Terms list
-			Found = false;
-			for (unsigned int j = 0; j < Buffer.size(); j++) {
-				// Do the terms match
-				if ((this->Template[i].Tuple.RelationIndex == Buffer[j].RelationIndex) && (this->Template[i].Tuple.ID == Buffer[j].ID)) {
-					this->Template[i].BufferIndex = j;
-					Found = true;
-					break;
-				}
-			}
-
-			// Was it a new Term
-			if (!Found) {
-				// Set the new term properties
-				NewBufferTerm.RelationIndex = GDLTerm[i].Tuple.RelationIndex;
-				NewBufferTerm.ID = GDLTerm[i].Tuple.ID;
-
-				// Add the new term to the buffer
-				this->Template[i].BufferIndex = Buffer.size();
-				Buffer.push_back(NewBufferTerm);
-			}
-		}
-	}
-
-
-}
-
-//-----------------------------------------------------------------------------
-// Terms
-//-----------------------------------------------------------------------------
-bool hsfcRuleRelationSchema::Terms(int TupleID, vector<hsfcRuleTerm>& Term) {
-
-	vector<hsfcRuleTerm> NestedTerm;
-	hsfcRelationSchema* Relation;
-
-	// Clear the Term; this is done by the call below
-
-	// Use the underlying relation functionality to get the terms
-	this->Template[0].RelationSchema->Terms(TupleID, Term);
-
-	// The Term array will be in its most compressed form
-	// eg. (cell ?0 ?1)
-	// But the rule may require an expanded form
-	// eg. (cell (cell~0~at ?0 ?1) ?2)
-
-	Relation = this->Template[0].RelationSchema;
-	for (unsigned int i = 1; i < this->Template.size(); i++) {
-
-		// Do we need to expand this term
-		if ((this->Template[i].RelationSchema != Relation) && (this->Template[i].RelationSchema != this->Template[0].RelationSchema)) {
-
-			// Is the term from the correct relation
-			if (Term[i].Tuple.RelationIndex != this->Template[i].RelationSchema->Index) {
-				return false;
-			}
-
-			// Get the relation for this term
-			Relation = this->Template[i].RelationSchema;
-			// Get the nested relation
-			Relation->Terms(Term[i].Tuple.ID, NestedTerm);
-			// Delete the term and insert the nested terms
-			Term.erase(Term.begin() + i);
-			for (unsigned int j = 0; j < NestedTerm.size(); j++) {
-				Term.insert(Term.begin() + i + j, NestedTerm[j]);
-			}
-
-		}
-	}
-
-	return true;
-
-}
-
-//-----------------------------------------------------------------------------
-// ID
-//-----------------------------------------------------------------------------
-int hsfcRuleRelationSchema::ID(vector<hsfcTuple>& Term, bool Validate) {
-
-	//hsfcRelationSchema* Relation;
-	hsfcRelationSchema* ParentRelationSchema;
-	vector<hsfcTuple> NestedTerm;
-	hsfcTuple NewTerm;
-	vector<hsfcRuleCompactTerm> CompactTerm;
-	hsfcRuleCompactTerm NewCompactTerm;
-	hsfcTuple Result;
-	int NextArgumentIndex;
-	hsfcRuleCompactTerm CompactTerm$[16];
-	int NumCompactTerms;
-	bool Found;
-	int NestedSize;
-
-	// The terms may be in the expanded form
-	// eg. (cell (at ?0 ?1) ?2)
-	// But we need them in the compact form
-	// eg. (cell ?0 ?1)
-
-	// Are the vectors the same size
-	if (Term.size() != this->Template.size()) {
-		printf("Error: Wrong size term vector\n");
-		abort();
-	}
-
-	//--- HighSpeed version -------------------------------------------------------------------
-
-	if (Term.size() < 16) {
-
-		// Copy from the original terms to the compact array
-		NumCompactTerms = 0;
-		for (unsigned int i = 0; i < this->Template.size(); i++) {
-			CompactTerm$[NumCompactTerms].RelationSchema = this->Template[i].RelationSchema;
-			CompactTerm$[NumCompactTerms].ArgumentIndex = this->Template[i].ArgumentIndex;
-			CompactTerm$[NumCompactTerms].Tuple.RelationIndex = Term[i].RelationIndex;
-			CompactTerm$[NumCompactTerms].Tuple.ID = Term[i].ID;
-			NumCompactTerms++;
-		}
-
-		// Look for any contiguous terms with the same Schema relation and arguments in sequence 0 1 2 etc..
-		while (true) {
-
-			// Special case where the compact terms are reduced to a single term
-			if (NumCompactTerms == 1) {
-
-				// Get the tuple for the nested terms
-				Result.RelationIndex = CompactTerm$[0].RelationSchema->Index;
-				Result.ID = CompactTerm$[0].RelationSchema->ID(CompactTerm$, 0, 1);
-				
-				if (!Validate && (Result.ID == -1)) {
-					printf ("Error: Bad ID\n");
-					printf("Terms\n");
-					for (unsigned int i = 0; i < Term.size(); i++) {
-						printf("   %3d.%d", Term[i].RelationIndex, Term[i].ID);
-						if (Term[i].RelationIndex == -1) printf("\t%s", this->Lexicon->Text(Term[i].ID));
-						printf("\n");
-					}
-					printf("NestedTerms\n");
-					for (int i = 0; i < NumCompactTerms; i++) {
-						printf("   %3d.%d", CompactTerm$[i].Tuple.RelationIndex, CompactTerm$[i].Tuple.ID);
-						if (CompactTerm$[i].Tuple.RelationIndex == -1) printf("\t%s", this->Lexicon->Text(CompactTerm$[i].Tuple.ID));
-						printf("\n");
-					}
-					printf("Relation\n");
-					CompactTerm$[0].RelationSchema->Print();
-					abort();
-				}
-
-				return Result.ID;
-
-			}
-
-			// Set up the parent Schema relation
-			ParentRelationSchema = CompactTerm$[0].RelationSchema;
-			NextArgumentIndex = 0;
-
-			for (int Offset = 0; Offset < NumCompactTerms; Offset++) {
-
-				// Is this the 0th argument of a nested term
-				if (CompactTerm$[Offset].ArgumentIndex == 0) {
-
-					// Build a set of nested terms
-					NestedSize = CompactTerm$[Offset].RelationSchema->Arity + 1;
-					Found = true;
-					for (int i = 1; i < NestedSize; i++) {
-						// Construct the nested terms, or fail
-						if (CompactTerm$[Offset + i].RelationSchema != CompactTerm$[Offset].RelationSchema) {
-							Found = false;
-							break;
-						}
-					}
-
-					// Was there a nested term
-					if (Found) {
-						
-						// Get the tuple for the nested terms
-						Result.RelationIndex = CompactTerm$[Offset].RelationSchema->Index;
-						Result.ID = CompactTerm$[Offset].RelationSchema->ID(CompactTerm$, Offset, NestedSize);
-						
-						if (!Validate && (Result.ID == -1)) {
-							printf ("Error: Bad ID\n");
-							printf("Terms\n");
-							for (unsigned int i = 0; i < Term.size(); i++) {
-								printf("   %3d.%d", Term[i].RelationIndex, Term[i].ID);
-								if (Term[i].RelationIndex == -1) printf("\t%s", this->Lexicon->Text(Term[i].ID));
-								printf("\n");
-							}
-							printf("NestedTerms\n");
-							for (int i = 0; i < NestedSize; i++) {
-							printf("   %3d.%d", CompactTerm$[Offset+i].Tuple.RelationIndex, CompactTerm$[Offset+i].Tuple.ID);
-							if (CompactTerm$[Offset+i].Tuple.RelationIndex == -1) printf("\t%s", this->Lexicon->Text(CompactTerm$[Offset+i].Tuple.ID));
-								printf("\n");
-							}
-							printf("Relation\n");
-							CompactTerm$[Offset].RelationSchema->Print();
-							abort();
-						}
-
-						// Was this the last iteration
-						if (Offset == 0) {
-							return Result.ID;
-						}
-						
-						// Replace the nested terms with the single entry
-						for (int i = 1; i < NestedSize; i++) {
-							CompactTerm$[Offset+i].RelationSchema = CompactTerm$[Offset+i+NestedSize-1].RelationSchema;
-							CompactTerm$[Offset+i].ArgumentIndex = CompactTerm$[Offset+i+NestedSize-1].ArgumentIndex;
-							CompactTerm$[Offset+i].Tuple.RelationIndex = CompactTerm$[Offset+i+NestedSize-1].Tuple.RelationIndex;
-							CompactTerm$[Offset+i].Tuple.ID = CompactTerm$[Offset+i+NestedSize-1].Tuple.ID;
-							NumCompactTerms--;
-						}
-						CompactTerm$[Offset].RelationSchema = ParentRelationSchema;
-						CompactTerm$[Offset].ArgumentIndex = NextArgumentIndex;
-						CompactTerm$[Offset].Tuple.RelationIndex = Result.RelationIndex;
-						CompactTerm$[Offset].Tuple.ID = Result.ID;
-
-						// Start all over again
-						break;
-
-					} else {
-
-						ParentRelationSchema = CompactTerm$[Offset].RelationSchema;
-						NextArgumentIndex = CompactTerm$[Offset].ArgumentIndex + 1;
-
-					}
-				}
-			}
-		}
-	}
-
-	//--- LowSpeed version -------------------------------------------------------------------
-
-	// Copy from the original terms to the compact array
-	CompactTerm.clear();
-	for (unsigned int i = 0; i < this->Template.size(); i++) {
-		NewCompactTerm.RelationSchema = this->Template[i].RelationSchema;
-		NewCompactTerm.ArgumentIndex = this->Template[i].ArgumentIndex;
-		NewCompactTerm.Tuple.RelationIndex = Term[i].RelationIndex;
-		NewCompactTerm.Tuple.ID = Term[i].ID;
-		CompactTerm.push_back(NewCompactTerm);
-	}
-
-	// Look for any contiguous terms with the same Schema relation and arguments in sequence 0 1 2 etc..
-	while (true) {
-
-		// Special case where the compact terms are reduced to a single term
-		if (CompactTerm.size() == 1) {
-
-			// Get the tuple for the nested terms
-			NestedTerm.clear();
-			NewTerm.RelationIndex = CompactTerm[0].Tuple.RelationIndex;
-			NewTerm.ID = CompactTerm[0].Tuple.ID;
-			NestedTerm.push_back(NewTerm);
-			Result.RelationIndex = CompactTerm[0].RelationSchema->Index;
-			Result.ID = CompactTerm[0].RelationSchema->ID(NestedTerm);
-			
-			if (!Validate && (Result.ID == -1)) {
-				printf ("Error: Bad ID\n");
-				printf("Terms\n");
-				for (unsigned int i = 0; i < Term.size(); i++) {
-					printf("   %3d.%d", Term[i].RelationIndex, Term[i].ID);
-					if (Term[i].RelationIndex == -1) printf("\t%s", this->Lexicon->Text(Term[i].ID));
-					printf("\n");
-				}
-				printf("NestedTerms\n");
-				for (unsigned int i = 0; i < NestedTerm.size(); i++) {
-					printf("   %3d.%d", NestedTerm[i].RelationIndex, NestedTerm[i].ID);
-					if (NestedTerm[i].RelationIndex == -1) printf("\t%s", this->Lexicon->Text(NestedTerm[i].ID));
-					printf("\n");
-				}
-				printf("Relation\n");
-				CompactTerm[0].RelationSchema->Print();
-				abort();
-			}
-
-			return Result.ID;
-
-		}
-
-
-		// Set up the parent Schema relation
-		ParentRelationSchema = CompactTerm[0].RelationSchema;
-		NextArgumentIndex = 0;
-
-		for (unsigned int Offset = 0; Offset < CompactTerm.size(); Offset++) {
-
-			// Is this the 0th argument of a nested term
-			if (CompactTerm[Offset].ArgumentIndex == 0) {
-
-				// Build a set of nested terms
-				NestedTerm.clear();
-				for (int i = 0; i <= CompactTerm[Offset].RelationSchema->Arity; i++) {
-					// Construct the nested terms, or fail
-					if (CompactTerm[Offset + i].RelationSchema == CompactTerm[Offset].RelationSchema) {
-						NewTerm.RelationIndex = CompactTerm[Offset + i].Tuple.RelationIndex;
-						NewTerm.ID = CompactTerm[Offset + i].Tuple.ID;
-						NestedTerm.push_back(NewTerm);
-					} else {
-						NestedTerm.clear();
-						break;
-					}
-				}
-
-				// Was there a nested term
-				if (NestedTerm.size() > 0) {
-					
-					// Get the tuple for the nested terms
-					Result.RelationIndex = CompactTerm[Offset].RelationSchema->Index;
-					Result.ID = CompactTerm[Offset].RelationSchema->ID(NestedTerm);
-					
-					if (!Validate && (Result.ID == -1)) {
-						printf ("Error: Bad ID\n");
-						printf("Terms\n");
-						for (unsigned int i = 0; i < Term.size(); i++) {
-							printf("   %3d.%d", Term[i].RelationIndex, Term[i].ID);
-							if (Term[i].RelationIndex == -1) printf("\t%s", this->Lexicon->Text(Term[i].ID));
-							printf("\n");
-						}
-						printf("NestedTerms\n");
-						for (unsigned int i = 0; i < NestedTerm.size(); i++) {
-							printf("   %3d.%d", NestedTerm[i].RelationIndex, NestedTerm[i].ID);
-							if (NestedTerm[i].RelationIndex == -1) printf("\t%s", this->Lexicon->Text(NestedTerm[i].ID));
-							printf("\n");
-						}
-						printf("Relation\n");
-						CompactTerm[Offset].RelationSchema->Print();
-						abort();
-					}
-
-					// Was this the last iteration
-					if (Offset == 0) {
-						return Result.ID;
-					}
-					
-					// Replace the nested terms with the single entry
-					for (int i = 0; i < CompactTerm[Offset].RelationSchema->Arity; i++) {
-						CompactTerm.erase(CompactTerm.begin() + Offset + 1);
-					}
-					CompactTerm[Offset].RelationSchema = ParentRelationSchema;
-					CompactTerm[Offset].ArgumentIndex = NextArgumentIndex;
-					CompactTerm[Offset].Tuple.RelationIndex = Result.RelationIndex;
-					CompactTerm[Offset].Tuple.ID = Result.ID;
-
-					// Start all over again
-					break;
-
-				} else {
-
-					ParentRelationSchema = CompactTerm[Offset].RelationSchema;
-					NextArgumentIndex = CompactTerm[Offset].ArgumentIndex + 1;
-
-				}
-			}
-		}
-	}
+	this->Type = Source->Type;
+	this->ReferenceSize = Source->ReferenceSize;
 
 }
 
@@ -1481,35 +436,20 @@ int hsfcRuleRelationSchema::ID(vector<hsfcTuple>& Term, bool Validate) {
 //-----------------------------------------------------------------------------
 void hsfcRuleRelationSchema::Print(){
 
-	if (this->Function & hsfcFunctionNot) printf("not ");
-	//if (this->Function & hsfcFunctionTrue) printf("(true ");
-	printf("(");
-
-	// Print each of the Terms
-	for (unsigned int i = 0; i < this->Template.size(); i++) {
-
-		if (i > 0) printf(" ");
-		// Is it a variable or fixed 
-		if (this->Template[i].Fixed) {
-			printf("%s", this->Lexicon->Text(this->Template[i].Tuple.ID));
-		// Is it a vriable
-		} else {
-			printf("?%d", this->Template[i].BufferIndex);
+	for (unsigned int i = 0; i < this->TermSchema.size(); i++) {
+		if (this->TermSchema[i].Type == hsfcTypeRelation) {
+			this->Lexicon->IO->FormatToLog(0, false, "%s  ", this->Lexicon->Text(this->TermSchema[i].NameID));
 		}
-
+		if (this->TermSchema[i].Type == hsfcTypeFixed) {
+			this->Lexicon->IO->FormatToLog(0, false, "'%s'  ", this->Lexicon->Text(this->TermSchema[i].NameID));
+		}
+		if (this->TermSchema[i].Type == hsfcTypeVariable) {
+			this->Lexicon->IO->FormatToLog(0, false, "?%02d  ", this->TermSchema[i].VariableIndex);
+		}
 	}
-	printf(")");
-	//if (this->Function & hsfcFunctionNot) printf(")");
-	//if (this->Function & hsfcFunctionTrue) printf(")");
-
-	printf("  /%d", this->Arity);
-	printf("  > %d", this->Type);
-	printf("\n");
+	this->Lexicon->IO->WriteToLog(0, false, "\n");
 
 }
-
-
-
 
 //=============================================================================
 // CLASS: hsfcRuleSchema
@@ -1519,10 +459,6 @@ void hsfcRuleRelationSchema::Print(){
 // Constructor
 //-----------------------------------------------------------------------------
 hsfcRuleSchema::hsfcRuleSchema(hsfcLexicon* Lexicon){
-
-	// Allocate the memory
-	this->Buffer.resize(16);
-	this->Relation.resize(16);
 
 	// Set up the Lexicon
 	this->Lexicon = Lexicon;
@@ -1534,15 +470,9 @@ hsfcRuleSchema::hsfcRuleSchema(hsfcLexicon* Lexicon){
 //-----------------------------------------------------------------------------
 hsfcRuleSchema::~hsfcRuleSchema(void){
 
-	// Destroy all of the relations
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		delete this->Relation[i];
-	}
-	// Free the buffer
-	for (unsigned int i = 0; i < this->Buffer.size(); i++) {
-		this->Buffer[i].Domain.clear();
-	}
-	this->Buffer.clear();
+	// Destroy all of the schemas
+	this->DeleteRelationSchema();
+	this->DeleteVariableSchema();
 
 }
 
@@ -1551,303 +481,36 @@ hsfcRuleSchema::~hsfcRuleSchema(void){
 //-----------------------------------------------------------------------------
 void hsfcRuleSchema::Initialise(){
 
-	// Free the buffer
-	for (unsigned int i = 0; i < this->Buffer.size(); i++) {
-		this->Buffer[i].Domain.clear();
-	}
-	this->Buffer.clear();
-
-	// Clear the relations
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		delete this->Relation[i];
-	}
-	this->Relation.clear();
-
-	//Reset the properties
-	this->SelfReferencing = false;
-	this->Stratum = 0;
-	this->EstReferenceSize = 0;
+	// Destroy all of the schemas
+	this->DeleteRelationSchema();
+	this->DeleteVariableSchema();
 
 }
 
 //-----------------------------------------------------------------------------
-// CreateRule
+// Initialise
 //-----------------------------------------------------------------------------
-void hsfcRuleSchema::Create(hsfcGDLRule* GDLRule) {
+void hsfcRuleSchema::FromRuleSchema(hsfcRuleSchema* Source){
 
-	hsfcRuleRelationSchema* NewRelation;
-	vector<hsfcGDLTerm> Term;
+	hsfcRuleRelationSchema* NewRelationSchema;
+	hsfcDomainSchema* NewVariableSchema;
 
-	// Initialise
+	// Initialise the schema
 	this->Initialise();
 
-	// Create the rule relations from the source GDL rule
-	for (unsigned int i = 0; i < GDLRule->Relation.size(); i++) {
-
-		// Create an empty relation
-		NewRelation = new hsfcRuleRelationSchema(this->Lexicon);
-		NewRelation->Initialise();
-
-		// Get a list of the rule terms forming the relation
-		Term.clear();
-		GDLRule->Relation[i]->Terms(Term);
-
-		// Create the rule relation
-		NewRelation->Create(Term, this->Buffer);
-		if (GDLRule->Relation[i]->Not) NewRelation->Function = (NewRelation->Function | hsfcFunctionNot);
-		if (this->Relation.size() == 0) NewRelation->Type = hsfcRuleResult;
-
-		// Add it to the rule
-		// Is this a self referencing rule
-		if ((i > 0) && (NewRelation->PredicateIndex == this->Relation[0]->PredicateIndex)) {
-			this->SelfReferencing = true;
-			this->Relation.insert(this->Relation.begin() + 1, NewRelation);
-		} else {
-			this->Relation.push_back(NewRelation);
-		}
-
+	// Copy the RelationSchema
+	for (unsigned int i = 0; i < Source->RelationSchema.size(); i++) {
+		NewRelationSchema = new hsfcRuleRelationSchema(this->Lexicon);
+		NewRelationSchema->FromRelationSchema(Source->RelationSchema[i]);
+		this->RelationSchema.push_back(NewRelationSchema);
 	}
 
-}
-
-//-----------------------------------------------------------------------------
-// Optimise
-//-----------------------------------------------------------------------------
-int hsfcRuleSchema::Optimise(bool OrderInputs) {
-
-	int Index;
-	vector<int> Permutation;
-	vector<int> OrigInputNo;
-	vector<int> InputIndex;
-	double Cost;
-	double BestCost;
-	vector<int> BestInputIndex;
-	int Count;
-	int NextIndex;
-
-	// Keep track of the permutations of the input indexes by addressing them indirectly
-	// Not all of the relations are inputs, so the initial vectors will look like
-	// OrigInputNo	0, 2, 3, 5, 6
-	// Permutation	0, 1, 2, 3, 4
-	// InputIndex	0, 2, 3, 5, 6
-
-
-	// Calssify the type of input relation
-	for (unsigned int i = 1; i < this->Relation.size(); i++) {
-		this->Relation[i]->Type = hsfcRulePreCondition;
-		for (unsigned int j = 0; j < this->Relation[i]->Template.size(); j++) {
-			// Does it have variables
-			if (!this->Relation[i]->Template[j].Fixed) {
-				// Is it a function (not (...)) or (distinct ... ...)
-				if (((this->Relation[i]->Function & hsfcFunctionNot) == hsfcFunctionNot) || ((this->Relation[i]->Function & hsfcFunctionDistinct) == hsfcFunctionDistinct)) {
-					this->Relation[i]->Type = hsfcRuleCondition;
-				} else {
-					this->Relation[i]->Type = hsfcRuleInput;
-				}
-				break;
-			}
-		}
+	// Copy the VariableSchema
+	for (unsigned int i = 0; i < Source->VariableSchema.size(); i++) {
+		NewVariableSchema = new hsfcDomainSchema(this->Lexicon);
+		NewVariableSchema->FromDomainSchema(Source->VariableSchema[i]);
+		this->VariableSchema.push_back(NewVariableSchema);
 	}
-
-	// Find the best Cost and order the inputs accordingly
-	Index = 0;
-	BestCost = 1e99;
-	InputIndex.clear();
-	OrigInputNo.clear();
-	BestInputIndex.clear();
-	Permutation.clear();
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		if (this->Relation[i]->Type == hsfcRuleInput) {
-			BestInputIndex.push_back(i);
-			OrigInputNo.push_back(i);
-			Permutation.push_back(Permutation.size());
-			InputIndex.push_back(0);
-		}
-	}
-
-	// Co8unt haow many permutations are tested
-	Count = 0;
-	if (OrigInputNo.size() == 0) return Count;
-
-	// Consider every permutation of the input relations
-	while (true) {
-
-		//for (unsigned int i = 0; i < Permutation.size(); i++) {
-		//	printf(" %d", Permutation[i]);
-		//}
-		//printf("\n");
-
-		// Load this permutation
-		for (unsigned int i = 0; i < OrigInputNo.size(); i++) {
-			InputIndex[i] = OrigInputNo[Permutation[i]];
-		}
-
-		// There is a special type of rule that self references
-		if (this->SelfReferencing) {
-			if (this->Relation[InputIndex[0]]->PredicateIndex != this->Relation[0]->PredicateIndex) {
-				Cost = 1e99;
-			} else {
-				Cost = this->Cost(InputIndex);
-			}
-		} else {
-			Cost = this->Cost(InputIndex);
-		}
-		Count++;
-
-		// Is this the best Cost so far
-		if (Cost < BestCost) {
-			BestCost = Cost;
-			for (unsigned int i = 0; i < InputIndex.size(); i++) {
-				BestInputIndex[i] = InputIndex[i];
-			}
-		}
-
-		// Return inputs to inputs (may have been changed to conditions)
-		for (unsigned int i = 0; i < InputIndex.size(); i++) {
-			this->Relation[InputIndex[i]]->Type = hsfcRuleInput;
-		}
-
-		// Advance the input permutation 
-		if (!OrderInputs) break;
-		if (Permutation.size() == 1)  break;
-
-		// A bit obvoius
-		if (Permutation.size() == 2)  {
-			if (Count == 2) break;
-			Permutation[0] = 1;
-			Permutation[1] = 0;
-			continue;
-		}
-
-		// Advance to the next permutation of 3 in N
-		Permutation[2]++;
-		while ((Permutation[2] == Permutation[0]) || (Permutation[2] == Permutation[1])) Permutation[2]++;
-		if (Permutation[2] == Permutation.size()) {
-			Permutation[2] = 0;
-			Permutation[1]++;
-			while (Permutation[1] == Permutation[0]) Permutation[1]++;
-			if (Permutation[1] == Permutation.size()) {
-				Permutation[1] = 0;
-				Permutation[0]++;
-				if (Permutation[0] == Permutation.size()) break;
-				while (Permutation[1] == Permutation[0]) Permutation[1]++;
-			}
-			while ((Permutation[2] == Permutation[0]) || (Permutation[2] == Permutation[1])) Permutation[2]++;
-		}
-		NextIndex = 0;
-		for (unsigned int i = 3; i < Permutation.size(); i++) {
-			while ((NextIndex == Permutation[0]) || (NextIndex == Permutation[1]) || (NextIndex == Permutation[2])) NextIndex++;
-			Permutation[i] = NextIndex;
-			NextIndex++;
-		}
-
-	}
-
-	// OK; so now we know the best sequence, now sort the inputs accordingly
-	//printf("Best Sort Order\n");
-	//printf("\n");
-	if (DEBUG) printf("    %.0f\n", BestCost);
-	this->Cost(BestInputIndex);
-	this->Sort();
-	//printf("\n");
-
-	return Count;
-
-
-}
-
-//-----------------------------------------------------------------------------
-// Stratify
-//-----------------------------------------------------------------------------
-void hsfcRuleSchema::Stratify() {
-
-	hsfcRelationSchema* RelationSchema;
-	bool NewVariable;
-
-	// Reorder the relations in the body
-	// Result			SortOrder = 0
-	// Preconditions	SortOrder = 0 -> size-1
-	// Input			SortOrder = size -> 2*size-1
-	// Condition		SortOrder = 2*size -> 3*size-1
-
-	// Result always comes first
-	this->Relation[0]->SortOrder = 0;
-
-	// Use the Buffer to identify redundant inputs
-	for (unsigned int i = 0; i < this->Buffer.size(); i++) {
-		this->Buffer[i].ID = 0;
-	}
-
-	// Calssify the type of input relation
-	for (unsigned int i = 1; i < this->Relation.size(); i++) {
-
-		// Is it an input or a condition or a precondition
-		this->Relation[i]->Type = hsfcRulePreCondition;
-		this->Relation[i]->SortOrder = i;
-
-		// Check the template for variables
-		NewVariable = false;
-		for (unsigned int j = 0; j < this->Relation[i]->Template.size(); j++) {
-
-			// Set up the size of the domain in the rule relation
-			// Fixed terms are size = 1
-			this->Relation[i]->Template[j].DomainSize = 1;
-			
-			// Only check the variables
-			if (!this->Relation[i]->Template[j].Fixed) {
-
-				// Get the size of the domain for this variable
-				RelationSchema = this->Relation[i]->Template[j].RelationSchema;
-				if (RelationSchema != NULL) {
-					this->Relation[i]->Template[j].DomainSize = RelationSchema->GetDomainCount(this->Relation[i]->Template[j].ArgumentIndex - 1);
-				}
-
-				// Is it a function (not (...)) or (distinct ... ...) with variables
-				if (((this->Relation[i]->Function & hsfcFunctionNot) == hsfcFunctionNot) || ((this->Relation[i]->Function & hsfcFunctionDistinct) == hsfcFunctionDistinct)) {
-					this->Relation[i]->Type = hsfcRuleCondition;
-					this->Relation[i]->SortOrder = 2 * this->Relation.size() + i;
-					break;
-				} 
-
-				// Only inputs from here on
-				// Check if this is a new variable
-				if (this->Buffer[this->Relation[i]->Template[j].BufferIndex].ID == 0) {
-					this->Buffer[this->Relation[i]->Template[j].BufferIndex].ID = 1;
-					NewVariable = true;
-					// Construct the Buffer domain for this variable 
-					if (RelationSchema != NULL) {
-						if (this->Relation[i]->Template[j].ArgumentIndex <= 0) {
-							printf("Error: Relation Argument Index wrong\n");
-							abort();
-						}
-						RelationSchema->AddToBufferDomain(this->Buffer[this->Relation[i]->Template[j].BufferIndex].Domain, this->Relation[i]->Template[j].ArgumentIndex - 1);  
-					}
-				} else {
-					// Construct the Buffer domain for this variable from the intersection
-					if (RelationSchema != NULL) {
-						if (this->Relation[i]->Template[j].ArgumentIndex <= 0) {
-							printf("Error: Relation Argument Index wrong\n");
-							abort();
-						}
-						RelationSchema->IntersectBufferDomain(this->Buffer[this->Relation[i]->Template[j].BufferIndex].Domain, this->Relation[i]->Template[j].ArgumentIndex - 1);  
-					}
-				}
-
-				// Did this relation introduce any new variables
-				if (NewVariable) {
-					this->Relation[i]->Type = hsfcRuleInput;
-					this->Relation[i]->SortOrder = this->Relation.size() + i;
-				} else {
-					this->Relation[i]->Type = hsfcRuleCondition;
-					this->Relation[i]->SortOrder = 2 * this->Relation.size() + i;
-				}
-
-			}
-		}
-	}
-
-	// Sort the relations
-	this->Sort();
 
 }
 
@@ -1856,296 +519,115 @@ void hsfcRuleSchema::Stratify() {
 //-----------------------------------------------------------------------------
 void hsfcRuleSchema::Print(){
 
-	bool AllDone;
-
-	// Print all of the relations
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		if (i == 0) {
-			printf("(<= ");
-		} else {
-			printf("    ");
-		}
-		this->Relation[i]->Print();
-	}
-	printf(")\n");
-
-	// Print the buffer domains
-	printf("Variables\n");
-
-	// Print the domains up to a limit
-	for (unsigned int n = 0; n < 16; n++) {
-		AllDone = true;
-		for (unsigned int i = 0; i < this->Buffer.size(); i++) {
-			if (n < this->Buffer[i].Domain.size()) {
-				printf("%2d.%d\t", this->Buffer[i].Domain[n].RelationIndex, this->Buffer[i].Domain[n].ID);
-				AllDone = false;
-			} else {
-				printf("\t");
-			}
-		}
-		printf("\n");
-		if (AllDone) break;
+	for (unsigned int i = 0; i < this->RelationSchema.size(); i++) {
+		if (this->RelationSchema[i]->Type == hsfcRuleOutput) this->Lexicon->IO->WriteToLog(0, false, "<= ");
+		if (this->RelationSchema[i]->Type == hsfcRuleInput) this->Lexicon->IO->WriteToLog(0, false, "=> ");
+		if (this->RelationSchema[i]->Type == hsfcRuleCondition) this->Lexicon->IO->WriteToLog(0, false, "?? ");
+		if (this->RelationSchema[i]->Type == hsfcRulePreCondition) this->Lexicon->IO->WriteToLog(0, false, "!! ");
+		this->RelationSchema[i]->Print();
 	}
 
+	this->Lexicon->IO->FormatToLog(0, false, "%s\n", "Variables");
+	for (unsigned int i = 0; i < this->VariableSchema.size(); i++) {
+		this->Lexicon->IO->FormatToLog(0, false, "   %02lu:", i);
+		this->VariableSchema[i]->Print();
+	}
 
 }
 
 //-----------------------------------------------------------------------------
-// Cost
+// DeleteRelationSchema
 //-----------------------------------------------------------------------------
-double hsfcRuleSchema::Cost(vector<int>& InputIndex) {
+void hsfcRuleSchema::DeleteRelationSchema(){
 
-	int BufferIndex;
-	double AveListLength;
-	int MaxListLength;
-	int VariableCount;
-	int NoUniqueIDs;
-	int NoInputsRelations;
-	double ReferenceSize;
-	int NewDataSize;
-	int InputDataSize;
-	double NoIterations;
-	double NoInputCycles;
-	double Probability;
-	double TotalCost;
-	bool NewVariableFound;
-	bool PartiallyGround;
-
-	// Calculate the size of each of the reference tables
-	// Calculate the number of iterations
-	// Calculate the total cost of executing this rule
-	/* Costs
-		Advance database cursor: Cost = 1
-		Read input relations: Cost = 1
-		Test condition relation exists: Cost = 1
-		Test condition relation in sorted list: Cost = log(n)
-		Subsumed rigid as a condition: Cost = 0
-		Subsumed distinct: Cost = 0
-		Preconditions: Cost = 0
-	*/
-
-	NoUniqueIDs = 1;
-	NoInputCycles = 1;
-	ReferenceSize = 0;
-	NoIterations = 0;
-
-	// --- Preconditions ------------------------------------------------------
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		// Is it a precondition
-		if (this->Relation[i]->Type == hsfcRulePreCondition) {
-
-			// Calculate the database transactions
-			NoIterations += NoInputCycles;
-
-			if ((this->Relation[i]->Function & hsfcFunctionDistinct) == hsfcFunctionDistinct) {
-				Probability = 0.5;
-			} else {
-				// Get the list information
-				AveListLength = this->Relation[i]->Template[0].RelationSchema->AveListLength;
-				MaxListLength = this->Relation[i]->Template[0].RelationSchema->IDCount;
-				
-				// Calculate the probability of this precondiction being met
-				if ((this->Relation[i]->Function & hsfcFunctionNot) == hsfcFunctionNot) {
-					Probability = 1.0 - AveListLength / MaxListLength;
-				} else {
-					Probability = AveListLength / MaxListLength;
-				}
-			}
-
-			// Use the probability for sorting and cycle calculations
-			if ((Probability < 0) || (Probability > 1)) {
-				printf("Error: Bad precondition probability %f\n", Probability);
-				abort();
-			}
-			this->Relation[i]->SortOrder = Probability;
-
-			// Calculate the reference size
-			this->Relation[i]->ReferenceSize = 1;
-			ReferenceSize += this->Relation[i]->ReferenceSize;
-		}
+	// Destroy all of the relations
+	for (unsigned int i = 0; i < this->RelationSchema.size(); i++) {
+		delete this->RelationSchema[i];
 	}
-
-	// Ignore the cost and probaility of preconditions as it is fixed
-	NoUniqueIDs = 1;
-	NoInputCycles = 1;
-	ReferenceSize = 0;
-	NoIterations = 0;
-	NoInputsRelations = 0;
-	AveListLength = 1;
-	MaxListLength = 1;
-	TotalCost = 0;
-
-	// Reset the variable buffer
-	VariableCount = 0;
-	for (unsigned int i = 0; i < this->Buffer.size(); i++) {
-		this->Buffer[i].ID = 0;
-	}
-
-	// --- Inputs ------------------------------------------------------------
-	for (unsigned int i = 0; i < InputIndex.size(); i++) {
-		
-		// Calculate the size of the new data introduced by this input
-		NewDataSize = 1;
-		InputDataSize = 1;
-		NewVariableFound = false;
-		PartiallyGround = false;
-
-		// Inspect term in the input relation
-		for (unsigned int j = 0; j < this->Relation[InputIndex[i]]->Template.size(); j++) {
-			// Was this term a variable
-			if (!this->Relation[InputIndex[i]]->Template[j].Fixed) {
-				InputDataSize *= this->Relation[InputIndex[i]]->Template[j].DomainSize;
-				// Is it already in the buffer
-				BufferIndex = this->Relation[InputIndex[i]]->Template[j].BufferIndex; 
-				if (this->Buffer[BufferIndex].ID == 0) {
-					// Add it to the Buffer
-					this->Buffer[BufferIndex].ID = 1;
-					NewVariableFound = true;
-					// Find the size of the domain of the new variable
-					NewDataSize *= this->Buffer[BufferIndex].Domain.size();
-				} else {
-					PartiallyGround = true;
-				}
-			}
-		}
-
-		// Were all of the variables already present in the buffer
-		if (!NewVariableFound) {
-
-			// Flag it as a condition for later calculations
-			this->Relation[InputIndex[i]]->Type = hsfcRuleCondition;
-
-		} else {
-
-			// Remember the input index in case this is the best
-			this->Relation[InputIndex[i]]->SortOrder = 2.0 + i;
-
-			// Get the list information
-			NoInputsRelations++;
-			AveListLength = this->Relation[InputIndex[i]]->Template[0].RelationSchema->AveListLength;
-			MaxListLength = this->Relation[InputIndex[i]]->Template[0].RelationSchema->IDCount;
-
-			// Calculate the size of the reference table from the previous number of unique IDs
-			this->Relation[InputIndex[i]]->ReferenceSize = (double)NoUniqueIDs * (double)MaxListLength;
-			ReferenceSize += (double)this->Relation[InputIndex[i]]->ReferenceSize;
-
-			// Calculate the number of unique combinations of variables
-			NoUniqueIDs *= NewDataSize;
-
-			// Calculate the probability of a pass
-			Probability = (double)NewDataSize / (double)InputDataSize;
-			if (Probability > 1.0) Probability = 1.0;
-
-			// Keep a running total of the cost from reading the input
-			// Count the failed cycles
-			TotalCost += NoInputCycles * AveListLength * (1.0 - Probability) * NoInputsRelations; 
-			NoIterations += NoInputCycles * AveListLength;		
-
-			// Remember the pass rate for the next round
-			NoInputCycles *= Probability * AveListLength;
-
-			// At this point look for permanent facts or distinct that can be subsumed by this input
-
-
-
-		}
-	}
-
-	// Keep a running total of the cost from reading the input
-	// Count the passed cycles
-	TotalCost += NoInputCycles * NoInputsRelations; 
-	// Tally the cost for managing the relation cursors
-	TotalCost += NoIterations;
-
-	// --- Conditions ---------------------------------------------------------
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		// Is it a condition
-		if (this->Relation[i]->Type == hsfcRuleCondition) {
-
-			// Calculate the cost of checking this condition
-			TotalCost += NoInputCycles;
-			
-			if ((this->Relation[i]->Function & hsfcFunctionDistinct) == hsfcFunctionDistinct) {
-				Probability = 0.5;
-			} else {
-				// Get the list information
-				AveListLength = this->Relation[i]->Template[0].RelationSchema->AveListLength;
-				MaxListLength = this->Relation[i]->Template[0].RelationSchema->IDCount;
-				
-				// Calculate the probability of this condiction being met
-				if ((this->Relation[i]->Function & hsfcFunctionNot) == hsfcFunctionNot) {
-					Probability = 1.0 - AveListLength / MaxListLength;
-				} else {
-					Probability = AveListLength / MaxListLength;
-				}
-			}
-
-			// Calculate the reference size
-			this->Relation[i]->ReferenceSize = (double)NoUniqueIDs;
-			ReferenceSize += (double)this->Relation[i]->ReferenceSize;
-
-			// Use the probability for sorting and cycle calculations
-			if ((Probability < 0) || (Probability > 1)) {
-				printf("Error: Bad probability %f\n", Probability);
-				abort();
-			}
-			this->Relation[i]->SortOrder = 2.0 + (double)InputIndex.size() + Probability;
-			NoInputCycles *= Probability;
-		
-		}
-
-	}
-
-	// --- Result ------------------------------------------------------------
-	this->Relation[0]->ReferenceSize = (double)NoUniqueIDs;
-	ReferenceSize += (double)this->Relation[0]->ReferenceSize;
-	TotalCost += NoInputCycles;
-
-	// Cost the results of the calculations
-	// 1 unit of Cost = 10 -> 100 clock cycles
-	// If the reference table stays in L3 cache there is no cost
-	if (ReferenceSize > 10000.0) {
-		TotalCost += (ReferenceSize - 10000.0) / 1000.0; 
-	}
-	//printf("    %.0f\n", Cost);
-
-	return TotalCost;
+	this->RelationSchema.clear();
 
 }
 
 //-----------------------------------------------------------------------------
-// Sort
+// DeleteVariableSchema
 //-----------------------------------------------------------------------------
-void hsfcRuleSchema::Sort() {
+void hsfcRuleSchema::DeleteVariableSchema(){
 
-	bool OrderChanged;
-	hsfcRuleRelationSchema* Relation;
-
-	// Reorder the relations in the body
-	// Result
-	// Preconditions - ordered by probability (lowest first)
-	// Input - ordered by lowest cost index
-	// Condition - ordered by probability (lowest first)
-
-	// Process until the order no longer changes
-	OrderChanged = true;
-	while (OrderChanged) {
-
-		// Sort everything except the result relation[0]
-		OrderChanged = false;
-		for (unsigned int i = 2; i < this->Relation.size(); i++) {
-
-			// Is the order correct
-			if (this->Relation[i-1]->SortOrder > this->Relation[i]->SortOrder) {
-				OrderChanged = true;
-				Relation = this->Relation[i-1];
-				this->Relation[i-1] = this->Relation[i];
-				this->Relation[i] = Relation;
-			}
-
-		}
-
+	// Destroy all of the relations
+	for (unsigned int i = 0; i < this->VariableSchema.size(); i++) {
+		delete this->VariableSchema[i];
 	}
+	this->VariableSchema.clear();
+
+}
+
+//=============================================================================
+// CLASS: hsfcStratumSchema
+//=============================================================================
+
+//-----------------------------------------------------------------------------
+// Constructor
+//-----------------------------------------------------------------------------
+hsfcStratumSchema::hsfcStratumSchema(hsfcLexicon* Lexicon) {
+
+	// Set up the Lexicon
+	this->Lexicon = Lexicon;
+
+}
+
+//-----------------------------------------------------------------------------
+// Destructor
+//-----------------------------------------------------------------------------
+hsfcStratumSchema::~hsfcStratumSchema(void){
+
+	this->DeleteRuleSchema();
+
+}
+
+//-----------------------------------------------------------------------------
+// Initialise
+//-----------------------------------------------------------------------------
+void hsfcStratumSchema::Initialise(hsfcSCLStratum* SCLStratum){
+
+	// Clear the schema
+	this->DeleteRuleSchema();
+
+	// Set properties
+	this->SelfReferenceCount = SCLStratum->SelfReferenceCount;
+	this->Input.clear();
+	for (unsigned int i = 0; i < SCLStratum->Input.size(); i++) this->Input.push_back(SCLStratum->Input[i]);
+	this->Output.clear();
+	for (unsigned int i = 0; i < SCLStratum->Output.size(); i++) this->Output.push_back(SCLStratum->Output[i]);
+
+	this->Rigidity = hsfcRigidityNone;
+
+	
+
+}
+
+//-----------------------------------------------------------------------------
+// Print
+//-----------------------------------------------------------------------------
+void hsfcStratumSchema::Print(){
+
+	for (unsigned int i = 0; i < this->RuleSchema.size(); i++) {
+		this->Lexicon->IO->FormatToLog(0, false, "\nRule %u\n", i);
+		this->RuleSchema[i]->Print();
+	}
+	this->Lexicon->IO->WriteToLog(0, false, "\n-------------------------------\n");
+
+}
+
+//-----------------------------------------------------------------------------
+// DeleteRuleSchema
+//-----------------------------------------------------------------------------
+void hsfcStratumSchema::DeleteRuleSchema(){
+
+	// Destroy all of the Rules
+	for (unsigned int i = 0; i < this->RuleSchema.size(); i++) {
+		delete this->RuleSchema[i];
+	}
+	this->RuleSchema.clear();
 
 }
 
@@ -2158,19 +640,8 @@ void hsfcRuleSchema::Sort() {
 //-----------------------------------------------------------------------------
 hsfcSchema::hsfcSchema(hsfcLexicon* Lexicon) {
 
-	// Allocate the memory
-	this->Rule.resize(32);
-	this->Relation.resize(32);
-
 	// Set up the Lexicon
 	this->Lexicon = Lexicon;
-
-	// Set up the GDL
-	this->GDL = new hsfcGDL(this->Lexicon);
-
-	// Set up the SCL
-	//this->SCL = new hsfcGDL(this->Lexicon);
-	this->SCL = NULL;
 
 }
 
@@ -2179,27 +650,8 @@ hsfcSchema::hsfcSchema(hsfcLexicon* Lexicon) {
 //-----------------------------------------------------------------------------
 hsfcSchema::~hsfcSchema(void){
 
-	// Destroy all of the relations
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		delete this->Relation[i];
-	}
-
-	// Destroy all of the rules
-	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-		delete this->Rule[i];
-	}
-
-	// Destroy the Lexicon
-	delete this->Lexicon;
-
-	// Destroy the GDL
-	delete this->GDL;
-
-	//// Destroy the SCL
-	//delete this->SCL;
-
-	// Destroy the stratum
-	this->Stratum.clear();
+	this->DeleteRelationSchema();
+	this->DeleteStratumSchema();
 
 }
 
@@ -2208,167 +660,92 @@ hsfcSchema::~hsfcSchema(void){
 //-----------------------------------------------------------------------------
 void hsfcSchema::Initialise(){
 
-	// Initialise the Lexicon
-	this->Lexicon->Initialise();
+	// Clear the schema
+	this->DeleteRelationSchema();
+	this->DeleteStratumSchema();
 
-	// Initialise the GDL
-	this->GDL->Initialise();
-
-	// Initialise the SCL
-	//this->SCL->Initialise();
-
-	// Initialise all of the relations
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		delete this->Relation[i];
-	}
-	this->Relation.clear();
-
-	// Initialise all of the rules
-	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-		delete this->Rule[i];
-	}
-	this->Rule.clear();
-
-	// Initialise all of the facts and initials
-	this->Fact.clear();
-	this->Initial.clear();
-	this->Next.clear();
+	// Add the 0th relation for the Lexicon
+	this->RelationSchema.push_back(NULL);
+	this->Rigid.clear();
 
 }
 
 //-----------------------------------------------------------------------------
-// CreateGDL
+// Create
 //-----------------------------------------------------------------------------
-bool hsfcSchema::Create(char* Script){
+bool hsfcSchema::Create(hsfcSCL* SCL){
 
-	// Read the GDL file; specially constructed with domain information
-	if (!this->ReadGDL(Script)) return false;
-	
-	// Was there anything
-	if (this->GDL->Rule.size() == 0) return false;
-	if (DEBUG) this->Lexicon->Print();
+	int NewEntryCount;
+	hsfcSCLAtom* NewRigid;
 
-	// Set the permanent facts from the GDL relations
-	// Index the domains
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		if (this->Relation[i]->DomainIsComplete) {
-			this->Relation[i]->IndexDomains();
+	// Initialise the schema
+	this->Initialise();
+
+	// Create a schema for each of the relations
+	for (unsigned int i = 0; i < SCL->Statement.size(); i++) {
+		if (!this->CreateRelationSchema(SCL->Statement[i])) {
+			return false;
 		}
 	}
-	this->SetPermanentFacts();
 
-	// Index the domains
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		this->Relation[i]->IndexDomains();
+	// Create a schema for each of the strata
+	for (unsigned int i = 0; i < SCL->Stratum.size(); i++) {
+		if (!this->CreateStratumSchema(SCL->Stratum[i])) {
+			return false;
+		}
 	}
-	if (DEBUG) this->PrintRelations();
 
-	// Sort the rules to a just in time order
-	this->Stratify();
+	// Complete the schema for the relations
+	if (!this->CompleteRelationSchema()) {
+		return false;
+	}
 
-	// Set all of the references for initilaising the state
-	this->SetInitialRelations();
-	this->SetNextRelations();
+	// Build the domains from each of the relations
+	for (unsigned int i = 0; i < SCL->Statement.size(); i++) {
+		if (!this->BuildRelationDomains(SCL->Statement[i])) {
+			return false;
+		}
+	}
+
+	// Build the domains from the rules
+	for (unsigned int i = 0; i < this->StratumSchema.size(); i++) {
+		if (!this->BuildStratumDomainsFix(this->StratumSchema[i])) {
+			return false;
+		}
+	}
+
+	// Build the domains from the rules
+	NewEntryCount = 1;
+	while (NewEntryCount > 0) {
+
+		NewEntryCount = 0;
+		for (unsigned int i = 0; i < this->StratumSchema.size(); i++) {
+			if (!this->BuildStratumDomainsVar(this->StratumSchema[i], &NewEntryCount)) {
+				return false;
+			}
+		}
+
+	}
+
+	// Add the instance to the rigids
+	for (unsigned int i = 0; i < SCL->Statement.size(); i++) {
+		// copy each instance in SCL form
+		NewRigid = new hsfcSCLAtom(this->Lexicon);
+		NewRigid->FromSCLAtom(SCL->Statement[i]);
+		this->Rigid.push_back(NewRigid);
+	}
+
+	// Identify type of relations
+	this->Lexicon->IO->WriteToLog(2, true, "Identify Relation Types ...\n");
+	if (!this->IdentifyRelationTypes(SCL)) {
+		return false;
+	}
+	this->Lexicon->IO->WriteToLog(2, true, "succeeded\n");
+
+	if (this->Lexicon->IO->Parameters->LogDetail > 3) this->Print();
+	if (this->Lexicon->IO->Parameters->LogDetail > 2) this->Lexicon->Print();
 
 	return true;
-
-}
-
-//-----------------------------------------------------------------------------
-// GetRoles
-//-----------------------------------------------------------------------------
-void hsfcSchema::GetRoles(vector<string>& Role) {
-
-	hsfcRelationSchema* RelationSchema;
-
-	// Get the role relation
-	RelationSchema = this->RelationSchema(this->Lexicon->Index("role|1"), 1);
-	RelationSchema->ListDomain(Role);
-
-}
-
-//-----------------------------------------------------------------------------
-// Print
-//-----------------------------------------------------------------------------
-void hsfcSchema::PrintRelation(hsfcTuple* Tuple, bool CRLF) {
-
-	vector<hsfcTuple> Term;
-	vector<hsfcTuple> NestedTerm;
-
-	// Use the underlying relation functionality to get the terms
-	this->Relation[Tuple->RelationIndex]->Terms(Tuple->ID, Term);
-
-	// The Term array will be in its most compressed form
-	// eg. (cell ?0 ?1)
-	// But the rule may require an expanded form
-	// eg. (cell (cell~0~at ?0 ?1) ?2)
-
-	for (unsigned int i = 1; i < Term.size(); i++) {
-
-		// Do we need to expand this term
-		if (Term[i].RelationIndex != -1) {
-
-			// Get the relation for this term
-			this->Relation[Term[i].RelationIndex]->Terms(Term[i].ID, NestedTerm);
-			// Delete the term and insert the nested terms
-			Term.erase(Term.begin() + i);
-			for (unsigned int j = 0; j < NestedTerm.size(); j++) {
-				Term.insert(Term.begin() + i + j, NestedTerm[j]);
-			}
-
-		}
-	}
-
-	// Print the Relation
-	for (unsigned int i = 0; i < Term.size(); i++) {
-		printf("%s ", this->Lexicon->Text(Term[i].ID));
-	}
-	if (CRLF) printf("\n");
-
-}
-
-//-----------------------------------------------------------------------------
-// RelationAsText
-//-----------------------------------------------------------------------------
-void hsfcSchema::RelationAsText(hsfcTuple* Tuple, char* Text) {
-
-	vector<hsfcTuple> Term;
-	vector<hsfcTuple> NestedTerm;
-	int Index;
-	const char* TermText;
-
-	// Use the underlying relation functionality to get the terms
-	this->Relation[Tuple->RelationIndex]->Terms(Tuple->ID, Term);
-
-	// The Term array will be in its most compressed form
-	// eg. (cell ?0 ?1)
-	// But the rule may require an expanded form
-	// eg. (cell (cell~0~at ?0 ?1) ?2)
-
-	for (unsigned int i = 1; i < Term.size(); i++) {
-
-		// Do we need to expand this term
-		if (Term[i].RelationIndex != -1) {
-
-			// Get the relation for this term
-			this->Relation[Term[i].RelationIndex]->Terms(Term[i].ID, NestedTerm);
-			// Delete the term and insert the nested terms
-			Term.erase(Term.begin() + i);
-			for (unsigned int j = 0; j < NestedTerm.size(); j++) {
-				Term.insert(Term.begin() + i + j, NestedTerm[j]);
-			}
-
-		}
-	}
-
-	// Print the Relation
-	Index = 0;
-	for (unsigned int i = 0; i < Term.size(); i++) {
-		TermText = this->Lexicon->Text(Term[i].ID);
-		if (strlen(TermText) + Index > 250) break;
-		Index += sprintf(&Text[Index], "%s ", TermText);
-	}
-	Text[Index] = 0;
 
 }
 
@@ -2377,1932 +754,942 @@ void hsfcSchema::RelationAsText(hsfcTuple* Tuple, char* Text) {
 //-----------------------------------------------------------------------------
 void hsfcSchema::Print(){
 
-	//this->SCL->Print("SCL");
+	this->Lexicon->IO->WriteToLog(0, false, "\n--- Relation Schema ---\n");
 
-	printf("\n--- Schema --------------------------------------------------\n");
-
-	this->PrintRelations();
-	this->PrintRules();
-	this->PrintReferences();
-
-}
-
-//-----------------------------------------------------------------------------
-// ReadGDL
-//-----------------------------------------------------------------------------
-bool hsfcSchema::ReadGDL(char* Buffer){
-
-	char* RuleScript;
-	char* FactScript;
-	char* StratScript;
-	char* DomainScript;
-	char* PathScript;
-	vector<char*> Word;
-	vector<char*> DomainEntryValue;
-	vector<char*> DomainEntryList;
-
-	//-------------------------------------------------------------------------
-	// Read the GDL
-	//-------------------------------------------------------------------------
-
-	// This could be a very large file MegaBytes
-	/*	
-		;;;; RULES
-		(<= (.....)(....)(....))\n
-		;;;; PERMANENT FACTS
-		(init (....))\n
-		(.....)\n
-		;;;; STRATS
-		(strat predicate ##)
-		;;;; PATHS
-		(arg predicate index value) 
-		(arg predicate index predicate index value) 
-		;;;; DOMAINS
-		(domain predicate (set .. .. ..)(set .. .. ..)) 
-	*/
-
-	// Parse the buffer into subscripts for each of the sections
-	// Find the Rules
-	RuleScript = strstr(Buffer, ";;;; RULES");
-	if (RuleScript == NULL) {
-		printf("Error: GDL file does not conatin ';;;; RULES'\n");
-		abort();
-	}
-	// Find the Facts
-	FactScript = strstr(Buffer, ";;;; PERMANENT FACTS");
-	//if (FactScript == NULL) {
-	//	printf("Error: GDL file does not conatin ';;;; PERMANENT FACTS'\n%s\n", FileName);
-	//	abort();
-	//}
-	// Find the Strats
-	StratScript = strstr(Buffer, ";;;; STRATS");
-	if (StratScript == NULL) {
-		printf("Error: GDL file does not conatin ';;;; STRATS'\n");
-		abort();
-	}
-	// Find the Paths
-	PathScript = strstr(Buffer, ";;;; PATHS");
-	if (PathScript == NULL) {
-		printf("Error: GDL file does not conatin ';;;; PATHS'\n");
-		abort();
-	}
-	// Find the Domains
-	DomainScript = strstr(Buffer, ";;;; DOMAINS");
-
-	// Blank out the headings to create end-of-string for each section
-	// Assumes Rules + Facts = GDL
-	for (int i = 0; i < 10; i++) RuleScript[i] = 0;
-	RuleScript += 10;
-	if (FactScript != NULL) {
-		for (int i = 0; i < 20; i++) FactScript[i] = ' ';
-	}
-	//FactScript += 20;
-	for (int i = 0; i < 11; i++) StratScript[i] = 0;
-	StratScript += 11;
-	for (int i = 0; i < 10; i++) PathScript[i] = 0;
-	PathScript += 10;
-	if (FactScript != NULL) {
-		for (int i = 0; i < 12; i++) DomainScript[i] = 0;
-	}
-	DomainScript += 12;
-
-	// Create the GDL & SCL
-	if (!this->ReadRules(RuleScript)) return false;
-
-	// Read the Strats
-	if (!this->ReadStrats(StratScript)) return false;
-
-	// Read the domains
-	if (!this->ReadDomains(PathScript)) return false;
-
-	return true;
-
-}
-
-//-----------------------------------------------------------------------------
-// ReadRules
-//-----------------------------------------------------------------------------
-bool hsfcSchema::ReadRules(char* RuleScript){
-
-	vector<char*> Word;
-	vector<char*> DomainEntryValue;
-	vector<char*> DomainEntryList;
-	hsfcRelationSchema* RelationSchema;
-	//char EmbeddedPredicate[256];
-	//hsfcGDLRelation* NewRelation;
-
-	//-------------------------------------------------------------------------
-	// Create the GDL & SCL
-	//-------------------------------------------------------------------------
-
-	// Process the GDL and the SCL
-	this->GDL->Read(RuleScript);
-	if (DEBUG) this->Lexicon->Print();
-	if (DEBUG) this->GDL->Print("GDL");
-
-	// Was there anything
-	if (this->GDL->Rule.size() == 0) {
-		printf("Error: No rules\n");
-		return false;
+	for (unsigned int i = 1; i < this->RelationSchema.size(); i++) {
+		this->Lexicon->IO->FormatToLog(0, false, "\n%3lu ", i);
+		this->RelationSchema[i]->Print();
 	}
 
-	// Create the structured chaining language
-	this->CreateSCL();
-	if (DEBUG) this->SCL->Print("SCL");
+	this->Lexicon->IO->WriteToLog(0, false, "\n--- Rule Schema ---\n");
 
-	//-------------------------------------------------------------------------
-	// Create the Schema
-	//-------------------------------------------------------------------------
-
-	// Read each of the relations
-	for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
-		this->AddRelationSchema(this->SCL->Relation[i]);
-	}
-
-	// Read each of the rules
-	for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
-		this->AddRuleSchema(this->SCL->Rule[i]);
-		// Add the relations inside the rule
-		for (unsigned int j = 0; j < this->SCL->Rule[i]->Relation.size(); j++) {
-			this->AddRelationSchema(this->SCL->Rule[i]->Relation[j]);
-		}
-		// Link all of the rule relations to Schema relations
-		for (unsigned int j = 0; j < this->Rule[i]->Relation.size(); j++) {
-			for (unsigned int k = 0; k < this->Rule[i]->Relation[j]->Template.size(); k++) {
-				this->Rule[i]->Relation[j]->Template[k].RelationSchema = this->RelationSchema(this->Rule[i]->Relation[j]->Template[k].PredicateIndex);
-			}
-		}
-
-	}
-
-	// At this point every primary relation is considered a permanent fact
-	for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
-		RelationSchema = this->RelationSchema(this->SCL->Relation[i]->PredicateIndex());
-		if (RelationSchema != NULL) {
-			RelationSchema->Fact = hsfcFactPermanent;
-			// Check it against the output relation of each rule, as permanent fact rules are removed
-			for (unsigned int j = 0; j < this->SCL->Rule.size(); j++) {
-				if (RelationSchema == this->Rule[j]->Relation[0]->Template[0].RelationSchema) {
-					RelationSchema->Fact = hsfcFactNone;
-					break;
-				}
-			}
-			// Correct any key words
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "true~")) RelationSchema->Fact = hsfcFactTrue ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "init~")) RelationSchema->Fact = hsfcFactInitial ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "terminal/")) RelationSchema->Fact = hsfcFactNone ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "goal/")) RelationSchema->Fact = hsfcFactNone ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "legal/")) RelationSchema->Fact = hsfcFactNone ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "does/")) RelationSchema->Fact = hsfcFactNone ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "sees/")) RelationSchema->Fact = hsfcFactNone ;
-			if (this->Lexicon->PartialMatch(RelationSchema->PredicateIndex, "next~")) RelationSchema->Fact = hsfcFactNext ;
-		}
-	}
-
-	return true;
-
-}
-
-//-----------------------------------------------------------------------------
-// ReadStrats
-//-----------------------------------------------------------------------------
-bool hsfcSchema::ReadStrats(char* StratScript){
-
-	//-------------------------------------------------------------------------
-	// Process the rule ordering
-	//-------------------------------------------------------------------------
-
-	//// Clear the stratum
-	//this->Stratum.clear();
-	//Predicate = new char[256];
-	//
-	//// Look for "(strat relation order)"
-	//for (int i = 0; StratScript[i] != 0; i++) {
-	//	// is the is the beginning of a strat clause
-	//	if (strncmp(&StratScript[i], "(strat ", 7) == 0) {
-	//		// Read the stratum
-	//		sscanf(&StratScript[i], "(strat %s %d)", Predicate, &Order);
-	//		Reference.RelationIndex = this->Lexicon->Index(Predicate);
-	//		Reference.ID = Order;
-	//		this->Stratum.push_back(Reference);
-	//	}
-	//}
-
-	//delete[](Predicate);
-
-	return true;
-
-}
-
-//-----------------------------------------------------------------------------
-// ReadDomains
-//-----------------------------------------------------------------------------
-bool hsfcSchema::ReadDomains(char* DomainScript){
-
-	char* DomainRecord;
-	int Index;
-	bool Found;
-	vector<hsfcDomainRecord> DomainEntryValue;
-	vector<hsfcDomainRecord> DomainEntryList;
-	hsfcDomainRecord NewEntry;
-	vector<char*> Field;
-	hsfcDomainEntry Reference;
-	hsfcRelationDetail NewRelationDetail;
-	hsfcRelationSchema* RelationSchema;
-	hsfcRelationSchema* NestedRelation;
-	char Text[256];
-
-	//-------------------------------------------------------------------------
-	// Read the domains
-	//-------------------------------------------------------------------------
-
-	if (DEBUG) printf("\n--- Domains -------------------------------------------------\n");
-
-	// We do this in two passes
-	// 1st pass - Identify all of the relations by predicate / arity
-	// 2nd pass - Construct the domains
-
-	// Parse everything into two vectors so we can read it multiple times
-	// DomainEntryValue = single values
-	// DomainEntryList = lists of values
-
-	// Initialise
-	DomainRecord = DomainScript;
-	DomainEntryValue.clear();
-	DomainEntryList.clear();
-
-	// Read the domain string
-	while (true) {
-
-		// Find the beginning of an entry
-		DomainRecord = strstr(DomainRecord, "(arg ");
-		if (DomainRecord == NULL) break;
-
-		// Get the fields in the (arg   ) record
-		Index = 5;
-		if (strncmp(&DomainRecord[Index], "init/1 ", 7) == 0) Index += 9;
-		if (strncmp(&DomainRecord[Index], "true/1 ", 7) == 0) Index += 9;
-		if (strncmp(&DomainRecord[Index], "next/1 ", 7) == 0) Index += 9;
-
-		// Parse the record into fields using ' ' as delimiter
-		Field.clear();
-		Field.push_back(&DomainRecord[5]);
-		for ( ; DomainRecord[Index] != 0; Index++) {
-			if (DomainRecord[Index] == ' ') {
-				Field.push_back(&DomainRecord[Index+1]);
-				DomainRecord[Index] = 0;
-				Index++;
-			}
-			if (DomainRecord[Index] == ')') {
-				DomainRecord[Index] = 0;
-				break;
-			}
-		}
-
-		// Were there fewer than 3 fields; eg. (arg terminal/0)
-		if (Field.size() < 3) goto NextEntry;
-
-		// Correct for any compound predicates
-		if (strncmp(Field[0], "init/1 ", 7) == 0) {
-			sprintf(Field[0], "init~%s", &Field[0][9]);
-		}
-		if (strncmp(Field[0], "true/1 ", 7) == 0) {
-			sprintf(Field[0], "true~%s", &Field[0][9]);
-		}
-		if (strncmp(Field[0], "next/1 ", 7) == 0) {
-			sprintf(Field[0], "next~%s", &Field[0][9]);
-		}
-
-		// Integrity check
-		if (Field.size() % 2 != 1) {
-			printf("Error: Wrong number of domain entry fields\n");
-			abort();
-		}
-
-		// Are there more than 3 fields
-		while (Field.size() > 3) {
-
-			// Construct the domain list entry
-			NewEntry.PredicateIndex = this->Lexicon->Index(Field[0]);
-			NewEntry.DomainIndex = atoi(Field[1]);
-			NewEntry.Tuple.RelationIndex = this->Lexicon->Index(Field[2]);
-			NewEntry.Tuple.ID = 0;
-
-			// Is this a new entry
-			for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
-				if ((NewEntry.PredicateIndex == DomainEntryList[i].PredicateIndex) &&
-					(NewEntry.DomainIndex == DomainEntryList[i].PredicateIndex) &&
-					(NewEntry.Tuple.RelationIndex == DomainEntryList[i].Tuple.RelationIndex)) goto NextListEntry;
-			}
-			DomainEntryList.push_back(NewEntry);
-
-NextListEntry:
-			// Remove the first two fields and go again
-			Field.erase(Field.begin());
-			Field.erase(Field.begin());
-
-		}
-
-		// Construct the domain value entry
-		NewEntry.PredicateIndex = this->Lexicon->Index(Field[0]);
-		NewEntry.DomainIndex = atoi(Field[1]);
-		NewEntry.Tuple.RelationIndex = -1;
-		NewEntry.Tuple.ID = this->Lexicon->Index(Field[2]);
-		DomainEntryValue.push_back(NewEntry);
-
-NextEntry:
-		// Advance to the next domain record
-		DomainRecord += Index + 1;
-
-	}
-
-	// --- Identify all of the relations -----------------------------------------------------
-
-	this->RelationDetail.clear();
-	for (unsigned int i = 0; i < DomainEntryValue.size(); i++) {
-
-		// Do we have this relation in our list
-		Found = false;
-		for (unsigned int j = 0; j < RelationDetail.size(); j++) {
-			if (RelationDetail[j].PredicateIndex == DomainEntryValue[i].PredicateIndex) {
-				Found = true;
-				if (RelationDetail[j].Arity <= DomainEntryValue[i].DomainIndex) {
-					RelationDetail[j].Arity = DomainEntryValue[i].DomainIndex + 1;
-				}
-				break;
-			}
-		}
-
-		// Did we find an entry
-		if (!Found) {
-			NewRelationDetail.PredicateIndex = DomainEntryValue[i].PredicateIndex;
-			NewRelationDetail.Arity = DomainEntryValue[i].DomainIndex + 1;
-			RelationDetail.push_back(NewRelationDetail);
-		}
-	}
-
-	for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
-
-		// Do we have this relation in our list
-		Found = false;
-		for (unsigned int j = 0; j < RelationDetail.size(); j++) {
-			if (RelationDetail[j].PredicateIndex == DomainEntryList[i].PredicateIndex) {
-				Found = true;
-				if (RelationDetail[j].Arity <= DomainEntryList[i].DomainIndex) {
-					RelationDetail[j].Arity = DomainEntryList[i].DomainIndex + 1;
-				}
-				break;
-			}
-		}
-
-		// Did we find an entry
-		if (!Found) {
-			NewRelationDetail.PredicateIndex = DomainEntryList[i].PredicateIndex;
-			NewRelationDetail.Arity = DomainEntryList[i].DomainIndex + 1;
-			RelationDetail.push_back(NewRelationDetail);
-		}
-	}
-
-	// Make sure we have all of the relations in the Schema
-	for (unsigned int i = 0; i < RelationDetail.size(); i++) {
-		if (DEBUG) printf("Found %s / %d\n", this->Lexicon->Text(RelationDetail[i].PredicateIndex), RelationDetail[i].Arity);
-		this->RelationSchema(RelationDetail[i].PredicateIndex, RelationDetail[i].Arity);
-	}
-
-
-	// --- Construct Domains ----------------------------------------------------------------
-
-	if (DEBUG) this->Lexicon->Print();
-
-	// Process the entries like (Predicate DomainIndex Value) first
-	for (unsigned int i = 0; i < DomainEntryValue.size(); i++) {
-
-		// Get the target relation from the predicate and the target domain index
-		RelationSchema = this->RelationSchema(DomainEntryValue[i].PredicateIndex);
-		if (RelationSchema == NULL) {
-			printf("Error: Bad predicate index\n");
-			abort();
-		} else {
-			if (RelationSchema->Fact == hsfcFactPermanent) {
-				//printf("   Permanent Fact\n");
-			} else {
-
-				// The value might be a zero arity relation or a lexicon entry
-				Reference.Tuple.RelationIndex = -1;
-				Reference.Tuple.ID = DomainEntryValue[i].Tuple.ID;
-				Reference.Count = 1;
-				Reference.Index = 0;
-
-				// Look for zero arity predicate
-				for (unsigned int j = 0; j < this->Relation.size(); j++) {
-					if (this->Relation[j]->PredicateIndex == DomainEntryValue[i].Tuple.ID) {
-						Reference.Tuple.RelationIndex = j;
-						Reference.Tuple.ID = 0;
-						break;
-					}
-				}
-
-				// Find the Value index without the /0 at the end
-				if (Reference.Tuple.RelationIndex == -1) {
-					strcpy(Text, this->Lexicon->Text(DomainEntryValue[i].Tuple.ID));
-					for (int j = 0; Text[j] != 0; j++) {
-						if (Text[j] == '/') Text[j] = 0;
-					}
-					Reference.Tuple.ID = this->Lexicon->Index(Text);
-				}
-
-				RelationSchema->AddToDomain(DomainEntryValue[i].DomainIndex, &Reference);
-			}
-		}
-	}
-
-	// Process the entries like (Predicate DomainIndex List:Name)
-	while (DomainEntryList.size() > 0) {
-
-		// Make sure we process something
-		Found = false;
-
-		// First see if any of the domains are complete
-		for (unsigned int i = 0; i < this->Relation.size(); i++) {
-			if (Relation[i]->Fact != hsfcFactPermanent) {
-				this->Relation[i]->DomainIsComplete = true;
-				for (unsigned int j = 0; j < DomainEntryList.size(); j++) {
-					if (this->Relation[i]->PredicateIndex == DomainEntryList[j].PredicateIndex) {
-						this->Relation[i]->DomainIsComplete = false;
-						break;
-					}
-				}
-			}
-		}
-
-		// Process the entry
-		for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
-
-			// Get the target relation from the predicate and the target domain index
-			RelationSchema = this->RelationSchema(DomainEntryList[i].PredicateIndex);
-			if (RelationSchema == NULL) {
-				printf("Error: Bad predicate index\n");
-				abort();
-			} else {
-
-				// Only process non facts
-				if (RelationSchema->Fact == hsfcFactPermanent) {
-					
-					if (DEBUG) printf("Processing %s    Permanent Fact\n", DomainEntryList[i]);
-					// Clear the entry
-					DomainEntryList.erase(DomainEntryList.begin() + i);
-					i--;
-
-				} else {
-
-					// Only process if the list predicate is complete
-					NestedRelation = this->RelationSchema(DomainEntryList[i].Tuple.RelationIndex);
-					if (NestedRelation == NULL) {
-						printf("Error: Nested Relation not found\n");
-						abort();
-					} else {
-						if (NestedRelation->DomainIsComplete) {
-							// Add the entry
-							Reference.Tuple.RelationIndex = NestedRelation->Index;
-							Reference.Tuple.ID = -1;
-							Reference.Count = (int)NestedRelation->RelationSize();
-							Reference.Index = 0;
-							RelationSchema->AddToDomain(DomainEntryList[i].DomainIndex, &Reference);
-							// Clear the entry
-							DomainEntryList.erase(DomainEntryList.begin() + i);
-							i--;	
-							Found = true;
-						}
-					}
-				}
-			}
-		}
-
-		// Was anything found
-		if (!Found) {
-			printf("Error: Unable to complete domains\n");
-			abort();
-		}
-
-	}
-
-	// Make sure that for every (next~predicate ...) <==> (true~predicate ...)
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		// Is this a (next~predicate ...)
-		if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, "true~")) {
-			// Find the corresponding (true~predicate ...)
-			sprintf(Text, "next~%s", &(this->Lexicon->Text(this->Relation[i]->PredicateIndex))[5]);
-			Index = this->Lexicon->Index(Text);
-			RelationSchema = this->RelationSchemaByName(Index);
-			if (RelationSchema == NULL) {
-				printf("Error: Unable to match relations.\n");
-				abort();
-			}
-			// Match the domain entries
-			RelationSchema->AddToDomainFromDomain(this->Relation[i]->vDomain);
-		}
-	}
-
-
-
-
-	// Mark all non permanent domains as complete
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		if (Relation[i]->Fact != hsfcFactPermanent) {
-			this->Relation[i]->DomainIsComplete = true;
-		}
-	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//	int Length;
-//	int DELength;
-//	int DomainEntryIndex;
-//	char Entry[512];
-//	char* NewEntry;
-//	int NewEntryLength;
-//	char* Predicate;
-//	char* Index;
-//	char* Value;
-//	char* NewWord;
-//	vector<char*> Word;
-//	vector<char*> DomainEntryValue;
-//	vector<char*> DomainEntryList;
-//	hsfcDomainEntry Reference;
-//	int DomainIndex;
-//	char* Colon;
-//	hsfcRelationSchema* RelationSchema;
-//	hsfcRelationSchema* NestedRelation;
-//	hsfcRelationDetail NewRelationDetail;
-//	bool Found;
-//
-//	//-------------------------------------------------------------------------
-//	// Read the domains
-//	//-------------------------------------------------------------------------
-//
-//	if (DEBUG) printf("\n--- Domains -------------------------------------------------\n");
-//
-//	// We do this in two passes
-//	// 1st pass - Identify all of the relations by predicate / arity
-//	// 2nd pass - Construct the domains
-//
-//	// Parse everything into two vectors so we can read in multiple times
-//	// DomainEntryValue = single values
-//	// DomainEntryList = lists of values
-//
-//	Length = strlen(DomainScript);
-//	DomainEntryIndex = 0;
-//	DomainEntryValue.clear();
-//	DomainEntryList.clear();
-//int Count = 0;
-//	while (DomainEntryIndex < Length) {
-//
-//printf("%d", Count);
-//Count++;
-//
-//		// Advance to the first character of the entry, just right of the '('
-//		while (DomainEntryIndex < Length) {
-//			if (DomainScript[DomainEntryIndex] == '(') {
-//				DomainEntryIndex++;
-//				break;
-//			} else {
-//				DomainEntryIndex++;
-//			}
-//		}
-//
-//		// Zero out the ending bracket ')'
-//		for (int i = 0; i < Length - DomainEntryIndex ; i++) {
-//			if (i > 254) {
-//				printf("Error: Path entry too long\n");
-//				abort();
-//			}
-//			if (DomainScript[DomainEntryIndex + i] == ')') {
-//				DomainScript[DomainEntryIndex + i] = 0;
-//				break;
-//			}
-//		}
-//		DELength = strlen(&DomainScript[DomainEntryIndex]);
-//printf(" %d", DELength); 
-//
-//printf(" 1");
-//		// Now parse the entry one word at a time skipping the first word "arg"
-//		Word.clear();
-//		for (int i = 0; i < DELength; i++) {
-//			if (DomainScript[DomainEntryIndex + i] == ' ') {
-//				DomainScript[DomainEntryIndex + i] = 0;
-//			}
-//		}
-//		for (int i = 0; i < DELength; i++) {
-//			if ((DomainScript[DomainEntryIndex + i] == 0) && (DomainScript[DomainEntryIndex + i+1] != 0)) {
-//				NewWord = new char[strlen(&DomainScript[DomainEntryIndex + i+1])];
-//				strcpy(NewWord, &DomainScript[DomainEntryIndex + i+1]);
-//				Word.push_back(NewWord);
-//				i++;
-//			}
-//		}
-//
-//		// Check the number of words
-//		if (Word.size() < 3 ) {
-//			goto NextEntry;
-//		}
-//
-//		// Get the Predicate, Index, and Value
-//		// (arg plan 0 move 2 piece 1 king) ==> (piece 1 king) 
-//		//    AND (move 2 list:piece) 
-//		//    AND (plan 0 list:move)
-//		// (arg next 0 cell 0 1) ==> (next>cell 0 cell 0 1)
-//
-//printf(" 2");
-//		// Was it of the form (arg true 0 predicate index value)
-//		if (strcmp(Word[0], "init/1") == 0) {
-//			NewWord = new char[strlen(Word[2] + 6)];
-//			sprintf(NewWord, "init~%s", Word[2]);
-//			Word[0] = NewWord;
-//			Word.erase(Word.begin() + 1);
-//			Word.erase(Word.begin() + 1);
-//		}
-//		if (strcmp(Word[0], "true/1") == 0) {
-//			NewWord = new char[strlen(Word[2] + 6)];
-//			sprintf(NewWord, "true~%s", Word[2]);
-//			Word[0] = NewWord;
-//			Word.erase(Word.begin() + 1);
-//			Word.erase(Word.begin() + 1);
-//		}
-//
-//		if (strcmp(Word[0], "next/1") == 0) {
-//			NewWord = new char[strlen(Word[2] + 6)];
-//			sprintf(NewWord, "next~%s", Word[2]);
-//			Word[0] = NewWord;
-//			Word.erase(Word.begin() + 1);
-//			Word.erase(Word.begin() + 1);
-//		}
-//
-//printf(" 3");
-//		// Check the number of words
-//		if (Word.size() < 3 ) {
-//			goto NextEntry;
-//		}
-//
-//		// Create a domain entries for later processing
-//		for (unsigned int n = 0; n < Word.size() - 1; n += 2) {
-//
-//			// Remember "arg" has been removed
-//			// (arg plan 0 move 2 piece 1 king)
-//			// n = 0 (plan 0 list:move)
-//			// n = 2 (move 2 list:piece) 
-//			// n = 4 (piece 1 king) 
-//
-//			// (arg legal 1 move 2 piece 1 king)
-//			// n = 0 (legal 1 list:move)
-//			// n = 2 (move 2 list:piece) 
-//			// n = 4 (piece 1 king) 
-//
-//			// (arg next 0 move 2 piece 1 king)
-//			// n = 0 (next>move 0 list:move)
-//			// n = 2 (move 2 list:piece) 
-//			// n = 4 (piece 1 king) 
-//
-//			Entry[0] = 0;
-//
-//			strcat(Entry, Word[n]);
-//
-//			//// Create the predicate
-//			//for (unsigned int i = 0; i < Word.size() - n - 2; i++) {
-//
-//			//	// Is it a keyword
-//			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "init") == 0)) continue;
-//			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "legal") == 0)) continue;
-//			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "does") == 0)) continue;
-//			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "sees") == 0)) continue;
-//			//	if ((n < Word.size() - 3) && (i <= 1) && (strcmp(Word[0], "next") == 0)) continue;
-//
-//			//	strcat(Entry, Word[i]);
-//			//	if ((i == 0) && (strcmp(Word[0], "next") == 0)) {
-//			//		strcat(Entry, ">");
-//			//		strcat(Entry, Word[2]);
-//			//	}
-//			//	if (i < Word.size() - n - 3) {
-//			//		strcat(Entry, "~");
-//			//	}
-//			//}
-//			
-//			// Create the index
-//			strcat(Entry, " ");
-//			strcat(Entry, Word[n+1]);
-//
-//			// Create the value or list:
-//			strcat(Entry, " ");
-//			if (n == Word.size() - 3) {
-//				strcat(Entry, Word[Word.size()-1]);
-//			} else {
-//				strcat(Entry, "list:");
-//				strcat(Entry, Word[n+2]);
-//			}
-//
-//printf(" 4");
-//			// Save the entry for later processing
-//			Colon = strstr(Entry, "list:");
-//			if (Colon == NULL) {
-//
-//printf(" 5");
-//				// Store it for later processing
-//printf(" %s", Entry);
-//				NewEntryLength = strlen(Entry) + 1;
-//printf(" %d", NewEntryLength); 
-//				NewEntry = new char[NewEntryLength];
-//printf(" a");
-//				strcpy(NewEntry, Entry);
-//printf(" b");
-//				DomainEntryValue.push_back(NewEntry);
-//printf(" c");
-//
-//			} else {
-//
-//printf(" 6");
-//				// Store it for later processing
-//				// Does it exist already
-//				Found = false;
-//				for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
-//					if (strcmp(Entry, DomainEntryList[i]) == 0) {
-//						Found = true;
-//					}
-//				}
-//				
-//printf(" 7");
-//				// Store it for later processing
-//				if (!Found) {
-//					//printf("      Stored\n");
-//					NewEntry = new char[strlen(Entry) + 1];
-//					strcpy(NewEntry, Entry);
-//					DomainEntryList.push_back(NewEntry);
-//				}
-//
-//			}
-//
-//		}
-//
-//NextEntry:
-//		// Advance to the next domain entry
-//		DomainEntryIndex += DELength;
-//printf("\n");
-//	}
-//
-//	if (DEBUG) {
-//		for (unsigned int i = 0; i < DomainEntryValue.size(); i++) {
-//			printf("%s\n", DomainEntryValue[i]);
-//		}
-//		for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
-//			printf("%s\n", DomainEntryList[i]);
-//		}
-//	}
-//
-//	// --- Identify all of the relations -----------------------------------------------------
-//	this->RelationDetail.clear();
-//	for (unsigned int i = 0; i < DomainEntryValue.size(); i++) {
-//
-//		// Parse the entry
-//		strcpy(Entry, DomainEntryValue[i]); 
-//		Predicate = Entry;
-//		Index = strstr(Entry, " ");
-//		if (Index != NULL) {
-//			Index[0] = 0;
-//			Index++;
-//			Value = strstr(Index, " ");
-//			if (Value != NULL) {
-//				Value[0] = 0;
-//				Value++;
-//			}
-//		}
-//		DomainIndex = atoi(Index);
-//
-//		// Do we have this relation in our list
-//		Found = false;
-//		for (unsigned int j = 0; j < RelationDetail.size(); j++) {
-//			if (this->Lexicon->Match(RelationDetail[j].PredicateIndex, Predicate)) {
-//				Found = true;
-//				if (RelationDetail[j].Arity <= DomainIndex) {
-//					RelationDetail[j].Arity = DomainIndex + 1;
-//				}
-//				break;
-//			}
-//		}
-//
-//		// Did we find an entry
-//		if (!Found) {
-//			NewRelationDetail.PredicateIndex = this->Lexicon->Index(Predicate);
-//			NewRelationDetail.Arity = DomainIndex + 1;
-//			RelationDetail.push_back(NewRelationDetail);
-//		}
-//	}
-//
-//	for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
-//
-//		// Parse the entry
-//		strcpy(Entry, DomainEntryList[i]); 
-//		Predicate = Entry;
-//		Index = strstr(Entry, " ");
-//		if (Index != NULL) {
-//			Index[0] = 0;
-//			Index++;
-//			Value = strstr(Index, " ");
-//			if (Value != NULL) {
-//				Value[0] = 0;
-//				Value++;
-//			}
-//		}
-//		DomainIndex = atoi(Index);
-//
-//		// Do we have this relation in our list
-//		Found = false;
-//		for (unsigned int j = 0; j < RelationDetail.size(); j++) {
-//			if (this->Lexicon->Match(RelationDetail[j].PredicateIndex, Predicate)) {
-//				Found = true;
-//				if (RelationDetail[j].Arity <= DomainIndex) {
-//					RelationDetail[j].Arity = DomainIndex + 1;
-//				}
-//				break;
-//			}
-//		}
-//
-//		// Did we find an entry
-//		if (!Found) {
-//			NewRelationDetail.PredicateIndex = this->Lexicon->Index(Predicate);
-//			NewRelationDetail.Arity = DomainIndex + 1;
-//			RelationDetail.push_back(NewRelationDetail);
-//		}
-//	}
-//
-//	//// Add the arity to the end of the predicate
-//	//for (unsigned int i = 0; i < RelationDetail.size(); i++) {
-//	//	sprintf(NewPredicate, "%s|%d", this->Lexicon->Text(RelationDetail[i].PredicateIndex), RelationDetail[i].Arity);
-//	//	RelationDetail[i].PredicateIndex = this->Lexicon->Index(NewPredicate);
-//	//}
-//
-//	// Make sure we have all of the relations in the Schema
-//	for (unsigned int i = 0; i < RelationDetail.size(); i++) {
-//		if (DEBUG) printf("Found %s / %d\n", this->Lexicon->Text(RelationDetail[i].PredicateIndex), RelationDetail[i].Arity);
-//		this->RelationSchema(RelationDetail[i].PredicateIndex, RelationDetail[i].Arity);
-//	}
-//
-//	// --------------------------------------------------------------------------------------
-//
-//	// Process the entries like (Predicate DomainIndex Value)
-//	for (unsigned int i = 0; i < DomainEntryValue.size(); i++) {
-//
-//		// Parse the entry
-//		strcpy(Entry, DomainEntryValue[i]); 
-//		Predicate = Entry;
-//		Index = strstr(Entry, " ");
-//		if (Index != NULL) {
-//			Index[0] = 0;
-//			Index++;
-//			Value = strstr(Index, " ");
-//			if (Value != NULL) {
-//				Value[0] = 0;
-//				Value++;
-//			}
-//		}
-//		for (unsigned int i = 0; i < strlen(Value); i++) {
-//			if (Value[i] == '/') {
-//				Value[i] = 0;
-//			}
-//		}
-//
-//		//// Check to see if the "value" is actualy a zero arity predicate value|0
-//		//sprintf(NewPredicate, "%s/0", Value);
-//		//if (this->RelationSchemaExists(NewPredicate)) {
-//		//	ListEntry = new char[256];
-//		//	sprintf(ListEntry, "%s %s list:%s", Entry, Index, Value);
-//		//	if (DEBUG) printf("%s\n", ListEntry);
-//		//	DomainEntryList.push_back(ListEntry);
-//		//} else {
-//
-//			RelationSchema = this->RelationSchemaByName(this->Lexicon->Index(Predicate));
-//			if (RelationSchema != NULL) {
-//				if (RelationSchema->Fact == hsfcFactPermanent) {
-//					//printf("   Permanent Fact\n");
-//				} else {
-//					//printf("\n");
-//					DomainIndex = atoi(Index);
-//					// The value might be a zero arity relation or a lexicon entry
-//					Reference.Tuple.RelationIndex = -1;
-//					Reference.Tuple.ID = this->Lexicon->Index(Value);
-//					Reference.Count = 1;
-//					Reference.Index = 0;
-//					// Look for zero arity predicate
-//					for (unsigned int i = 0; i < this->Relation.size(); i++) {
-//						if (this->Lexicon->Match(this->Relation[i]->PredicateIndex, Value)) {
-//							Reference.Tuple.RelationIndex = i;
-//							Reference.Tuple.ID = 0;
-//							break;
-//						}
-//					}
-//					RelationSchema->AddToDomain(DomainIndex, &Reference);
-//				}
-//			}
-//		//}
-//
-//	}
-//
-//	// Process the entries like (Predicate DomainIndex List:Name)
-//	while (DomainEntryList.size() > 0) {
-//
-//		// First see if the domains are complete
-//		for (unsigned int i = 0; i < this->Relation.size(); i++) {
-//			if (Relation[i]->Fact != hsfcFactPermanent) {
-//				this->Relation[i]->DomainIsComplete = true;
-//				for (unsigned int j = 0; j < DomainEntryList.size(); j++) {
-//					strcpy(Entry, DomainEntryList[j]);
-//					Index = strstr(Entry, " ");
-//					Index[0] = 0;
-//					if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, Entry)) {
-//						this->Relation[i]->DomainIsComplete = false;
-//						break;
-//					}
-//				}
-//			}
-//		}
-//
-//		// Process the entry
-//		for (unsigned int i = 0; i < DomainEntryList.size(); i++) {
-//
-//			// Parse the entry
-//			strcpy(Entry, DomainEntryList[i]);
-//			Predicate = Entry;
-//			Index = strstr(Entry, " ");
-//			if (Index != NULL) {
-//				Index[0] = 0;
-//				Index++;
-//				Value = strstr(Index, " ");
-//				if (Value != NULL) {
-//					Value[0] = 0;
-//					Value++;
-//				}
-//			}
-//
-//			// Get the target relation from the predicate and the target domain index
-//			RelationSchema = this->RelationSchemaByName(this->Lexicon->Index(Predicate));
-//			DomainIndex = atoi(Index);
-//
-//			// Only process non facts
-//			if (RelationSchema != NULL) {
-//				if (RelationSchema->Fact == hsfcFactPermanent) {
-//					
-//					if (DEBUG) printf("Processing %s    Permanent Fact\n", DomainEntryList[i]);
-//					// Clear the entry
-//					delete [] DomainEntryList[i];
-//					DomainEntryList.erase(DomainEntryList.begin() + i);
-//					i--;
-//
-//				} else {
-//
-//					// Only process if the list predicate is complete
-//					Colon = strstr(Value, ":");
-//					NestedRelation = this->RelationSchemaByName(this->Lexicon->Index(&Colon[1]));
-//					if (NestedRelation == NULL) {
-//						// Clear the entry
-//						if (DEBUG) printf("Processing %s *** not found\n", DomainEntryList[i]);
-//						delete [] DomainEntryList[i];
-//						DomainEntryList.erase(DomainEntryList.begin() + i);
-//						i--;
-//					} else {
-//						if (NestedRelation->DomainIsComplete) {
-//							// Add the entry
-//							if (DEBUG) printf("Processing %s = %d items\n", DomainEntryList[i], (int)NestedRelation->RelationSize());
-//							Reference.Tuple.RelationIndex = NestedRelation->Index;
-//							Reference.Tuple.ID = -1;
-//							Reference.Count = (int)NestedRelation->RelationSize();
-//							Reference.Index = 0;
-//							RelationSchema->AddToDomain(DomainIndex, &Reference);
-//							// Clear the entry
-//							delete [] DomainEntryList[i];
-//							DomainEntryList.erase(DomainEntryList.begin() + i);
-//							i--;		
-//						}
-//					}
-//				}
-//			}
-//		}
-//	}
-
-	return true;
-
-}
-
-//-----------------------------------------------------------------------------
-// CreateSCL
-//-----------------------------------------------------------------------------
-bool hsfcSchema::CreateSCL(){
-
-	//hsfcGDLRelation* NewRelation;
-	//hsfcGDLRule* NewRule;
-	//bool Negated;
-
-	// From this point onwards GDL == SCL, the different names are to make coding easier
-	this->SCL = this->GDL;
-
-	if (DEBUG) printf("\nFinding Arity\n");
-
-	// Find relation arity
-	for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
-		this->SCL->Relation[i]->FindArity();
-	}
-
-	// Find zero arity
-	for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
-		for (unsigned int j = 0; j < this->SCL->Rule[i]->Relation.size(); j++) {
-			this->SCL->Rule[i]->Relation[j]->FindArity();
-		}
-	}
-
-	// Remove any (not ()) and flag the relation accordingly
-	for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
-		for (unsigned int j = 1; j < this->SCL->Rule[i]->Relation.size(); j++) {
-			// Is this a (not ()) or a (not atom) or (not (true ())) or (not (true atom))
-			if (this->Lexicon->Match(this->SCL->Rule[i]->Relation[j]->PredicateIndex(), "not")) {
-				// Point the relation to the second atom
-				if (this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation == NULL) {
-					this->SCL->Rule[i]->Relation[j]->Atom.erase(this->SCL->Rule[i]->Relation[j]->Atom.begin());
-				} else {
-					this->SCL->Rule[i]->Relation[j] = this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation;
-				}
-				this->SCL->Rule[i]->Relation[j]->Not = true;
-			}
-		}
-	}
-
-	// Normalise the relation
-	for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
-		this->SCL->Relation[i]->NormaliseTerms();
-	}
-
-	// Normalise the rule
-	for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
-		for (unsigned int j = 0; j < this->SCL->Rule[i]->Relation.size(); j++) {
-			this->SCL->Rule[i]->Relation[j]->NormaliseTerms();
-		}
-	}
-
-	return true;
-
-
-	//// Copy the GDL relations
-	//for (unsigned int i = 0; i < this->GDL->Relation.size(); i++) {
-	//	// Create the relation and copy
-	//	NewRelation = new hsfcGDLRelation(this->Lexicon);
-	//	NewRelation->FromGDLRelation(this->GDL->Relation[i]);
-	//	// Add to the SCL
-	//	this->SCL->Relation.push_back(NewRelation);
-	//}
-
-	//// Copy the GDL rules
-	//for (unsigned int i = 0; i < this->GDL->Rule.size(); i++) {
-	//	// Create the rule and copy
-	//	NewRule = new hsfcGDLRule(this->Lexicon);
-	//	NewRule->FromGDLRule(this->GDL->Rule[i]);
-	//	// Add to the SCL
-	//	this->SCL->Rule.push_back(NewRule);
-	//}
-
-	//// Find zero arity
-	//for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
-	//	this->SCL->Relation[i]->FindArity();
-	//}
-
-	//// Find zero arity
-	//for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
-	//	for (unsigned int j = 0; j < this->SCL->Rule[i]->Relation.size(); j++) {
-	//		this->SCL->Rule[i]->Relation[j]->FindArity();
-	//	}
-	//}
-
-	//// Remove any (not ()) and (true ()) and flag the relation accordingly
-	//for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
-	//	for (unsigned int j = 1; j < this->SCL->Rule[i]->Relation.size(); j++) {
-	//		// Is this a (not ()) or a (not atom) or (not (true ())) or (not (true atom))
-	//		if (this->Lexicon->Match(this->SCL->Rule[i]->Relation[j]->PredicateIndex(), "not")) {
-	//			// Point the relation to the second atom
-	//			if (this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation == NULL) {
-	//				this->SCL->Rule[i]->Relation[j]->Atom.erase(this->SCL->Rule[i]->Relation[j]->Atom.begin());
-	//			} else {
-	//				this->SCL->Rule[i]->Relation[j] = this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation;
-	//			}
-	//			this->SCL->Rule[i]->Relation[j]->Not = true;
-	//		}
-	//		// Is this a (true ()) or a (true atom)
-	//		if (this->Lexicon->Match(this->SCL->Rule[i]->Relation[j]->PredicateIndex(), "true")) {
-	//			// Point the relation to the second atom
-	//			Negated = this->SCL->Rule[i]->Relation[j]->Not;
-	//			if (this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation == NULL) {
-	//				this->SCL->Rule[i]->Relation[j]->Atom.erase(this->SCL->Rule[i]->Relation[j]->Atom.begin());
-	//			} else {
-	//				this->SCL->Rule[i]->Relation[j] = this->SCL->Rule[i]->Relation[j]->Atom[1]->Relation;
-	//			}
-	//			this->SCL->Rule[i]->Relation[j]->Not = Negated;
-	//		}
-	//	}
-	//}
-
-	//// Normalise the relation
-	//for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
-	//	this->SCL->Relation[i]->NormaliseTerms();
-	//}
-
-	//// Normalise the rule
-	//for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
-	//	for (unsigned int j = 0; j < this->SCL->Rule[i]->Relation.size(); j++) {
-	//		this->SCL->Rule[i]->Relation[j]->NormaliseTerms();
-	//	}
-	//}
-
-	//return true;
-
-}
-
-//-----------------------------------------------------------------------------
-// Stratify
-//-----------------------------------------------------------------------------
-void hsfcSchema::Stratify(){
-
-	unsigned int FirstUnsortedIndex;
-	unsigned int LastUnsortedIndex;
-	hsfcRuleSchema* RuleSchema;
-	int Count;
-	hsfcTuple Predicate;
-	bool Found;
-
-
-	// Sort the rules so they are executed as late as possible
-	// 0 - Terminal
-	// 1 - Goal
-	// 2 - Legal
-	// 3 - Sees
-	// 4 - Next
-
-	// Make everything a 5 to start
-	this->Stratum.clear();
-	for (unsigned int i = 0; i < this->Lexicon->Size(); i++) {
-		Predicate.ID = 5;
-		Predicate.RelationIndex = i;
-		this->Stratum.push_back(Predicate);
-	}
-
-	// Now find all of the key words
-	for (unsigned int i = 0; i < this->Lexicon->Size(); i++) {
-		if (this->Lexicon->PartialMatch(i, "terminal/")) this->Stratum[i].ID = 0;
-		if (this->Lexicon->PartialMatch(i, "goal/")) this->Stratum[i].ID = 1;
-		if (this->Lexicon->PartialMatch(i, "legal/")) this->Stratum[i].ID = 2;
-		if (this->Lexicon->PartialMatch(i, "sees/")) this->Stratum[i].ID = 3;
-		if (this->Lexicon->PartialMatch(i, "next~")) this->Stratum[i].ID = 4;
-	}
-
-	// Now find everything necessary to calculate all of the keywords
-	for (int k = 0; k < 5; k++) {
-		Found = true;
-		while (Found) {
-			Found = false;
-			for (unsigned int i = 0; i < this->Rule.size(); i++) {
-				// Check the outputs
-				if (this->Stratum[this->Rule[i]->Relation[0]->PredicateIndex].ID == k) {
-					for (unsigned int j = 1; j < this->Rule[i]->Relation.size(); j++) {
-						if (this->Stratum[this->Rule[i]->Relation[j]->PredicateIndex].ID > k) {
-							this->Stratum[this->Rule[i]->Relation[j]->PredicateIndex].ID = k;
-							Found = true;
-						}
-					}
-				}
-			}
-		}
-	}
-
-	//for (unsigned int i = 0; i < this->Lexicon->Size(); i++) {
-	//	printf("%s %d\n", this->Lexicon->Text(i), this->Stratum[i].ID);
-	//}
-
-	//getchar();
-
-	// Sort the predicates into groups according to their stratum
-	for (unsigned int i = 0; i < this->Stratum.size(); i++) {
-		// Count how many rules change place
-		Count = 0;
-		for (unsigned int j = 1; j < this->Stratum.size(); j++) {
-			// Are the rules out of order
-			if (this->Stratum[j-1].ID > this->Stratum[j].ID) {
-				// Swap places
-				Predicate.ID = this->Stratum[j].ID;
-				Predicate.RelationIndex = this->Stratum[j].RelationIndex;
-				this->Stratum[j].ID = this->Stratum[j-1].ID;
-				this->Stratum[j].RelationIndex = this->Stratum[j-1].RelationIndex;
-				this->Stratum[j-1].ID = Predicate.ID;
-				this->Stratum[j-1].RelationIndex = Predicate.RelationIndex;
-				Count++;
-			}
-		}
-		if (Count == 0) break;
-	}
-
-	// Now sort rule predicates within the strata
-	FirstUnsortedIndex = 0;
-	for (unsigned int i = 0; i < 5; i++) {
-
-		// This is where it gets tricky
-		// A rule predicate is sorted into the stratification if it does not required 
-		// an unsorted rule as its predecessor
-		// Any cyclic references are left to the end of the stratum
-
-		// Is the group empty
-		if (FirstUnsortedIndex >= this->Stratum.size()) continue;
-		if (this->Stratum[FirstUnsortedIndex].ID != i) continue;
-
-		// Keep track of the sorted and unsorted predicates
-		LastUnsortedIndex = FirstUnsortedIndex;
-		for (unsigned int j = FirstUnsortedIndex; j < this->Stratum.size(); j++) {
-			if (this->Stratum[j].ID == i) {
-				LastUnsortedIndex = j;
-			} else {
-				break;
-			}
-		}
-
-		// Process the predicates until all non cyclic rules are sorted
-		Count = 1;
-		while (Count > 0) {
-			Count = 0;
-			// Process the unsorted predicates in the group
-			for (unsigned int j = FirstUnsortedIndex; j <= LastUnsortedIndex; j++) {
-
-				// Does this predicates require any unsorted rules
-				Found = false;
-				// Check every rule
-				for (unsigned int k = FirstUnsortedIndex; k <= LastUnsortedIndex; k++) {
-					// Don't check self referencing rules
-					if (this->Stratum[j].RelationIndex == this->Stratum[k].RelationIndex) continue;
-					// Can we find a link
-					if (Required(this->Stratum[j].RelationIndex, this->Stratum[k].RelationIndex)) {
-						Found = true;
-						break;
-					}
-				}
-				
-				// Can this now be sorted
-				if (!Found) {
-					Predicate.ID = this->Stratum[j].ID;
-					Predicate.RelationIndex = this->Stratum[j].RelationIndex;
-					this->Stratum[j].ID = this->Stratum[FirstUnsortedIndex].ID;
-					this->Stratum[j].RelationIndex = this->Stratum[FirstUnsortedIndex].RelationIndex;
-					this->Stratum[FirstUnsortedIndex].ID = Predicate.ID;
-					this->Stratum[FirstUnsortedIndex].RelationIndex = Predicate.RelationIndex;
-					FirstUnsortedIndex++;
-					Count++;
-				}
-			}
-
-		}
-
-		// Anything left can stay in their unsorted order as there is a cyclic reference
-		FirstUnsortedIndex = LastUnsortedIndex + 1;
-
-	}
-
-	// Now sort the rules according to their output
-
-	// Stratify the body of the rule and set its stratum number
-	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-		// Stratify the body of the rule
-		this->Rule[i]->Stratify();
-		// Find which group the rule belongs to
-		for (unsigned int j = 0; j < this->Stratum.size(); j++) {
-			if (this->Rule[i]->Relation[0]->PredicateIndex == this->Stratum[j].RelationIndex) {
-				this->Rule[i]->Stratum = j;
-			}
-		}
-	}
-
-	// Sort the rules 
-	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-		// Count how many rules change place
-		Count = 0;
-		for (unsigned int j = 1; j < this->Rule.size(); j++) {
-			// Are the rules out of order
-			if (this->Rule[j-1]->Stratum > this->Rule[j]->Stratum) {
-				// Swap places
-				RuleSchema = this->Rule[j];
-				this->Rule[j] = this->Rule[j-1];
-				this->Rule[j-1] = RuleSchema;
-				Count++;
-			}
-		}
-		if (Count == 0) break;
+	for (unsigned int i = 0; i < this->StratumSchema.size(); i++) {
+		this->StratumSchema[i]->Print();
 	}
 
 }
 
 //-----------------------------------------------------------------------------
-// SetPermanentFacts
+// FindRelationSchema
 //-----------------------------------------------------------------------------
-void hsfcSchema::SetPermanentFacts() {
+hsfcRelationSchema* hsfcSchema::AddRelationSchema(unsigned int NameID, int Arity){
 
-	hsfcRelationSchema* RelationSchema;
-	unsigned int PredicateIndex;
-	vector<hsfcGDLTerm> GDLTerm;
-	hsfcDomainEntry NewReference;
-	vector<hsfcDomainEntry> Reference;
-	//unsigned int i;
+	hsfcRelationSchema* NewRelationSchema;
 
-	// Every relation in the SCL is either a fact or a (init (...))
-
-	// Go through all of the SCL relations and construct the fact domains
-	// The domains for facts are not independent
-	// Do it in reverse order as embedded facts are added at the end of the array
-	for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
-
-		//i = this->SCL->Relation.size() - 1 - ni;
-
-		// Get the Schema relation
-		PredicateIndex = this->SCL->Relation[i]->PredicateIndex();
-		RelationSchema = this->RelationSchema(PredicateIndex);
-
-		// Is this relation a permanent fact 
-		if (RelationSchema->Fact == hsfcFactPermanent) {
-
-			// Find the terms that make up the fact
-			GDLTerm.clear();
-			this->SCL->Relation[i]->Terms(GDLTerm);
-			//for (unsigned int j = 0; j < GDLTerm.size(); j++) {
-			//	printf("%d:%d.%d ", GDLTerm[j].PredicateIndex, GDLTerm[j].Tuple.RelationIndex, GDLTerm[j].Tuple.ID);
-			//}
-			//printf("\n");
-
-			// Nest the terms from the flat SCL
-			this->NestTerms(GDLTerm, 0, PredicateIndex);
-
-			// Copy the terms to tuples
-			Reference.clear();
-			NewReference.Count = 1;
-			NewReference.Index = 0;
-			for (unsigned int j = 0; j < GDLTerm.size(); j++) {
-				NewReference.Tuple.RelationIndex = GDLTerm[j].Tuple.RelationIndex;
-				NewReference.Tuple.ID = GDLTerm[j].Tuple.ID;
-				Reference.push_back(NewReference);
-				//printf("%d.%d ", NewReference.Tuple.RelationIndex, NewReference.Tuple.ID);
-			}
-			//printf("\n\n");
-
-			// Load the fact into the domain
-			RelationSchema->AddToFactDomain(Reference);
-
-		}
-
+	// Is the arity too big
+	if (Arity > MAX_RELATION_ARITY) {
+		this->Lexicon->IO->WriteToLog(0, false, "Error: arity too big hsfcSchema::AddRelationSchema\n");
+		return NULL; 
 	}
+
+	// Are there too many relations
+	if (this->RelationSchema.size() > MAX_RELATION_SCHEMAS) {
+		this->Lexicon->IO->WriteToLog(0, false, "Error: too many relations hsfcSchema::AddRelationSchema\n");
+		return NULL; 
+	}
+
+	// Add the a new relation schema
+	NewRelationSchema = new hsfcRelationSchema(this->Lexicon);
+	NewRelationSchema->Initialise(NameID, Arity, this->RelationSchema.size());
+	this->RelationSchema.push_back(NewRelationSchema);
+
+	// Add the name to the lexicon
+	if (this->Lexicon->RelationIndex(this->Lexicon->Text(NameID), true) != this->RelationSchema.size() - 1) {
+		this->Lexicon->IO->WriteToLog(0, false, "Error: name index mismatch in hsfcSchema::AddRelationSchema\n");
+		return NULL; 
+	}
+
+	return NewRelationSchema;
 
 }
 
 //-----------------------------------------------------------------------------
-// SetInitialRelations
+// DeleteRelations
 //-----------------------------------------------------------------------------
-void hsfcSchema::SetInitialRelations() {
+void hsfcSchema::DeleteRelationSchema(){
 
-	hsfcRelationSchema* RelationSchema;
-	unsigned int PredicateIndex;
-	vector<hsfcGDLTerm> GDLTerm;
-	hsfcTuple NewReference;
-	vector<hsfcTuple> Reference;
-	char TruePredicate[256];
-
-	// At this point all of the lists have been identfied
-	// Now create the reference lists for initialising the state
-	// Read each of the relations in the SCL
-
-	if (DEBUG) printf("\n--- Initial Relations ---------------------------------------------\n");
-
-	this->Fact.clear();
-	this->Initial.clear();
-
-	for (unsigned int i = 0; i < this->SCL->Relation.size(); i++) {
-
-		// Get the Schema relation
-		PredicateIndex = this->SCL->Relation[i]->PredicateIndex();
-		RelationSchema = this->RelationSchema(PredicateIndex);
-
-		// Find the terms that make up the fact
-		GDLTerm.clear();
-		this->SCL->Relation[i]->Terms(GDLTerm);
-
-		// Nest the terms from the flat scl
-		this->NestTerms(GDLTerm, 0, PredicateIndex);
-
-		// Copy the terms to tuples
-		Reference.clear();
-		for (unsigned int j = 0; j < GDLTerm.size(); j++) {
-			NewReference.RelationIndex = GDLTerm[j].Tuple.RelationIndex;
-			NewReference.ID = GDLTerm[j].Tuple.ID;
-			Reference.push_back(NewReference);
-		}
-
-		// Find the ID for this fact
-		NewReference.RelationIndex = RelationSchema->Index;
-		NewReference.ID = RelationSchema->ID(Reference);
-		if (NewReference.ID == -1) {
-			printf("Error: Bad ID\n");
-			abort();
-		}
-
-		if (RelationSchema->Fact == hsfcFactInitial) {
-
-			// This is of the form (init~cell/3 1 1 blank)
-			// It needs to be like (true~cell/3 1 1 blank)
-			// The Domains for these two relations may not be identical
-
-			// Get the terms
-			RelationSchema->Terms(NewReference.ID, Reference);
-
-			// Get the new relation
-			sprintf(TruePredicate, "true~%s", &this->Lexicon->Text(PredicateIndex)[5]);
-			PredicateIndex = this->Lexicon->Index(TruePredicate);
-			RelationSchema = this->RelationSchema(PredicateIndex);
-
-			// Get the True reference
-			Reference[0].ID = PredicateIndex;
-			NewReference.RelationIndex = RelationSchema->Index;
-			NewReference.ID = RelationSchema->ID(Reference);
-
-			// Add it to the list of initials
-			this->Initial.push_back(NewReference);
-			if (DEBUG) printf("%6d.%d   Initial   ", NewReference.RelationIndex, NewReference.ID);
-			if (DEBUG) this->PrintRelation(&NewReference, true);
-
-		} else {
-
-			// Is the relation a fact that is not a permanent fact
-			if (RelationSchema->Fact != hsfcFactPermanent) {
-
-				// Add it to the list of facts
-				this->Fact.push_back(NewReference);
-				if (DEBUG) printf("%6d.%d   Fact      ", NewReference.RelationIndex, NewReference.ID);
-				if (DEBUG) this->PrintRelation(&NewReference, true);
-
-			}
-		}
+	// Destroy all of the relations
+	for (unsigned int i = 0; i < this->RelationSchema.size(); i++) {
+		delete this->RelationSchema[i];
 	}
-
-	// Identify the State relations
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		RelationSchema = this->RelationSchema(this->Relation[i]->PredicateIndex);
-		RelationSchema->IsInState = false;
-		if (this->Relation[i]->Fact == hsfcFactPermanent) {
-			RelationSchema->IsInState = true;
-		}
-		if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, "true~")) {
-			RelationSchema->IsInState = true;
-		}
-		if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, "next~")) {
-			RelationSchema->IsInState = true;
-		}
-		if (this->Lexicon->Match(this->Relation[i]->PredicateIndex, "legal/2")) {
-			RelationSchema->IsInState = true;
-		}
-		if (this->Lexicon->Match(this->Relation[i]->PredicateIndex, "does/2")) {
-			RelationSchema->IsInState = true;
-		}
-		if (this->Lexicon->Match(this->Relation[i]->PredicateIndex, "sees/2")) {
-			RelationSchema->IsInState = true;
-		}
-	}
-
-	// Identify any auxiliary State relations
-	for (unsigned int i = 0; i < this->SCL->Rule.size(); i++) {
-		// Get the Schema relation
-		PredicateIndex = this->SCL->Rule[i]->Relation[0]->PredicateIndex();
-		RelationSchema = this->RelationSchema(PredicateIndex);
-		RelationSchema->IsInState = true;
-	}
-
-	if (DEBUG) {
-		for (unsigned int i = 0; i < this->Relation.size(); i++) {
-			RelationSchema = this->RelationSchema(this->Relation[i]->PredicateIndex);
-			printf("%s", this->Lexicon->Text(this->Relation[i]->PredicateIndex));
-			if (RelationSchema->IsInState) {
-				printf(" - IsInState\n");
-			} else {
-				printf("\n");
-			}
-		}
-	}
-
+	this->RelationSchema.clear();
 
 }
 
 //-----------------------------------------------------------------------------
-// SetNextRelations
+// DeleteStratumSchema
 //-----------------------------------------------------------------------------
-void hsfcSchema::SetNextRelations() {
+void hsfcSchema::DeleteStratumSchema(){
 
-	hsfcRelationSchema* RelationSchema;
-	unsigned int PredicateIndex;
-	char Predicate[256];
-	vector<hsfcTuple> Reference;
-	hsfcRelationLink Link;
-
-	if (DEBUG) printf("--- Next ==> True--------------------------------------\n");
-
-	// Now create the reference lists for linking next to predicate
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-
-		// Is it a (next (...))
-		if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, "next~")) {
-
-			// Flag this list
-			this->Relation[i]->Fact = hsfcFactNext;
-
-			// Get the index of the state relation; eg (next>cell ... ...) we want (cell ... ...)
-			sprintf(Predicate, "true~%s", &this->Lexicon->Text(this->Relation[i]->PredicateIndex)[5]);
-			PredicateIndex = this->Lexicon->Index(Predicate);
-			RelationSchema = this->RelationSchemaByName(PredicateIndex);
-			if (RelationSchema == NULL) {
-				printf("Error: Bad next reference\n");
-				abort();
-			}
-
-			// Add it to the list of facts
-			Link.SourceListIndex = i;
-			Link.DestinationListIndex = RelationSchema->Index;
-			this->Next.push_back(Link);
-			if (DEBUG) printf("%s ==> %s\n", this->Lexicon->Text(this->Relation[i]->PredicateIndex), this->Lexicon->Text(this->Relation[RelationSchema->Index]->PredicateIndex));
-
-		}
+	// Destroy all of the Rules
+	for (unsigned int i = 0; i < this->StratumSchema.size(); i++) {
+		delete this->StratumSchema[i];
 	}
+	this->StratumSchema.clear();
 
 }
 
 //-----------------------------------------------------------------------------
-// AddRelationSchema
+// FindRelationSchema
 //-----------------------------------------------------------------------------
-void hsfcSchema::AddRelationSchema(hsfcGDLRelation* GDLRelation) {
+hsfcRelationSchema* hsfcSchema::FindRelationSchema(unsigned int NameID, int Arity){
 
-	char Predicate[256];
-	int TermIndex;
-
-	// Ignore (distinct )
-	if (GDLRelation->Atom[0]->TermIndex == this->Lexicon->Index("distinct")) {
-		return;
-	}
-	
-	// Ignore (not (....))
-	if (GDLRelation->Atom[0]->TermIndex == this->Lexicon->Index("not")) {
-		if (GDLRelation->Atom[1] == NULL) {
-			printf("Error: Badly formed (not (...))\n");
-			abort();
-		}
-		this->AddRelationSchema(GDLRelation->Atom[1]->Relation);
-		return;
+	// Find the relation schema; 0th schema is for the Lexicon
+	for (unsigned int i = 1; i < this->RelationSchema.size(); i++) {
+		if (this->RelationSchema[i]->NameID == NameID) return this->RelationSchema[i];
 	}
 
-	// Find a matching Schema relation
-	this->RelationSchema(GDLRelation->PredicateIndex(), GDLRelation->Arity());
-
-	// Was this an (next~predicate ... ...); if so then we also need to add (true~predicate ... ...)
-	if (this->Lexicon->PartialMatch(GDLRelation->PredicateIndex(), "next~")) {
-		// Add the new predicate to the lexicon
-		sprintf(Predicate, "true~%s", &this->Lexicon->Text(GDLRelation->PredicateIndex())[5]);
-		TermIndex = this->Lexicon->Index(Predicate);
-		//// Add the new relation
-		this->RelationSchema(TermIndex, GDLRelation->Arity());
-	}
-
-	// Was this an (init~predicate ... ...); if so then we also need to add (true~predicate ... ...)
-	if (this->Lexicon->PartialMatch(GDLRelation->PredicateIndex(), "init~")) {
-		// Add the new predicate to the lexicon
-		sprintf(Predicate, "true~%s", &this->Lexicon->Text(GDLRelation->PredicateIndex())[5]);
-		TermIndex = this->Lexicon->Index(Predicate);
-		//// Add the new relation
-		this->RelationSchema(TermIndex, GDLRelation->Arity());
-	}
-
-	// Go through recursively to find all of the relations
-	for (unsigned int i = 0; i < GDLRelation->Atom.size(); i++) {
-		// Is this atom a relation
-		if (GDLRelation->Atom[i]->Relation != NULL) {
-			this->AddRelationSchema(GDLRelation->Atom[i]->Relation);
-		}
-	}
-
-}
-
-//-----------------------------------------------------------------------------
-// AddRuleSchema
-//-----------------------------------------------------------------------------
-void hsfcSchema::AddRuleSchema(hsfcGDLRule* GDLRule) {
-
-	hsfcRuleSchema* NewRule;
-
-	// Add the new rule
-	NewRule = new hsfcRuleSchema(this->Lexicon);
-	NewRule->Initialise();
-	this->Rule.push_back(NewRule);
-
-	// Create the rule
-	NewRule->Create(GDLRule);
-
-}
-
-//-----------------------------------------------------------------------------
-// RelationSchema
-//-----------------------------------------------------------------------------
-hsfcRelationSchema* hsfcSchema::RelationSchema(int PredicateIndex, int Arity) {
-
-	hsfcRelationSchema* Target;
-
-	// Does the relation already exist
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		if ((this->Relation[i]->PredicateIndex == PredicateIndex) && (this->Relation[i]->Arity == Arity)) {
-			return this->Relation[i];
-		}
-	}
-
-	// Not found so add it
-	Target = new hsfcRelationSchema(this->Lexicon);
-	Target->Initialise(PredicateIndex, Arity);
-	Target->Index = (int)this->Relation.size();
-	this->Relation.push_back(Target);
-
-	return Target;
+	return AddRelationSchema(NameID, Arity);
 
 }
 
 //--- Overload ----------------------------------------------------------------
-hsfcRelationSchema* hsfcSchema::RelationSchema(int PredicateIndex) {
+hsfcRelationSchema* hsfcSchema::FindRelationSchema(unsigned int NameID){
 
-	// Does the relation already exist
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		if (this->Relation[i]->PredicateIndex == PredicateIndex) {
-			return this->Relation[i];
-		}
-	}
-
-	if (!this->Lexicon->Match(PredicateIndex, "distinct")) {
-		printf("Error: Relation %d does not exist\n", PredicateIndex);
+	// Find the relation schema; 0th schema is for the Lexicon
+	for (unsigned int i = 1; i < this->RelationSchema.size(); i++) {
+		if (this->RelationSchema[i]->NameID == NameID) return this->RelationSchema[i];
 	}
 
 	return NULL;
 
 }
 
-
 //-----------------------------------------------------------------------------
-// RelationSchemaByName
+// AddToDomain
 //-----------------------------------------------------------------------------
-hsfcRelationSchema* hsfcSchema::RelationSchemaByName(int PredicateIndex) {
+bool hsfcSchema::AddToDomain(unsigned int RelationIndex, int ArgumentIndex, hsfcTuple& Term, int* NewEntryCount) {
 
-	char Predicate[256];
-
-	// Create the predicate
-	sprintf(Predicate, "%s|", this->Lexicon->Text(PredicateIndex));
-
-	// Does the relation already exist
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		if (this->Lexicon->PartialMatch(this->Relation[i]->PredicateIndex, Predicate)) {
-			return this->Relation[i];
-		}
+	// Check the values
+	if (RelationIndex >= this->RelationSchema.size()) {
+		this->Lexicon->IO->WriteToLog(0, false, "Error: bad relation index in hsfcSchema::AddToDomain\n");
+		return false;
+	}
+	if (ArgumentIndex >= this->RelationSchema[RelationIndex]->Arity) {
+		this->Lexicon->IO->WriteToLog(0, false, "Error: bad argument index in hsfcSchema::AddToDomain\n");
+		return false;
+	}
+	
+	// Perform an integrity test
+	if (this->RelationSchema[RelationIndex]->DomainSchema[ArgumentIndex]->Term.size() >= MAX_DOMAIN_ENTRIES) {
+		this->Lexicon->IO->WriteToLog(0, false, "Error: too many domain entries in hsfcSchema::AddToDomain\n");
+		return false; 
 	}
 
-	if (!this->Lexicon->Match(PredicateIndex, "distinct")) {
-		printf("Error: Relation %d does not exist\n", PredicateIndex);
+	// Add the term to the relation domain
+	// Return of false just means it was already there
+	if (this->RelationSchema[RelationIndex]->DomainSchema[ArgumentIndex]->AddTerm(Term)) (*NewEntryCount)++;
+
+	// Make sure that the domains for (init ()) (true ()) (next ()) are all the same
+	if (this->Lexicon->PartialMatch(this->RelationSchema[RelationIndex]->NameID, "init:")) {
+		// Process the (true ())
+		RelationIndex = this->Lexicon->TrueFrom(RelationIndex);
+		// Add the term to the alternate relation
+		if (this->RelationSchema[RelationIndex]->DomainSchema[ArgumentIndex]->AddTerm(Term)) (*NewEntryCount)++;
+		// Process the (next ())
+		RelationIndex = this->Lexicon->NextFrom(RelationIndex);
+		// Add the term to the alternate relation
+		if (this->RelationSchema[RelationIndex]->DomainSchema[ArgumentIndex]->AddTerm(Term)) (*NewEntryCount)++;
+		return true;
+	}
+	if (this->Lexicon->PartialMatch(this->RelationSchema[RelationIndex]->NameID, "true:")) {
+		// Process the (true ())
+		RelationIndex = this->Lexicon->InitFrom(RelationIndex);
+		// Add the term to the alternate relation
+		if (this->RelationSchema[RelationIndex]->DomainSchema[ArgumentIndex]->AddTerm(Term)) (*NewEntryCount)++;
+		// Process the (next ())
+		RelationIndex = this->Lexicon->NextFrom(RelationIndex);
+		// Add the term to the alternate relation
+		if (this->RelationSchema[RelationIndex]->DomainSchema[ArgumentIndex]->AddTerm(Term)) (*NewEntryCount)++;
+		return true;
+	}
+	if (this->Lexicon->PartialMatch(this->RelationSchema[RelationIndex]->NameID, "next:")) {
+		// Process the (true ())
+		RelationIndex = this->Lexicon->InitFrom(RelationIndex);
+		// Add the term to the alternate relation
+		if (this->RelationSchema[RelationIndex]->DomainSchema[ArgumentIndex]->AddTerm(Term)) (*NewEntryCount)++;
+		// Process the (next ())
+		RelationIndex = this->Lexicon->TrueFrom(RelationIndex);
+		// Add the term to the alternate relation
+		if (this->RelationSchema[RelationIndex]->DomainSchema[ArgumentIndex]->AddTerm(Term)) (*NewEntryCount)++;
+		return true;
 	}
 
-	return NULL;
+	// Make sure that the domains for (legal ()) (does ()) are all the same
+	if (this->Lexicon->Match(this->RelationSchema[RelationIndex]->NameID, "legal/2")) {
+		// Process the (does ())
+		RelationIndex = this->Lexicon->RelationIndex("does/2", false);
+		// Add the term to the alternate relation
+		if (this->RelationSchema[RelationIndex]->DomainSchema[ArgumentIndex]->AddTerm(Term)) (*NewEntryCount)++;
+		return true;
+	}
+
+	return true;
 
 }
 
-
 //-----------------------------------------------------------------------------
-// RelationSchemaByName
+// CreateRelationSchema
 //-----------------------------------------------------------------------------
-bool hsfcSchema::RelationSchemaExists(char* Predicate) {
+bool hsfcSchema::CreateRelationSchema(hsfcSCLAtom* SCLAtom){
 
-	// Does the relation already exist
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		if (this->Lexicon->Match(this->Relation[i]->PredicateIndex, Predicate)) {
-			return true;
+	hsfcRelationSchema* RelationSchema;
+
+	// Read the atom and build the relation schema
+	RelationSchema = this->FindRelationSchema(SCLAtom->NameID, SCLAtom->Term.size());
+	if (RelationSchema == NULL) {
+		return false;
+	}
+
+	// Process each of the embedded relations
+	for (unsigned int i = 0; i < SCLAtom->Term.size(); i++) {
+		if (SCLAtom->Term[i]->Term.size() > 0) {
+			if (!this->CreateRelationSchema(SCLAtom->Term[i])) {
+				return false;
+			}
 		}
 	}
 
-	return false;
+	return true;
 
 }
 
+//-----------------------------------------------------------------------------
+// CompleteRelationSchema
+//-----------------------------------------------------------------------------
+bool hsfcSchema::CompleteRelationSchema(){
+
+	char* Name;
+
+	// Check all of the fluents for (init ()) (true ()) (next())
+	for (unsigned int i = 1; i < this->RelationSchema.size(); i++) {
+		// Is it an (init())
+		if (this->Lexicon->PartialMatch(this->RelationSchema[i]->NameID, "init:")) {
+			// Does it have a matching (true())
+			if (this->Lexicon->TrueFrom(i) == 0) {
+				Name = this->Lexicon->Copy(this->RelationSchema[i]->NameID, true);
+				Name[0] = 't';Name[1] = 'r';Name[2] = 'u';Name[3] = 'e';
+				this->AddRelationSchema(this->Lexicon->Index(Name), this->RelationSchema[i]->Arity);
+				delete[] Name;
+			}
+		}
+		// Is it an (true())
+		if (this->Lexicon->PartialMatch(this->RelationSchema[i]->NameID, "true:")) {
+			// Does it have a matching (next())
+			if (this->Lexicon->NextFrom(i) == 0) {
+				Name = this->Lexicon->Copy(this->RelationSchema[i]->NameID, true);
+				Name[0] = 'n';Name[1] = 'e';Name[2] = 'x';Name[3] = 't';
+				this->AddRelationSchema(this->Lexicon->Index(Name), this->RelationSchema[i]->Arity);
+				delete[] Name;
+			}
+		}
+		// Is it an (next())
+		if (this->Lexicon->PartialMatch(this->RelationSchema[i]->NameID, "next:")) {
+			// Does it have a matching (init())
+			if (this->Lexicon->InitFrom(i) == 0) {
+				Name = this->Lexicon->Copy(this->RelationSchema[i]->NameID, true);
+				Name[0] = 'i';Name[1] = 'n';Name[2] = 'i';Name[3] = 't';
+				this->AddRelationSchema(this->Lexicon->Index(Name), this->RelationSchema[i]->Arity);
+				delete[] Name;
+			}
+		}
+	}
+
+	// Make sure (doies/2 ...) exist
+	this->FindRelationSchema(this->Lexicon->Index("does/2"), 2);
+
+	return true;
+
+}
 
 //-----------------------------------------------------------------------------
-// RuleIsRequired
+// CreateStratumSchema
 //-----------------------------------------------------------------------------
-bool hsfcSchema::RuleIsRequired(hsfcRuleSchema* Rule, unsigned int FirstIndex, unsigned int LastIndex) {
+bool hsfcSchema::CreateStratumSchema(hsfcSCLStratum* SCLStratum){
 
-	// Check the output for the specific rule
-	for (unsigned int i = FirstIndex; i <= LastIndex; i++) {
-		// Don't check a rule against itself
-		if (this->Rule[i] != Rule) {
-			// Check all of the input relations from all of the rules in the range
-			for (unsigned int j = 1; j < this->Rule[i]->Relation.size(); j++) {
-				// Is the output of one rule an input for another rule
-				if (Rule->Relation[0]->PredicateIndex == this->Rule[i]->Relation[j]->PredicateIndex) {
-					return true;
+	hsfcStratumSchema* NewStratumSchema;
+
+	// Create a new schema
+	NewStratumSchema = new hsfcStratumSchema(this->Lexicon);
+	NewStratumSchema->Initialise(SCLStratum);
+		
+	// Create schema for each of the rules
+	for (unsigned int i = 0; i < SCLStratum->Rule.size(); i++) {
+		if (!this->CreateRuleSchema(NewStratumSchema, SCLStratum->Rule[i])) return false;
+	}
+
+	// Add the new schema
+	this->StratumSchema.push_back(NewStratumSchema);
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// CreateRuleSchema
+//-----------------------------------------------------------------------------
+bool hsfcSchema::CreateRuleSchema(hsfcStratumSchema* StratumSchema, hsfcSCLAtom* SCLRule){
+
+	hsfcRuleSchema* NewRuleSchema;
+
+	// Create a new rule schema
+	NewRuleSchema = new hsfcRuleSchema(this->Lexicon);
+	NewRuleSchema->Initialise();
+		
+	// Create schema for each of the rule relations
+	for (unsigned int i = 0; i < SCLRule->Term.size(); i++) {
+		// First create the schema for each of the relations
+		if (!this->CreateRelationSchema(SCLRule->Term[i])) return false;
+		// Now create the schema for the rule relations
+		if (!this->CreateRuleRelationSchema(NewRuleSchema, SCLRule->Term[i])) return false;
+	}
+
+	// Set the new rule schema properties for all variables
+	if (!this->AddVariableRuleTerms(NewRuleSchema)) return false;
+	if (!this->OptimiseRuleSchema(NewRuleSchema)) return false;
+
+	// Does the new rule impact the stratum type
+	if (this->Lexicon->PartialMatch(SCLRule->Term[0]->NameID, "terminal")) StratumSchema->Type = hsfcStratumTerminal; 
+	if (this->Lexicon->PartialMatch(SCLRule->Term[0]->NameID, "goal")) StratumSchema->Type = hsfcStratumGoal; 
+	if (this->Lexicon->PartialMatch(SCLRule->Term[0]->NameID, "legal")) StratumSchema->Type = hsfcStratumLegal; 
+	if (this->Lexicon->PartialMatch(SCLRule->Term[0]->NameID, "sees")) StratumSchema->Type = hsfcStratumSees; 
+	if (this->Lexicon->PartialMatch(SCLRule->Term[0]->NameID, "next:")) StratumSchema->Type = hsfcStratumNext; 
+
+	// Add the new schema
+	StratumSchema->RuleSchema.push_back(NewRuleSchema);
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// CreateRuleRelationSchema
+//-----------------------------------------------------------------------------
+bool hsfcSchema::CreateRuleRelationSchema(hsfcRuleSchema* RuleSchema, hsfcSCLAtom* SCLRuleRelation) {
+
+	hsfcRuleRelationSchema* NewRuleRelationSchema;
+
+	// Create a new rule relation schema
+	NewRuleRelationSchema = new hsfcRuleRelationSchema(this->Lexicon);
+
+	// Set new reule relation properties
+	NewRuleRelationSchema->Initialise();
+	if (!this->CreateRuleTermSchema(NewRuleRelationSchema, SCLRuleRelation, SCLRuleRelation->NameID, UNDEFINED)) return false;
+
+	if (SCLRuleRelation->Not) NewRuleRelationSchema->Function = NewRuleRelationSchema->Function | hsfcFunctionNot; 
+	if (SCLRuleRelation->Distinct) NewRuleRelationSchema->Function = NewRuleRelationSchema->Function | hsfcFunctionDistinct; 
+
+	// Add any fixed terms from the rule into the correct relation schema
+	//if (!this->AddFixedRuleTerms(RelationSchema, SCLRuleRelation)) return false;
+
+	// Add the new schema
+	RuleSchema->RelationSchema.push_back(NewRuleRelationSchema);
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// CreateRuleTermSchema
+//-----------------------------------------------------------------------------
+bool hsfcSchema::CreateRuleTermSchema(hsfcRuleRelationSchema* RuleRelationSchema, hsfcSCLAtom* Atom, unsigned int RelationNameID, int ArgumentIndex) {
+
+	hsfcRuleTermSchema NewTermSchema;
+
+	/* Rules
+					(cell/2 (at/2	?x		?y)		b)
+
+	SCLAtom			cell/2
+		term				at/2					b
+			term					?x		?y
+
+	NameID			cell/2	at/2	?x		?y		b
+	RelationIndex	cell/2	cell/2	at/2	at/2	cell/2
+	EmbeddedIndex	cell/2	at/2	~		~		~
+	Arity			2		2		~		~		~
+	ArgumentIndex	~		0		0		1		1
+	VariableIndex	~		~		0		1		~
+	Type			rel		rel		var		var		none
+	*/
+
+	// Set the properties of the relation schema from the scl
+	NewTermSchema.NameID = Atom->NameID;
+	NewTermSchema.RelationIndex = UNDEFINED;
+	NewTermSchema.EmbeddedIndex = UNDEFINED;
+	NewTermSchema.VariableIndex = UNDEFINED;
+	NewTermSchema.Type = hsfcTypeFixed;
+	NewTermSchema.ArgumentIndex = ArgumentIndex;
+	NewTermSchema.Term.Index = 0;
+	NewTermSchema.Term.ID = Atom->NameID;
+	NewTermSchema.Arity = 0;
+
+	// Is this the main rule relation
+	if (ArgumentIndex == UNDEFINED) {
+
+		NewTermSchema.Type = hsfcTypeRelation;
+		NewTermSchema.RelationIndex = this->Lexicon->RelationIndex(Atom->NameID);
+		NewTermSchema.EmbeddedIndex = this->Lexicon->RelationIndex(Atom->NameID);
+		NewTermSchema.Arity = this->RelationSchema[this->Lexicon->RelationIndex(Atom->NameID)]->Arity;
+
+	// This is a variable, a term or an embedded relation
+	} else {
+
+		// Is this a term
+		if (Atom->Term.size() == 0) {
+
+			// Is it a fixed term or a variable
+			if (this->Lexicon->IsVariable(Atom->NameID)) {
+				NewTermSchema.Type = hsfcTypeVariable;
+				NewTermSchema.VariableIndex = 0;
+				NewTermSchema.RelationIndex = this->Lexicon->RelationIndex(RelationNameID);
+			} else {
+				NewTermSchema.RelationIndex = this->Lexicon->RelationIndex(RelationNameID);
+			}
+
+		// This is an embedded relation
+		} else {
+
+			// This is a relation
+			NewTermSchema.Type = hsfcTypeRelation;
+			NewTermSchema.RelationIndex = this->Lexicon->RelationIndex(RelationNameID);
+			NewTermSchema.EmbeddedIndex = this->Lexicon->RelationIndex(Atom->NameID);
+			if (NewTermSchema.EmbeddedIndex == UNDEFINED) {
+				this->Lexicon->IO->WriteToLog(0, false, "Error: bad relation index hsfcSchema::CreateRuleTermSchema\n");
+				return false;
+			}
+			NewTermSchema.Arity = this->RelationSchema[this->Lexicon->RelationIndex(Atom->NameID)]->Arity;
+
+		}
+
+	}
+
+	// Was there an error in finding the relation index
+	if (NewTermSchema.RelationIndex == UNDEFINED) {
+		this->Lexicon->IO->WriteToLog(0, false, "Error: bad relation index hsfcSchema::CreateRuleTermSchema\n");
+		return false;
+	}
+
+	// Add the new term schema
+	RuleRelationSchema->TermSchema.push_back(NewTermSchema);
+
+	// Process the children
+	for (unsigned int i = 0; i < Atom->Term.size(); i++) {
+		if (!this->CreateRuleTermSchema(RuleRelationSchema, Atom->Term[i], Atom->NameID, i)) return false;
+	}
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// AddVariableRuleTerms
+//-----------------------------------------------------------------------------
+bool hsfcSchema::AddVariableRuleTerms(hsfcRuleSchema* RuleSchema) {
+
+	hsfcDomainSchema* NewDomainSchema;
+	vector<int> InputCount;
+
+	// Inspect each rule relation
+	for (unsigned int i = 0; i < RuleSchema->RelationSchema.size(); i++) {
+		// Inspect each term in the rule relation
+		for (unsigned int j = 0; j < RuleSchema->RelationSchema[i]->TermSchema.size(); j++) {
+			// Is it a variable term
+			if (RuleSchema->RelationSchema[i]->TermSchema[j].Type == hsfcTypeVariable) {
+
+				// Does the variable already exist
+				for (unsigned int k = 0; k < RuleSchema->VariableSchema.size(); k++) {
+					if (RuleSchema->VariableSchema[k]->NameID == RuleSchema->RelationSchema[i]->TermSchema[j].NameID) {
+						RuleSchema->RelationSchema[i]->TermSchema[j].VariableIndex = k;
+						// Count the input for this variable
+						if ((i > 0) && (RuleSchema->RelationSchema[i]->Function == hsfcFunctionNone)) {
+							InputCount[k] += 1;
+						}
+						goto NextTerm;
+					}
+				}
+
+				// Create a new variable
+				NewDomainSchema = new hsfcDomainSchema(this->Lexicon);
+				NewDomainSchema->Initialise(RuleSchema->RelationSchema[i]->TermSchema[j].NameID);
+				// Add the new variable to the schema
+				RuleSchema->RelationSchema[i]->TermSchema[j].VariableIndex = RuleSchema->VariableSchema.size();
+				RuleSchema->VariableSchema.push_back(NewDomainSchema);
+				// Count the inputs for this variable
+				if ((i > 0) && (RuleSchema->RelationSchema[i]->Function == hsfcFunctionNone)) {
+					InputCount.push_back(1);
+				} else {
+					InputCount.push_back(0);
+				}
+			}
+			// Process the next term
+			NextTerm:;
+		}
+	}
+
+	// Test for a variable with not input
+	for (unsigned int i = 0; i < InputCount.size(); i++) {
+		if (InputCount[i] < 1) {
+			this->Lexicon->IO->FormatToLog(0, false, "Error: variable '%s' with no input in rule for '%s' in hsfcSchema::AddVariableRuleTerms\n", this->Lexicon->Text(RuleSchema->VariableSchema[i]->NameID), this->Lexicon->Text(RuleSchema->RelationSchema[0]->TermSchema[0].NameID));
+			return false; 
+		}
+	}
+
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// BuildRelationDomains
+//-----------------------------------------------------------------------------
+bool hsfcSchema::BuildRelationDomains(hsfcSCLAtom* SCLAtom) {
+
+	unsigned int RelationIndex;
+	unsigned int EmbeddedRelationIndex;
+	hsfcTuple DomainTerm;
+	int EntryCount = 0;
+
+	// Read the atom and build the relation schema
+	RelationIndex = this->Lexicon->RelationIndex(SCLAtom->NameID);
+	if (RelationIndex == UNDEFINED) {
+		return false;
+	}
+
+	// Add domain entries for each child term
+	for (unsigned int i = 0; i < SCLAtom->Term.size(); i++) {
+		// Is it an embedded relation or a term
+		if (SCLAtom->Term[i]->Term.size() == 0) {
+			DomainTerm.Index = 0;
+			DomainTerm.ID = SCLAtom->Term[i]->NameID;
+		} else {
+			EmbeddedRelationIndex = this->Lexicon->RelationIndex(SCLAtom->Term[i]->NameID);
+			if (EmbeddedRelationIndex == UNDEFINED) {
+				this->Lexicon->IO->WriteToLog(0, false, "Error: EmbeddedRelationIndex is undefined hsfcSchema::BuildRelationDomains\n");
+				return false;
+			}
+			DomainTerm.Index = EmbeddedRelationIndex;
+			DomainTerm.ID = 0;
+		}
+		if (!this->AddToDomain(RelationIndex, i, DomainTerm, &EntryCount)) {
+			return false;
+		}
+	}
+	
+	// Process each of the children
+	for (unsigned int i = 0; i < SCLAtom->Term.size(); i++) {
+		if (SCLAtom->Term[i]->Term.size() > 0) {
+			if (!this->BuildRelationDomains(SCLAtom->Term[i])) {
+				return false;
+			}
+		}
+	}
+	
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// BuildStratumDomainsFix
+//-----------------------------------------------------------------------------
+bool hsfcSchema::BuildStratumDomainsFix(hsfcStratumSchema* StratumSchema) {
+
+	// Calculate domain values for every rule
+	for (unsigned int i = 0; i < StratumSchema->RuleSchema.size(); i++) {
+		// Add in the fixed terms
+		if (!this->BuildRuleDomainsFix(StratumSchema->RuleSchema[i])) return false;
+	}
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// BuildStratumDomainsVar
+//-----------------------------------------------------------------------------
+bool hsfcSchema::BuildStratumDomainsVar(hsfcStratumSchema* StratumSchema, int* NewEntryCount) {
+
+	int PrevNewEntryCount;
+	
+	// Continue this process until there are no new entries
+	PrevNewEntryCount = -1;
+	while (PrevNewEntryCount != *NewEntryCount) {
+		PrevNewEntryCount = *NewEntryCount;
+	
+		// Calculate domain values for every rule
+		for (unsigned int i = 0; i < StratumSchema->RuleSchema.size(); i++) {
+			// Add in the variable terms
+			if (!this->BuildRuleDomainsVar(StratumSchema->RuleSchema[i], NewEntryCount)) {
+				return false;
+			}
+		}
+
+	}
+
+	return true;
+
+}
+
+//-----------------------------------------------------------------------------
+// BuildRuleDomainsFixed
+//-----------------------------------------------------------------------------
+bool hsfcSchema::BuildRuleDomainsFix(hsfcRuleSchema* RuleSchema) {
+
+	unsigned int RelationIndex;
+	unsigned int DomainIndex;
+	hsfcTuple NewTerm;
+	int EntryCount = 0;
+
+	// This only considers the output of each rule and (distinct ...)
+	// Any unique fixed terms in a rule input or condition will generate a fail
+	//		as they will be absent from the domain for that term
+	
+	// Check every rule
+	for (unsigned int j = 0; j < RuleSchema->RelationSchema.size(); j++) {
+		// Only the output and any (distinct ...)
+		if ((j == 0) || ((RuleSchema->RelationSchema[j]->Function & hsfcFunctionDistinct) == hsfcFunctionDistinct)) {
+			// Check each term except for the first one
+			for (unsigned int k = 1; k < RuleSchema->RelationSchema[j]->TermSchema.size(); k++) {
+				// Is this a fixed term
+				if (RuleSchema->RelationSchema[j]->TermSchema[k].Type == hsfcTypeFixed) {
+					NewTerm.Index = 0;
+					NewTerm.ID = RuleSchema->RelationSchema[j]->TermSchema[k].NameID;
+					RelationIndex = RuleSchema->RelationSchema[j]->TermSchema[k].RelationIndex;
+					DomainIndex = RuleSchema->RelationSchema[j]->TermSchema[k].ArgumentIndex;
+					this->AddToDomain(RelationIndex, DomainIndex, NewTerm, &EntryCount);
+				}
+				// Is this an embedded relation
+				if (RuleSchema->RelationSchema[j]->TermSchema[k].Type == hsfcTypeRelation) {
+					NewTerm.Index = RuleSchema->RelationSchema[j]->TermSchema[k].EmbeddedIndex;
+					NewTerm.ID = 0;
+					RelationIndex = RuleSchema->RelationSchema[j]->TermSchema[k].RelationIndex;
+					DomainIndex = RuleSchema->RelationSchema[j]->TermSchema[k].ArgumentIndex;
+					this->AddToDomain(RelationIndex, DomainIndex, NewTerm, &EntryCount);
 				}
 			}
 		}
 	}
 
-	return false;
+	return true;
 
 }
 
 //-----------------------------------------------------------------------------
-// RuleRequires
+// BuildRuleDomainsVariable
 //-----------------------------------------------------------------------------
-bool hsfcSchema::Required(int OutputPredicateIndex, int InputPredicateIndex) {
+bool hsfcSchema::BuildRuleDomainsVar(hsfcRuleSchema* RuleSchema, int* NewEntryCount) {
 
-	// Check for a rule that links the two predicates
-	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-		// Does this rule produce the required predicate
-		if (this->Rule[i]->Relation[0]->PredicateIndex == OutputPredicateIndex) {
-			// Check all of the input relations
-			for (unsigned int j = 1; j < this->Rule[i]->Relation.size(); j++) {
-				// Is the output of one rule an input for this rule
-				if (this->Rule[i]->Relation[j]->PredicateIndex == InputPredicateIndex) {
-					return true;
+	vector<hsfcTuple> DomainTerm;
+	bool FirstOccurance;
+	hsfcRelationSchema* RelationSchema;
+	unsigned int DomainIndex;
+
+	// !!! Important vector<hsfcTuple> DomainTerm must be sorted
+
+	// Calculate the domain of a each variable
+	for (unsigned int i = 0; i < RuleSchema->VariableSchema.size(); i++) {
+		// Clear the domain values
+		DomainTerm.clear();
+		FirstOccurance = true;
+		// Find all positive instance of the variable
+		for (unsigned int j = 1; j < RuleSchema->RelationSchema.size(); j++) {
+			// Is this an input
+			if (RuleSchema->RelationSchema[j]->Function == hsfcFunctionNone) {
+				// Inspect each term in the relation
+				for (unsigned int k = 1; k < RuleSchema->RelationSchema[j]->TermSchema.size(); k++) {
+					// Is this the vaiable in question
+					if (RuleSchema->RelationSchema[j]->TermSchema[k].VariableIndex == i) {
+						// Find the relation schema for this variable
+						RelationSchema = this->RelationSchema[RuleSchema->RelationSchema[j]->TermSchema[k].RelationIndex];
+						DomainIndex = RuleSchema->RelationSchema[j]->TermSchema[k].ArgumentIndex;
+						if (FirstOccurance) {
+							RelationSchema->Copy(DomainTerm, DomainIndex);
+							FirstOccurance = false;
+						} else {
+							RelationSchema->Intersection(DomainTerm, DomainIndex);
+						}
+					}
 				}
 			}
 		}
-	}
 
-	return false;
-
-}
-
-//-----------------------------------------------------------------------------
-// NestTerms
-//-----------------------------------------------------------------------------
-void hsfcSchema::NestTerms(vector<hsfcGDLTerm>& Term, int RelationOffset, int PredicateIndex) {
-
-	hsfcRelationSchema* Relation;
-	hsfcRelationSchema* NestedRelation;
-	hsfcTuple Tuple;
-	vector<hsfcTuple> NestedTerm;
-	int NestedID;
-
-	// Go through the terms an replace them with a single Term from a nested relation
-	// Terms: 17:-1.5 (5:-1.7 5:-1.9) 17:-1.3
-
-	// Get the relation for this subset of terms
-	Relation = this->RelationSchema(Term[RelationOffset].PredicateIndex);
-
-	// Are there enough terms
-	if ((RelationOffset + Relation->Arity) > (int)Term.size()) {
-		printf("Error: Too few terms\n");
-		return;
-	}
-
-	// Look for yet another level of nesting
-	for (int i = RelationOffset; i <= RelationOffset + Relation->Arity; i++) {
-		// Is the relation the same
-		if (Term[i].PredicateIndex != Term[RelationOffset].PredicateIndex) {
-			// Get the nested relation
-			NestedRelation = this->RelationSchema(Term[i].PredicateIndex);
-			this->NestTerms(Term, i, Term[RelationOffset].PredicateIndex);
-			// The size of the array has changed; are there enough terms
-			if ((RelationOffset + Relation->Arity) > (int)Term.size()) {
-				printf("Error: Too few terms\n");
-				return;
+		// Add the values to the variable domain
+		if (RuleSchema->VariableSchema[i]->AddTerms(DomainTerm)) {
+			// Check all of the rule relations
+			for (unsigned int j = 0; j < RuleSchema->RelationSchema.size(); j++) {
+				// Is this variable in the output of the rule or a (distinct ...)
+				if ((j == 0) || ((RuleSchema->RelationSchema[j]->Function & hsfcFunctionDistinct) == hsfcFunctionDistinct)) {
+					// Find the correct variable term
+					for (unsigned int k = 0; k < RuleSchema->RelationSchema[j]->TermSchema.size(); k++) {
+						if (RuleSchema->RelationSchema[j]->TermSchema[k].VariableIndex == i) {
+							// Add the values to the relation domain
+							for (unsigned int l = 0; l < DomainTerm.size(); l++) {
+								this->AddToDomain(RuleSchema->RelationSchema[j]->TermSchema[k].RelationIndex, RuleSchema->RelationSchema[j]->TermSchema[k].ArgumentIndex, DomainTerm[l], NewEntryCount);
+							}
+						}
+					}
+				}
 			}
 		}
+
 	}
 
-	// Is this the primary relation
-	if (RelationOffset == 0) return;
+	return true;
 
-	// Now we have all the terms from a single relation
-	// Replace all of those terms with a single term
-	for (int i = RelationOffset; i <= RelationOffset + Relation->Arity; i++) {
-		Tuple.RelationIndex = Term[i].Tuple.RelationIndex;
-		Tuple.ID = Term[i].Tuple.ID;
-		NestedTerm.push_back(Tuple);
+}
+
+//-----------------------------------------------------------------------------
+// OptimiseRuleSchema
+//-----------------------------------------------------------------------------
+bool hsfcSchema::OptimiseRuleSchema(hsfcRuleSchema* RuleSchema) {
+
+	int Count;
+	vector<bool> Found;
+	hsfcRuleRelationSchema* RelationSchema;
+
+	// Identify Preconditions
+	// Reorder the inputs to improve speed
+	// Identify Conditions
+
+	// Is there anything in the rule
+	if (RuleSchema->RelationSchema.size() == 0) {
+		this->Lexicon->IO->WriteToLog(0, false, "Error: empty rule in hsfcSchema::OptimiseRuleSchema\n");
+		return false;
 	}
 
-	// Replace the first nested term with a single term
-	NestedID = Relation->ID(NestedTerm);
-	if (NestedID == -1) {
-		printf("Error: Bad ID\n");
-		printf("Terms\n");
-		for (unsigned int i = 0; i < NestedTerm.size(); i++) {
-			printf("   %3d.%d", NestedTerm[i].RelationIndex, NestedTerm[i].ID);
-			if (NestedTerm[i].RelationIndex == -1) printf("\t%s", this->Lexicon->Text(NestedTerm[i].ID));
-			printf("\n");
+	// Mark the output
+	RuleSchema->RelationSchema[0]->Type = hsfcRuleOutput;
+
+	// Set all the inputs
+	for (unsigned int i = 1; i < RuleSchema->RelationSchema.size(); i++) {
+
+		// Count the variables
+		Count = 0;
+		for (unsigned int j = 0; j < RuleSchema->RelationSchema[i]->TermSchema.size(); j++) {
+			if (RuleSchema->RelationSchema[i]->TermSchema[j].Type == hsfcTypeVariable) {
+				Found.push_back(false);
+				Count++;
+			}
 		}
-		printf("Relation\n");
-		Relation->Print();
-		abort();
+
+		// By default its an input
+		RuleSchema->RelationSchema[i]->Type = hsfcRuleInput;
+		// Is it a precondition
+		if (Count == 0) {
+			RuleSchema->RelationSchema[i]->Type = hsfcRulePreCondition;
+			continue;
+		}
+		// Is it a function
+		if (RuleSchema->RelationSchema[i]->Function != hsfcFunctionNone) {
+			RuleSchema->RelationSchema[i]->Type = hsfcRuleCondition;
+		}
+
 	}
 
-	Term[RelationOffset].PredicateIndex = PredicateIndex; 
-	Term[RelationOffset].Tuple.RelationIndex = Relation->Index; 
-	Term[RelationOffset].Tuple.ID = NestedID; 
+	// Resort any self referencing inputs to the beginning
+	// i starts at 2 as 0 = output, if 1 = selfreference then its already first
+	for (unsigned int i = 2; i < RuleSchema->RelationSchema.size(); i++) {
+		// Is the input the same as the output
+		if (RuleSchema->RelationSchema[i]->TermSchema[0].NameID == RuleSchema->RelationSchema[0]->TermSchema[0].NameID) {
+			// Shuffle it to the front
+			RelationSchema = RuleSchema->RelationSchema[i];
+			RuleSchema->RelationSchema.erase(RuleSchema->RelationSchema.begin() + i);
+			RuleSchema->RelationSchema.insert(RuleSchema->RelationSchema.begin() + 1, RelationSchema);
+		}
+	}	
+		
+	// Look for redundant inputs
+	for (unsigned int i = 1; i < RuleSchema->RelationSchema.size(); i++) {
 
-	// Delete the remaining terms
-	for (int i = RelationOffset + 1; i <= RelationOffset + Relation->Arity; i++) {
-		Term.erase(Term.begin() + RelationOffset + 1);
+		// Is it an input
+		if (RuleSchema->RelationSchema[i]->Type == hsfcRuleInput) {
+
+			// Count the variables
+			Count = 0;
+			for (unsigned int j = 0; j < RuleSchema->RelationSchema[i]->TermSchema.size(); j++) {
+				if (RuleSchema->RelationSchema[i]->TermSchema[j].Type == hsfcTypeVariable) {
+					if (!Found[RuleSchema->RelationSchema[i]->TermSchema[j].VariableIndex]) {
+						Found[RuleSchema->RelationSchema[i]->TermSchema[j].VariableIndex] = true;
+						Count++;
+					}
+				}
+			}
+			// Is it redundant
+			if (Count == 0) {
+				RuleSchema->RelationSchema[i]->Type = hsfcRuleCondition;
+			}
+		}
+
 	}
+
+	// Clean up
+	Found.clear();
+
+	return true;
 
 }
 
 //-----------------------------------------------------------------------------
-// PrintRelations
+// IdentifyRelationTypes
 //-----------------------------------------------------------------------------
-void hsfcSchema::PrintRelations() {
+bool hsfcSchema::IdentifyRelationTypes(hsfcSCL* SCL) {
 
-    printf("\n--- Schema ~ Relations-------------------------------------\n");
+	hsfcRelationSchema* RelationSchema;
 
-	// Print out the relations
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		printf("%d. ", i);
-		this->Relation[i]->Print();
+	/* Fact Types
+	None - Defualt, and embedded
+	Aux - Transient, can include entries in Permanents 
+	Init - All initial values of True 
+	True - All in the state 
+	Next - All next values of True 
+	*/
+
+	// Check every relation
+	for (unsigned int i = 1; i < this->RelationSchema.size(); i++) {
+
+		// Set the default
+		this->RelationSchema[i]->Fact = hsfcFactNone; // Used later to identify the cyclic input to a rule
+		this->RelationSchema[i]->IsInState = false;
+
+		// Is it a (init:pred ...)
+		if (this->Lexicon->PartialMatch(this->RelationSchema[i]->NameID, "init:")) {
+			this->RelationSchema[i]->Fact = hsfcFactInit;
+			this->RelationSchema[i]->IsInState = true;
+			continue;
+		}
+		// Is it a (true:pred ...)
+		if (this->Lexicon->PartialMatch(this->RelationSchema[i]->NameID, "true:")) {
+			this->RelationSchema[i]->Fact = hsfcFactTrue;
+			this->RelationSchema[i]->IsInState = true;
+			continue;
+		}
+		// Is it a (next:pred ...)
+		if (this->Lexicon->PartialMatch(this->RelationSchema[i]->NameID, "next:")) {
+			this->RelationSchema[i]->Fact = hsfcFactNext;
+			this->RelationSchema[i]->IsInState = true;
+			continue;
+		}
+		// Is it a (role)
+		if (this->Lexicon->Match(this->RelationSchema[i]->NameID, "role/1")) {
+			this->RelationSchema[i]->Fact = hsfcFactAux;
+			this->RelationSchema[i]->IsInState = true;
+		}
+		// Is it a (terminal)
+		if (this->Lexicon->Match(this->RelationSchema[i]->NameID, "terminal/0")) {
+			this->RelationSchema[i]->Fact = hsfcFactAux;
+			this->RelationSchema[i]->IsInState = true;
+			continue;
+		}
+		// Is it a (goal ...)
+		if (this->Lexicon->Match(this->RelationSchema[i]->NameID, "goal/2")) {
+			this->RelationSchema[i]->Fact = hsfcFactAux;
+			this->RelationSchema[i]->IsInState = true;
+			continue;
+		}
+		// Is it a (legal ...)
+		if (this->Lexicon->Match(this->RelationSchema[i]->NameID, "legal/2")) {
+			this->RelationSchema[i]->Fact = hsfcFactAux;
+			this->RelationSchema[i]->IsInState = true;
+			continue;
+		}
+		// Is it a (does ...)
+		if (this->Lexicon->Match(this->RelationSchema[i]->NameID, "does/2")) {
+			this->RelationSchema[i]->Fact = hsfcFactAux;
+			this->RelationSchema[i]->IsInState = true;
+			continue;
+		}
+		// Is it a (sees ...)
+		if (this->Lexicon->Match(this->RelationSchema[i]->NameID, "sees/2")) {
+			this->RelationSchema[i]->Fact = hsfcFactAux;
+			this->RelationSchema[i]->IsInState = true;
+			continue;
+		}
+		//// Is it a (distinct ...)
+		//if (this->Lexicon->Match(this->RelationSchema[i]->NameID, "distinct/2")) {
+		//	this->RelationSchema[i]->Fact = hsfcFactAux;
+		//	this->RelationSchema[i]->IsInState = false;
+		//	continue;
+		//}
+
 	}
 
-}
-//-----------------------------------------------------------------------------
-// PrintRules
-//-----------------------------------------------------------------------------
-void hsfcSchema::PrintRules() {
-
-    printf("\n--- Schema ~ Rules-----------------------------------------\n");
-
-	// Print out the Schema Rules
-	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-	    printf("%d.\n", i);
-		this->Rule[i]->Print();
+	// Set the rigidity of the relations
+	// Initially either full or none
+	for (unsigned int i = 1; i < this->RelationSchema.size(); i++) {
+		if (SCL->NameIDisRigid(this->RelationSchema[i]->NameID)) {
+			this->RelationSchema[i]->Rigidity = hsfcRigidityFull;
+		} else {
+			this->RelationSchema[i]->Rigidity = hsfcRigidityNone;
+		}
 	}
 
-}
-
-//-----------------------------------------------------------------------------
-// PrintReferences
-//-----------------------------------------------------------------------------
-void hsfcSchema::PrintReferences() {
-
-	// Print out the Permanent Facts
-    printf("Permanent Facts\n");
-	for (unsigned int i = 0; i < this->Fact.size(); i++) {
-		printf("   %d.%d - ", this->Fact[i].RelationIndex, this->Fact[i].ID);
-		this->PrintRelation(&this->Fact[i], true);
+	// Find the relations that are have a rigid instance in the scl
+	for (unsigned int i = 0; i < SCL->Statement.size(); i++) {
+		// Find the relation schema
+		RelationSchema = this->FindRelationSchema(SCL->Statement[i]->NameID);
+		if (RelationSchema == NULL) {
+			this->Lexicon->IO->WriteToLog(0, false, "Error: null relationschema in hsfcSchema::IdentifyRelationTypes\n");
+			return false;
+		}
+		RelationSchema->Rigidity = hsfcRigidityFull;
 	}
-
-	// Print out the Initial Facts
-    printf("Initial Facts\n");
-	for (unsigned int i = 0; i < this->Initial.size(); i++) {
-		printf("   %d.%d - ", this->Initial[i].RelationIndex, this->Initial[i].ID);
-		this->PrintRelation(&this->Initial[i], true);
-	}
-
-	// Print out the Next Linkages
-    printf("Next Links\n");
-	for (unsigned int i = 0; i < this->Next.size(); i++) {
-		printf("   %d => %d\n", this->Next[i].SourceListIndex, this->Next[i].DestinationListIndex);
-	}
-
-}
-
-//-----------------------------------------------------------------------------
-// Factorial
-//-----------------------------------------------------------------------------
-int Factorial(int Number) {
-
-	int Result;
 	
-	Result = 1;
-	
-	if (Number > 10) {
-		Result = 39916800; // 11!
-		return Result;
+	// Inspect the stratum to find the rigids
+	// They are already ordered according to dependency
+	// All outputs and inputs are required in the state
+	for (unsigned int i = 0; i < this->StratumSchema.size(); i++) {
+
+		// Set the default
+		this->StratumSchema[i]->Rigidity = hsfcRigidityFull;
+		// Are all of its inputs rigids
+		for (unsigned int j = 0; j < this->StratumSchema[i]->Input.size(); j++) {
+			// Find the relation schema
+			RelationSchema = this->FindRelationSchema(this->StratumSchema[i]->Input[j]);
+			if (RelationSchema == NULL) {
+				this->Lexicon->IO->WriteToLog(0, false, "Error: null relationschema in hsfcSchema::IdentifyRelationTypes\n");
+				return false;
+			}
+			// Ignore Distinct
+			if (this->Lexicon->PartialMatch(RelationSchema->NameID, "distinct")) continue;
+			// Test if it might be rigid; if the input is already classified non rigid, then it fails
+			if (RelationSchema->Rigidity != hsfcRigidityFull) {
+				this->StratumSchema[i]->Rigidity = hsfcRigidityNone;
+			}
+			// Its an input so its in the state
+			RelationSchema->IsInState = true;
+		}
+
+		// Classify the outputs from the strata
+		// Some may be partially rigid
+		for (unsigned int j = 0; j < this->StratumSchema[i]->Output.size(); j++) {
+			// Find the relation schema
+			RelationSchema = this->FindRelationSchema(this->StratumSchema[i]->Output[j]);
+			if (RelationSchema == NULL) {
+				this->Lexicon->IO->WriteToLog(0, false, "Error: null relationschema in hsfcSchema::IdentifyRelationTypes\n");
+				return false;
+			}
+			// Is the rigidity partial
+			if ((RelationSchema->Rigidity == hsfcRigidityFull) && (this->StratumSchema[i]->Rigidity != hsfcRigidityFull)) {
+				RelationSchema->Rigidity = hsfcRigiditySome;
+			}
+			// Is the fact yet to be classified
+			if (RelationSchema->Fact == hsfcFactNone) {
+				RelationSchema->Fact = hsfcFactAux;
+			}
+			// Its an output so its in the state
+			RelationSchema->IsInState = true;
+		}
+
 	}
 
-	for (int i = 2; i <= Number; i++) {
-		Result *= i;
+	// Lastly everything else is embedded
+	for (unsigned int i = 1; i < this->RelationSchema.size(); i++) {
+		if (RelationSchema->Fact == hsfcFactNone) {
+			this->RelationSchema[i]->Fact = hsfcFactEmbedded; 
+			this->RelationSchema[i]->IsInState = false;
+		}
 	}
 
-	return Result;
+	return true;
 
 }
+

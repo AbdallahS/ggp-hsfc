@@ -266,7 +266,7 @@ class TictactoeTest(unittest.TestCase):
         global g_ttt1
 
         # Create game
-        game = Game(gdl=g_ttt1, gadelac=True)
+        game = Game(gdl=g_ttt1)
         self.assertEqual(len(game.players()), 2)
         self.assertEqual(len(game.players()), game.num_players())
         white = next((r for r in game.players() if str(r) == "white"), None)
@@ -326,7 +326,7 @@ class TictactoeTest(unittest.TestCase):
         global g_ttt2, g_ttt3
 
         # Create game
-        game = Game(gdl=g_ttt3, gadelac=True)
+        game = Game(gdl=g_ttt3)
         self.assertEqual(len(game.players()), 2)
         self.assertEqual(len(game.players()), game.num_players())
         white = next((r for r in game.players() if str(r) == "WHITE"), None)

@@ -14,117 +14,37 @@
 #include <vector>
 #include <limits.h>
 
-#include "hsfcGDL.h"
+#include "hsfcSCL.h"
 
 using namespace std;
 
-class hsfcRelationSchema;
+//=============================================================================
+// CLASS: hsfcDomainSchema
+//=============================================================================
+class hsfcDomainSchema {
 
-//=============================================================================
-// ENUM: hsfcFact
-//=============================================================================
-enum hsfcFact {
-	hsfcFactNone, 
-	hsfcFactPermanent,
-	hsfcFactInitial,
-	hsfcFactTrue, 
-	hsfcFactNext
+public:
+	hsfcDomainSchema(hsfcLexicon* Lexicon);
+	~hsfcDomainSchema(void);
+
+	void Initialise(unsigned int NameID);
+	void FromDomainSchema(hsfcDomainSchema* Source);
+	bool AddTerm(hsfcTuple& NewTerm);
+	bool AddTerms(vector<hsfcTuple>& Term);
+	void Copy(vector<hsfcTuple>& Destination);
+	void Intersection(vector<hsfcTuple>& Destination);
+	void Print();
+
+	unsigned int NameID;
+	vector<hsfcTuple> Term;
+	bool Rigid;
+
+protected:
+
+private:
+	hsfcLexicon* Lexicon;
+
 };
-
-//=============================================================================
-// ENUM: hsfcFunction
-//=============================================================================
-enum hsfcFunction {
-	hsfcFunctionNone = 0x00000000, 
-	hsfcFunctionDistinct = 0x00000001, 
-	hsfcFunctionTrue = 0x00000002, 
-	hsfcFunctionNot = 0x00000004 
-};
-
-//=============================================================================
-// ENUM: hsfcRuleRelationType
-//=============================================================================
-enum hsfcRuleRelationType {
-	hsfcRuleNone,
-	hsfcRuleResult,
-	hsfcRulePreCondition,
-	hsfcRuleInput,
-	hsfcRuleCondition
-};
-
-//=============================================================================
-// STRUCT: hsfcDomainRecord
-//=============================================================================
-typedef struct hsfcDomainRecord {
-	int PredicateIndex;
-	int DomainIndex;
-	hsfcTuple Tuple;
-} hsfcDomainRecord;
-
-//=============================================================================
-// STRUCT: hsfcDomainEntry
-//=============================================================================
-typedef struct hsfcDomainEntry {
-	hsfcTuple Tuple;
-	int Index;
-	int Count;
-} hsfcDomainEntry;
-
-//=============================================================================
-// STRUCT: hsfcDomain
-//=============================================================================
-typedef struct hsfcDomain {
-	hsfcDomainEntry* Entry;
-	int Count;
-	int Size;
-} hsfcDomain;
-
-//=============================================================================
-// STRUCT: hsfcRelationLink
-//=============================================================================
-typedef struct hsfcRelationLink {
-	int SourceListIndex;
-	int DestinationListIndex;
-} hsfcRelationLink;
-
-//=============================================================================
-// STRUCT: hsfcRuleTemplate
-//=============================================================================
-typedef struct hsfcRuleTemplate {
-	int PredicateIndex;
-	hsfcRelationSchema* RelationSchema;
-	bool Fixed;
-	hsfcTuple Tuple;
-	int BufferIndex;
-	int ArgumentIndex;
-	int DomainSize;
-} hsfcRuleTemplate;
-
-//=============================================================================
-// STRUCT: hsfcRuleCompactTerm
-//=============================================================================
-typedef struct hsfcRuleCompactTerm {
-	hsfcRelationSchema* RelationSchema;
-	int ArgumentIndex;
-	hsfcTuple Tuple;
-} hsfcRuleCompactTerm;
-
-//=============================================================================
-// STRUCT: hsfcRuleTerm
-//=============================================================================
-typedef struct hsfcRuleTerm {
-	int RelationIndex;
-	hsfcTuple Tuple;
-} hsfcRuleTerm;
-
-//=============================================================================
-// STRUCT: hsfcBufferTerm
-//=============================================================================
-typedef struct hsfcBufferTerm {
-	int RelationIndex;
-	int ID;
-	vector<hsfcTuple> Domain;
-} hsfcBufferTerm;
 
 //=============================================================================
 // CLASS: hsfcRelationSchema
@@ -135,43 +55,28 @@ public:
 	hsfcRelationSchema(hsfcLexicon* Lexicon);
 	~hsfcRelationSchema(void);
 
-	void Initialise(int PredicateIndex, int Arity);
-	void FromRelationSchema(hsfcRelationSchema* Source);
-	void AddToDomain(int DomainIndex, hsfcDomainEntry* Entry);
-	void AddToFactDomain(vector<hsfcDomainEntry>& Term);
-	void AddToDomainFromDomain(vector<vector<hsfcDomainEntry> >& Source);
-	void IndexDomains();
-	double RelationSize();
-	void IntersectBufferDomain(vector<hsfcTuple>& BufferDomain, unsigned int DomainIndex);
-	void AddToBufferDomain(vector<hsfcTuple>& BufferDomain, unsigned int DomainIndex);
-	int ID(vector<hsfcTuple>& Term);
-	int ID(hsfcRuleCompactTerm Term[], int Offset, int NumTerms);
-	int vID(vector<hsfcTuple>& Term);
-	void Terms(int ID, vector<hsfcTuple>& Term);
-	void Terms(int ID, vector<hsfcRuleTerm>& Term);
-	int GetDomainCount(int Index);
-	void ListDomain(vector<string>& List);
-	void PrintDomains();
+	void Initialise(unsigned int NameID, int Arity, unsigned int Index);
+	void Copy(vector<hsfcTuple>& Destination, unsigned int DomainIndex);
+	void Intersection(vector<hsfcTuple>& Destination, unsigned int DomainIndex);
+	bool AddTerms(vector<hsfcTuple>& Term, unsigned int DomainIndex);
+	bool AddRigidTerms(hsfcTuple Term[]);
 	void Print();
 
-	int IDCount;
-	double IDCountDbl;
-	int PredicateIndex;
+	unsigned int NameID;
 	int Arity;
-	hsfcFact Fact;
-	int Index;
-	double AveListLength;
-	double Samples;
-	bool DomainIsComplete;
-	bool HasComplexEntries;
+	vector<hsfcDomainSchema*> DomainSchema;	
+	unsigned int Index;
 	bool IsInState;
-	vector<vector<hsfcDomainEntry> > vDomain;	
+	hsfcFactType Fact;
+	hsfcRigidity Rigidity;
+	hsfcStatistic Statistics;
 
 protected:
 
 private:
 	hsfcLexicon* Lexicon;
-	hsfcDomain** Domain;
+
+	void DeleteDomainSchema();
 
 };
 
@@ -186,25 +91,18 @@ public:
 	~hsfcRuleRelationSchema(void);
 
 	void Initialise();
-	void FromRuleRelationSchema(hsfcRuleRelationSchema* Source);
-	void Create(vector<hsfcGDLTerm>& Term, vector<hsfcBufferTerm>& Buffer);
-	bool Terms(int TupleID, vector<hsfcRuleTerm>& Term); 
-	int ID(vector<hsfcTuple>& Term, bool Validate);
+	void FromRelationSchema(hsfcRuleRelationSchema* Source);
 	void Print();
 
-	int PredicateIndex;
-	hsfcRuleRelationType Type;
+	vector<hsfcRuleTermSchema> TermSchema;
 	int Function;
-	vector<hsfcRuleTemplate> Template;
-	double ReferenceSize;
-	double SortOrder;
+	hsfcRuleRelationType Type;
+	unsigned int ReferenceSize;
 
 protected:
 
 private:
 	hsfcLexicon* Lexicon;
-	int Arity;
-	hsfcFact Fact;
 
 };
 
@@ -218,22 +116,45 @@ public:
 	~hsfcRuleSchema(void);
 
 	void Initialise();
-	void Create(hsfcGDLRule* Rule);
-	int Optimise(bool OrderInputs);
-	void Stratify();
+	void FromRuleSchema(hsfcRuleSchema* Source);
 	void Print();
 
-	vector<hsfcRuleRelationSchema*> Relation;
-	vector<hsfcBufferTerm> Buffer;
-	bool SelfReferencing;
-	int Stratum;
-	double EstReferenceSize;
+	vector<hsfcRuleRelationSchema*> RelationSchema;
+	vector<hsfcDomainSchema*> VariableSchema;
 
 protected:
 
 private:
-	double Cost(vector<int>& InputIndex);
-	void Sort();
+	void DeleteRelationSchema();
+	void DeleteVariableSchema();
+
+	hsfcLexicon* Lexicon;
+
+};
+
+//=============================================================================
+// CLASS: hsfcStratumSchema
+//=============================================================================
+class hsfcStratumSchema {
+
+public:
+	hsfcStratumSchema(hsfcLexicon* Lexicon);
+	~hsfcStratumSchema(void);
+
+	void Initialise(hsfcSCLStratum* SCLStratum);
+	void Print();
+
+	vector<hsfcRuleSchema*> RuleSchema;
+	vector<int> Input;
+	vector<int> Output;
+	hsfcRigidity Rigidity;
+	int SelfReferenceCount;
+	hsfcStratumType Type;
+
+protected:
+
+private:
+	void DeleteRuleSchema();
 
 	hsfcLexicon* Lexicon;
 
@@ -249,52 +170,40 @@ public:
 	~hsfcSchema(void);
 
 	void Initialise();
-	bool Create(char* Script);
-	void GetRoles(vector<string>& Role);
-	void PrintRelation(hsfcTuple* Tuple, bool CRLF);
-	void RelationAsText(hsfcTuple* Tuple, char* Text);
+	bool Create(hsfcSCL* SCL);
+	hsfcRelationSchema* FindRelationSchema(unsigned int NameID);
 	void Print();
 
-	vector<hsfcRelationSchema*> Relation;
-	vector<hsfcRuleSchema*> Rule;
-	vector<hsfcTuple> Fact;
-	vector<hsfcTuple> Initial;
-	vector<hsfcRelationLink> Next;
+	vector<hsfcRelationSchema*> RelationSchema;
+	vector<hsfcStratumSchema*> StratumSchema;
+	vector<hsfcSCLAtom*> Rigid;
 
 protected:
 
 private:
-	bool ReadGDL(char* Script);
-	bool ReadRules(char* RuleScript);
-	bool ReadStrats(char* StratScript);
-	bool ReadDomains(char* DomainScript);
-	bool CreateSCL();
-	void Stratify();
-	void SetPermanentFacts();
-	void SetInitialRelations();
-	void SetNextRelations();
-	void AddRelationSchema(hsfcGDLRelation* GDLRelation);
-	void AddRuleSchema(hsfcGDLRule* GDLRule);
-	hsfcRelationSchema* RelationSchema(int PredicateIndex, int Arity);
-	hsfcRelationSchema* RelationSchema(int PredicateIndex);
-	hsfcRelationSchema* RelationSchemaByName(int PredicateIndex);
-	bool RelationSchemaExists(char* Predicate);
-	bool RuleIsRequired(hsfcRuleSchema* Rule, unsigned int FirstIndex, unsigned int LastIndex);
-	bool Required(int OutputPredicateIndex, int InputPredicateIndex);
-	void NestTerms(vector<hsfcGDLTerm>& Term, int RelationOffset, int PredicateIndex);
-	void PrintRelations();
-	void PrintRules();
-	void PrintReferences();
+	hsfcRelationSchema* AddRelationSchema(unsigned int NameID, int Arity);
+	void DeleteRelationSchema();
+	void DeleteStratumSchema();
+	hsfcRelationSchema* FindRelationSchema(unsigned int NameID, int Arity);
+	bool AddToDomain(unsigned int RelationIndex, int ArgumentIndex, hsfcTuple& Term, int* NewEntryCount);
 
+	bool CreateRelationSchema(hsfcSCLAtom* SCLAtom);
+	bool CompleteRelationSchema();
+	bool CreateStratumSchema(hsfcSCLStratum* SCLStratum);
+	bool CreateRuleSchema(hsfcStratumSchema* StratumSchema, hsfcSCLAtom* SCLRule);
+	bool CreateRuleRelationSchema(hsfcRuleSchema* RuleSchema, hsfcSCLAtom* SCLRuleRelation);
+	bool CreateRuleTermSchema(hsfcRuleRelationSchema* RuleRelationSchema, hsfcSCLAtom* Atom, unsigned int RelationNameID, int ArgumentIndex);	
+	bool AddVariableRuleTerms(hsfcRuleSchema* RuleSchema);
+	
+	bool BuildRelationDomains(hsfcSCLAtom* SCLAtom);
+	bool BuildStratumDomainsFix(hsfcStratumSchema* StratumSchema);
+	bool BuildStratumDomainsVar(hsfcStratumSchema* StratumSchema, int* NewEntryCount);
+	bool BuildRuleDomainsFix(hsfcRuleSchema* RuleSchema);
+	bool BuildRuleDomainsVar(hsfcRuleSchema* RuleSchema, int* NewEntryCount);
+	bool OptimiseRuleSchema(hsfcRuleSchema* RuleSchema);
+
+	bool IdentifyRelationTypes(hsfcSCL* SCL);
 	hsfcLexicon* Lexicon;
-	hsfcGDL* GDL;
-	hsfcGDL* SCL;
-	vector<hsfcTuple> Stratum;
-	vector<hsfcRelationDetail> RelationDetail;
 
 };
 
-//=============================================================================
-// Functions
-//=============================================================================
-int Factorial(int Number);

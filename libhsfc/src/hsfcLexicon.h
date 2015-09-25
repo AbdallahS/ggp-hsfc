@@ -1,6 +1,6 @@
 //=============================================================================
 // Project: High Speed Forward Chaining
-// Module: Term
+// Module: Lexicon
 // Authors: Michael Schofield UNSW
 // 
 //=============================================================================
@@ -14,61 +14,31 @@
 #include <time.h>
 #include <vector>
 
-#define DEBUG true
-#define TICKS_PER_SECOND 1000000
-
-using namespace std;
+#include "hsfcIO.h"
 
 //=============================================================================
-// Referencing
+// CLASS: hsfcStatistic
 //=============================================================================
-/*
-Index
-	0 based offset for array
-	TermIndex identifies offset in Term[]; as in Term[Index]
-	RelationIndex identifies offset in Term[]; as in Relation[Index]
+class hsfcStatistic {
 
-ID
-	Unique identified for item
-	Encoded from DomainIndex of all of the attributes
+public:
+	hsfcStatistic(void);
+	~hsfcStatistic(void);
 
-Lexicon Term
-	RelationIndex = -1
-	TupleID = TermIndex
+	void Initialise();
+	void AddObservation(double Value);
+	double Average();
+	double StdDev();
 
-GDL Term
-	RelationIndex = -1
-	TupleID = Lexicon.TupleIndex
+	double Count;
+	double Sum;
+	double Sum2;
 
-RelationSchema Term
-	RelationIndex 
-	TupleID
-	
-RuleRelationSchema Template
-	RelationSchema
-	Fixed
-	Term.RelationIndex 
-	Term.ID
-	BufferIndex
+protected:
 
-RuleRelationSchema Term
-	RelationIndex
-	Term.RelationIndex 
-	Term.ID
-	
-Buffer Term
-	Fixed
-	RelationIndex 
-	TupleID
+private:
 
-*/
-//=============================================================================
-// STRUCT: hsfcTuple
-//=============================================================================
-typedef struct hsfcTuple {
-	int RelationIndex;
-	int ID;
-} hsfcTuple;
+};
 
 //=============================================================================
 // CLASS: hsfcLexicon
@@ -79,24 +49,41 @@ public:
 	hsfcLexicon(void);
 	~hsfcLexicon(void);
 
-	void Initialise();
-	int Index(const char* Value);
-	void Parse(char* Text, vector<hsfcTuple>& Reference);
-	bool Match(int Index, char* Text);
-	bool PartialMatch(int Index, char* Text);
-	bool MatchText(int Index, char* Text);
-	bool IsVariable(int Index);
-	const char* Text(int Index);
+	void Initialise(hsfcParameters* Parameters);
+	unsigned int Index(const char* Value);
+	unsigned int RelationIndex(const char* Value, bool Add);
+	unsigned int RelationIndex(unsigned int NameID);
+	unsigned int GDLIndex(unsigned int ID);
+	unsigned int NewRigidNameID(int Arity);
+	void Parse(const char* Text, vector<hsfcTuple>& Reference);
+	bool Match(unsigned int ID, const char* Text);
+	bool PartialMatch(unsigned int ID, const char* Text);
+	bool MatchText(unsigned int ID, const char* Text);
+	bool IsVariable(unsigned int ID);
+	bool IsUsed(const char* Letter, bool IgnoreComments);
+	const char* Text(unsigned int ID);
+	char* Copy(unsigned int ID, bool WithArity);
+	const char* Relation(unsigned int ID);
 	unsigned int Size();
+	unsigned int TrueFrom(unsigned int RelationIndex);
+	unsigned int NextFrom(unsigned int RelationIndex);
+	unsigned int InitFrom(unsigned int RelationIndex);
 	void Print();
+
+	hsfcIO* IO;
 
 protected:
 
 private:
 	unsigned int AddTerm(const char* Value);
+	unsigned int AddName(const char* Value);
 
 	vector<string> Term;
-	vector<int> TermIndex;
+	vector<unsigned int> TermIndex;
+	vector<string> RelationName;
+	vector<unsigned int> RelationNameID;
+	vector<bool> RelationIsRigid;
+	int UniqueNum;
 
 };
 

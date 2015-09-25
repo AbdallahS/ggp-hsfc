@@ -13,29 +13,7 @@
 #include <time.h>
 #include <vector>
 
-#include "hsfcLexicon.h"
-
-using namespace std;
-
-#define INITIAL_NO_ATOMS 16
-
-class hsfcGDLRelation;
-
-//=============================================================================
-// STRUCT: hsfcTupleReference
-//=============================================================================
-typedef struct hsfcGDLTerm {
-	int PredicateIndex;
-	hsfcTuple Tuple;
-} hsfcGDLTerm;
-
-//=============================================================================
-// STRUCT: hsfcRelationDetail
-//=============================================================================
-typedef struct hsfcRelationDetail {
-	int PredicateIndex;
-	int Arity;
-} hsfcRelationDetail;
+#include "hsfcWFT.h"
 
 //=============================================================================
 // CLASS: hsfcGDLAtom
@@ -47,14 +25,12 @@ public:
 	~hsfcGDLAtom(void);
 
 	void Initialise();
-	void FromGDLAtom(hsfcGDLAtom* Source);
-	int Read(char* Text);
-	void Terms(vector<hsfcTuple>& Term);
-	void Terms(int PredicateIndex, vector<hsfcGDLTerm>& Term);
-	int AsText(char* Text, int Length);
+	bool Read(hsfcWFTElement* WFT);
+	void DeleteTerms();
+	void Print();
 
-	hsfcGDLRelation* Relation;
-	int TermIndex;
+	vector<hsfcGDLAtom*> Term;
+	int PredicateIndex;
 
 protected:
 
@@ -63,64 +39,6 @@ private:
 
 };
 
-//=============================================================================
-// CLASS: hsfcGDLRelation
-//=============================================================================
-class hsfcGDLRelation {
-
-public:
-	hsfcGDLRelation(hsfcLexicon* Lexicon);
-	~hsfcGDLRelation(void);
-
-	void Initialise();
-	void FromGDLRelation(hsfcGDLRelation* Source);
-	int Read(char* Text);
-	void NormaliseTerms();
-	void FindArity();
-	void Terms(vector<hsfcTuple>& Term);
-	void Terms(vector<hsfcGDLTerm>& Term);
-	int Arity();
-	int PredicateIndex();
-	bool AddRelationDetail(vector<hsfcRelationDetail>& RelationDetail);
-	int AsText(char* Text, int Length);
-
-	vector<hsfcGDLAtom*> Atom;
-	bool Not;
-
-protected:
-
-private:
-	hsfcGDLAtom* AddAtom();
-
-	hsfcLexicon* Lexicon;
-
-};
-
-//=============================================================================
-// CLASS: hsfcGDLRule
-//=============================================================================
-class hsfcGDLRule {
-
-public:
-	hsfcGDLRule(hsfcLexicon* Lexicon);
-	~hsfcGDLRule(void);
-
-	void Initialise();
-	void FromGDLRule(hsfcGDLRule* Source);
-	int Read(char* Text);
-	int Arity();
-	int AsText(char* Text, int Length);
-
-	vector<hsfcGDLRelation*> Relation;
-
-protected:
-
-private:
-	hsfcGDLRelation* AddRelation();
-
-	hsfcLexicon* Lexicon;
-
-};
 
 //=============================================================================
 // CLASS: hsfcGDL
@@ -132,22 +50,19 @@ public:
 	~hsfcGDL(void);
 
 	void Initialise();
-	int Read(char* Script);
-	bool GetRelationDetails();
-	void Print(char* Title);
+	bool Read(hsfcWFT* WFT);
+	void Print();
 
-	vector<hsfcRelationDetail> RelationDetail;
-	vector<hsfcGDLRelation*> Relation;
-	vector<hsfcGDLRule*> Rule;
+	vector<hsfcGDLAtom*> Statement;
+	vector<hsfcGDLAtom*> Rule;
 
 protected:
 
 private:
-	hsfcGDLRelation* AddRelation();
-	hsfcGDLRule* AddRule();
+	void DeleteRules();
+	void DeleteStatements();
 
 	hsfcLexicon* Lexicon;
 
 };
-
 

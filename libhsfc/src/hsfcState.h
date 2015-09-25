@@ -12,97 +12,80 @@
 #include <string.h>
 #include <time.h>
 
-#include "hsfcSchema.h"
+#include "hsfcDomain.h"
 
 using namespace std;
 
-//=============================================================================
-// STRUCT: hsfcState
-//=============================================================================
-typedef struct hsfcState {
-	int CurrentStep;
-	int Round;
-	int* NumRelations;
-	int* MaxNumRelations;
-	int** RelationID;
-	//long long** TupleID64;
-	bool** RelationExists;
-	int** RelationIDSorted;
-} hsfcState;
-
-// DPR20140401 Adding HSFCManager as a friend class because I need to
-// access the StateManager and want to minimise the amount of
-// Michael's code that I change.
-namespace HSFC { class HSFCManager; };
+namespace HSFC { class HSFCManager; }
 
 //=============================================================================
 // CLASS: hsfcStateManager
 //=============================================================================
 class hsfcStateManager {
-	
-	friend class HSFC::HSFCManager;
+
+    friend class HSFC::HSFCManager;
 
 public:
-	hsfcStateManager(hsfcLexicon* Lexicon);
+	hsfcStateManager(hsfcLexicon* Lexicon, hsfcDomainManager* DomainManager);
 	~hsfcStateManager(void);
 
 	void Initialise();
-	void SetSchema(hsfcSchema* Schema, int MaxRelationSize);
+	bool SetSchema(hsfcSchema* Schema);
 
 	// State Methods
 	hsfcState* CreateState(void);
 	void FreeState(hsfcState* State);
 	void InitialiseState(hsfcState* State);
-	void FromState(hsfcState* State, hsfcState* Source);
 	void ResetState(hsfcState* State);
+	void FromState(hsfcState* State, hsfcState* Source);
 	void SetInitialState(hsfcState* State);
-	void AdvanceState(hsfcState* State, int Step);
 	void NextState(hsfcState* State);
+	void GetFluents(hsfcState* State, vector<hsfcTuple>& Fluent);
 
-	void AddRelation(hsfcState* State, hsfcTuple* Tuple);
-	bool RelationExists(hsfcState* State, hsfcTuple* Tuple);
-	bool CalculateStateSize();
+	bool AddRelation(hsfcState* State, hsfcTuple& Tuple);
+	bool RelationExists(hsfcState* State, hsfcTuple& Tuple);
+	void PrintRelations(hsfcState* State, bool ShowRigids);
 
-	void CompareStates(hsfcState* State1, hsfcState* State2);
-	char* StateAsText(hsfcState* State);
-	bool StateFromText(hsfcState* State, char* Text);
-	void PrintRelations(hsfcState* State, bool PermanentFacts);
+	void CreateRigids(hsfcState* State);
+	void CreatePermanents(hsfcState* State);
 
-	hsfcSchema* Schema;
-	int RoleRelationIndex;
-	int TerminalRelationIndex;
-	int GoalRelationIndex;
-	int LegalRelationIndex;
-	int DoesRelationIndex;
-	int SeesRelationIndex;
-	int* NextRelationIndex;
-	int NoNextRelation;
+	//bool CalculateStateSize();
+	//void CompareStates(hsfcState* State1, hsfcState* State2);
+	//char* StateAsText(hsfcState* State);
+	//bool StateFromText(hsfcState* State, char* Text);
+	//void AdvanceState(hsfcState* State, int Step);
 
-	int StateSize;
-	double MaxStateSize;
-	int MaxRelationSize;
+	unsigned int RoleRelationIndex;
+	unsigned int TerminalRelationIndex;
+	unsigned int GoalRelationIndex;
+	unsigned int LegalRelationIndex;
+	unsigned int DoesRelationIndex;
+	unsigned int SeesRelationIndex;
+	unsigned int* NextRelationIndex;
+	unsigned int NoNextRelation;
 
-	//int DoesListIndex[MAX_NO_OF_RELATION_LISTS];
-	//int LegalNoRoles[MAX_ARITY];
-	//int LegalRoleNo[MAX_ARITY][MAX_NO_OF_ROLES];
-	//int SeesNoRoles[MAX_ARITY];
-	//int SeesRoleNo[MAX_ARITY][MAX_NO_OF_ROLES];
-	//hsfcTuple* NextReference[MAX_ARITY];
-	//int NoNextReferences[MAX_ARITY];
-	//hsfcTuple* PossibleFact;
-	//int NoPossibleFacts;
-	//hsfcTuple* Initial;
-	//int NoInitials;
+	unsigned int* GoalToRole;
+	unsigned int* LegalToRole;
+	unsigned int* DoesToRole;
+	unsigned int* SeesToRole;
 
-	//int ReferenceSize;
-	//int KnowledgeBaseSize;
+	unsigned int MaxRelationSize;
 
 protected:
 
 private:
 
 	hsfcLexicon* Lexicon;
-	int NumRelationLists;
+	hsfcDomainManager* DomainManager;
+	hsfcSchema* Schema;
+
+	vector<hsfcTuple> FullPermanent;
+	vector<hsfcTuple> PartPermanent;
+	vector<hsfcTuple> Initial;
+	vector<hsfcReference> Next;
+
+	unsigned int NumRelationLists;
+	unsigned int StateSize;
 
 };
 

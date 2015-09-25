@@ -69,9 +69,7 @@ class Move
 public:
     Move(const Move& other);
     Move(Game& game, const PortableMove& pm);
-#if HSFC_VERSION > 1
     ~Move();
-#endif
     Move& operator=(const Move& other);
 
     bool operator==(const Move& other) const;
@@ -138,11 +136,11 @@ public:
     //       2) Probably not necessary, but I provide a char* version
     //          to make sure a char* can't accidentally be converted
     //          to a boost::filesystem::path.
-    Game(const std::string& gdldescription, bool usegadelac = false);
-    Game(const char* gdldescription, bool usegadelac = false);
+    Game(const std::string& gdldescription);
+    Game(const char* gdldescription);
 
     // Game constructor that takes a file.
-    Game(const boost::filesystem::path& gdlfile, bool usegadelac = false);
+    Game(const boost::filesystem::path& gdlfile);
 
     unsigned int numPlayers() const;
     // Return the initial state
@@ -159,8 +157,8 @@ public:
     void players(OutputIterator dest) const;
 
 protected:
-    void initialise(const std::string& gdldescription, bool usegadelac);
-    void initialise(const boost::filesystem::path& gdlfile, bool usegadelac);
+    void initialise(const std::string& gdldescription);
+    void initialise(const boost::filesystem::path& gdlfile);
 
     // Default construction is only allowed by the PyGame python binding
     // because we want to allow for a different constructor. Note: in future
@@ -182,10 +180,8 @@ private:
     void initInternals(hsfcGDLParameters& params);
 };
 
-#if HSFC_VERSION > 1
 // DEBUG function to validate a GDL game
 void validate(const std::string& gdldescription);
-#endif
 
 
 template<typename OutputIterator>

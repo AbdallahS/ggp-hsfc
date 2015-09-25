@@ -1,6 +1,6 @@
 //=============================================================================
 // Project: High Speed Forward Chaining
-// Module: Engine
+// Module: Grinder
 // Authors: Michael Schofield UNSW
 // 
 //=============================================================================
@@ -12,112 +12,65 @@
 #include <string.h>
 #include <time.h>
 
-#include "hsfcGrinder.h"
+#include "hsfcRule.h"
 
 using namespace std;
 
-//=============================================================================
-// Modules
-//=============================================================================
-/*
-Lexicon 
-	STRUCT: hsfcTuple
-	CLASS: hsfcLexicon
-GDL
-	STRUCT: hsfcTupleReference
-	CLASS: hsfcGDLAtom
-	CLASS: hsfcGDLRelation
-	CLASS: hsfcGDLRule
-	CLASS: hsfcGDL
-Schema
-	ENUM: hsfcFact
-	ENUM: hsfcFunction
-	ENUM: hsfcRuleRelationType
-	STRUCT: hsfcRelationLink
-	STRUCT: hsfcRuleTemplate
-	STRUCT: hsfcRuleTerm
-	CLASS: hsfcRelationSchema
-	CLASS: hsfcRuleRelationSchema
-	CLASS: hsfcRuleSchema
-	CLASS: hsfcSchema
-State
-	STRUCT: hsfcState
-	CLASS: hsfcStateManager
-Grinder
-	CLASS: hsfcRule
-	CLASS: hsfcGrinderEngine
-	CLASS: hsfcGrinder
-Engine
-	CLASS: hsfcEngine
-
-*/
-
-//=============================================================================
-// STRUCT: hsfcGDLParamaters
-//=============================================================================
-typedef struct hsfcGDLParamaters {
-	int MaxRelationSize;
-	int MaxReferenceSize;
-	bool OrderRules;
-	bool ReadGDLOnly;
-	bool SchemaOnly;
-} hsfcGDLParamaters;
-
-//=============================================================================
-// STRUCT: hsfcLegalMove
-//=============================================================================
-typedef struct hsfcLegalMove {
-	int RoleIndex;
-	char Text[256];
-	hsfcTuple Tuple;	
-} hsfcLegalMove;
+namespace HSFC { class HSFCManager; }
 
 //=============================================================================
 // CLASS: hsfcEngine
 //=============================================================================
 class hsfcEngine {
 
+    friend class HSFC::HSFCManager;
+
 public:
-	hsfcEngine(hsfcLexicon* Lexicon, hsfcStateManager* StateManager);
+	hsfcEngine(void);
 	~hsfcEngine(void);
 
-	void Initialise();
-	bool Create(const char* Script, hsfcGDLParamaters& Paramaters);
-	bool CreateFromFile(const char* FileName, hsfcGDLParamaters& Paramaters);
-	void PlayOut(hsfcState* State);
-	void Audit();
-	void SetInitialState(hsfcState* State);
-	void AdvanceState(hsfcState* State, int Step);
-	void ProcessRules(hsfcState* State, int Step);
-	bool IsTerminal(hsfcState* State);
-	void GetLegalMoves(hsfcState* State, vector<hsfcTuple>& Move);
-	void ChooseRandomMoves(hsfcState* State);
-	int GoalValue(hsfcState* State, int RoleIndex);
-	void Print();
+	bool Initialise(string* Script, hsfcParameters* Parameters);
+	bool InitialiseFromFile(string* GDLFileName, hsfcParameters* Parameters);
+	bool CreateGameState(hsfcState** GameState);
+	void FreeGameState(hsfcState* GameState);
+	void SetInitialGameState(hsfcState* GameState);
+	void CopyGameState(hsfcState* Destination, hsfcState* Source);
+	void GetLegalMoves(hsfcState* GameState, vector< vector<hsfcLegalMove> >& LegalMove);
+	void DoMove(hsfcState* GameState, vector<hsfcLegalMove>& DoesMove);
+	bool IsTerminal(hsfcState* GameState);
+	void GetGoalValues(hsfcState* GameState, vector<int>& GoalValue);
+	void PlayOut(hsfcState* GameState, vector<int>& GoalValue);
+	void Validate(string* GDLFileName, hsfcParameters& Parameters);
+	void GetMoveText(hsfcLegalMove& Move);
+	void GetMoveText(hsfcTuple& Move, string& Text);
+	void PrintState(hsfcState* GameState, bool ShowRigids);
+	void GetStateFluents(hsfcState* GameState, vector<hsfcTuple>& Fluent);
 
-	hsfcGrinder* Grinder;
-	vector<hsfcRule*> Rule;
-
-	float TimeReadGDL;
-	float TimeLowSpeedRun;
-	float TimeOptimise;
-	float TimeGrind;
-	unsigned int ReferenceSize;
+	unsigned int NumRoles;
+	hsfcParameters* Parameters;
+	hsfcLexicon* Lexicon;
 
 protected:
 
 private:
-	bool CreateEngine(char* Script, hsfcGDLParamaters& Paramaters);
-	void CreateRules();
+	bool Create(const char* Script);
+	bool CreateFromFile(const char* FileName);
+	bool ReadFile(const char* FileName, char** Script);
+	void TreeGetMoves(hsfcEngine* Engine, hsfcState* GameState, vector< vector<hsfcLegalMove> >& RoleMove, vector<int>& RoleMoveIndex, int& MoveCount);
+	void TreeSelectMoves(hsfcEngine* Engine, vector<hsfcLegalMove>& DoesMove, vector< vector<hsfcLegalMove> >& RoleMove, vector<int>& RoleMoveIndex);
+	bool TreeAdvanceIndex(hsfcEngine* Engine, vector< vector<hsfcLegalMove> >& RoleMove, vector<int>& RoleMoveIndex);
 
-	hsfcLexicon* Lexicon;
 	hsfcStateManager* StateManager;
-	int FirstRuleIndex[6];
-	int LastRuleIndex[6];
-	hsfcRelationSchema* GoalRelation;
+	hsfcDomainManager* DomainManager;
+	hsfcSchema* Schema;
+	hsfcRulesEngine* RulesEngine;
+	hsfcSCL* SCL;
+	hsfcGDL* GDL;
+	hsfcWFT* WFT;
 
-	time_t StartClock;
-	time_t StopClock;
+	hsfcWFT* TextWFT;
+	hsfcGDL* TextGDL;
+	hsfcSCL* TextSCL;
 
 };
 

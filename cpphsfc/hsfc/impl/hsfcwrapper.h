@@ -14,17 +14,11 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/filesystem.hpp>
 
-// hsfc_version file sets the HSFC_VERSION #define
-#include <hsfc/impl/hsfc_version.h>
-
-#if HSFC_VERSION == 1
-#include <hsfc/impl/hsfcAPI.h>
-typedef hsfcGDLParamaters hsfcGDLParameters;
-#else
 #include <hsfc/impl/hsfcEngine.h>
+
+// Typedefs added to reduce porting effort from previous libhsfc
 typedef hsfcParameters hsfcGDLParameters;
 typedef hsfcEngine hsfcGDLManager;
-#endif
 
 namespace HSFC
 {
@@ -50,9 +44,7 @@ private:
                     const std::string& extra_options = std::string());
 
 
-#if HSFC_VERSION > 1
     boost::scoped_ptr<hsfcGDLParameters> params_;
-#endif
 
 public:
     HSFCManager();
@@ -82,11 +74,9 @@ public:
     // HSFC. Passing a string is now assumed to be a GDL description. To pass a filename
     // use boost::filesystem::path.
     void Initialise(const std::string& gdldescription,
-                    const hsfcGDLParameters& Parameters,
-                    bool usegadelac);
+                    const hsfcGDLParameters& Parameters);
     void Initialise(const boost::filesystem::path& gdlfilename,
-                    const hsfcGDLParameters& Parameters,
-                    bool usegadelac);
+                    const hsfcGDLParameters& Parameters);
 
 
     /*******************************************************************************

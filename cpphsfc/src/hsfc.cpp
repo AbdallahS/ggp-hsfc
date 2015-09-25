@@ -115,40 +115,24 @@ std::ostream& operator<<(std::ostream& os, const Player& player)
 Move::Move(boost::shared_ptr<HSFCManager> manager, const hsfcLegalMove& move):
     manager_(manager), move_(move)
 {
-#if HSFC_VERSION > 1
     if (move.Text != NULL)
     {
         move_.Text = new char[strlen(move.Text)+1];
         strcpy(move_.Text, move.Text);
     }
-#endif
 }
 
 Move::Move(const Move& other): manager_(other.manager_), move_(other.move_)
 {
-#if HSFC_VERSION > 1
     if (other.move_.Text != NULL)
     {
         move_.Text = new char[strlen(other.move_.Text)+1];
         strcpy(move_.Text, other.move_.Text);
     }
-#endif
 }
 
 Move::Move(Game& game, const PortableMove& pm) : manager_(game.manager_)
 {
-#if HSFC_VERSION == 1
-    // Some validity checks of the PortableMove object
-    if (pm.RoleIndex_ < 0 || pm.RelationIndex_ < 0 ||
-        pm.ID_ < 0 || pm.Text_.empty())
-        throw HSFCValueError() <<
-            ErrorMsgInfo("Cannot create a Move from an uintialised PortableMove");
-
-    move_.Tuple.RelationIndex = pm.RelationIndex_;
-    move_.Tuple.ID = pm.ID_;
-    move_.RoleIndex = pm.RoleIndex_;
-    strcpy(move_.Text, pm.Text_.c_str());
-#else
     // Some validity checks of the PortableMove object
     if (pm.RoleIndex_ < 0 || pm.RelationIndex_ < 0 || pm.ID_ < 0)
         throw HSFCValueError() <<
@@ -164,7 +148,6 @@ Move::Move(Game& game, const PortableMove& pm) : manager_(game.manager_)
         move_.Text = new char[strlen(pm.Text_.c_str())+1];
         strcpy(move_.Text, pm.Text_.c_str());
     }
-#endif
 }
 
 std::string Move::tostring() const
@@ -176,16 +159,9 @@ std::string Move::tostring() const
 
 bool operator==(const hsfcLegalMove& a, const hsfcLegalMove& b)
 {
-#if HSFC_VERSION == 1
-    return (a.RoleIndex == b.RoleIndex &&
-            strcmp(a.Text, b.Text) == 0 &&
-            a.Tuple.RelationIndex == b.Tuple.RelationIndex &&
-            a.Tuple.ID == b.Tuple.ID);
-#else
     return (a.RoleIndex == b.RoleIndex &&
             a.Tuple.Index == b.Tuple.Index &&
             a.Tuple.ID == b.Tuple.ID);
-#endif
 }
 
 bool operator!=(const hsfcLegalMove& a, const hsfcLegalMove& b)
@@ -208,9 +184,6 @@ bool Move::operator!=(const Move& other) const
 Move& Move::operator=(const Move& other)
 {
     manager_ = other.manager_;
-#if HSFC_VERSION == 1
-    move_ = other.move_;
-#else
     if (move_.Text != NULL) delete[] move_.Text;
     move_ = other.move_;
     if (other.move_.Text != NULL)
@@ -218,17 +191,14 @@ Move& Move::operator=(const Move& other)
         move_.Text = new char[strlen(other.move_.Text)+1];
         strcpy(move_.Text, other.move_.Text);
     }
-#endif
 
     return *this;
 }
 
-#if HSFC_VERSION > 1
 Move::~Move()
 {
     if (move_.Text != NULL) delete[] move_.Text;
 }
-#endif
 
 std::size_t Move::hash_value() const
 {
@@ -240,11 +210,7 @@ std::size_t Move::hash_value() const
     boost::hash_combine(seed, manager_.get());
     boost::hash_combine(seed, move_.RoleIndex);
     boost::hash_combine(seed, move_.Tuple.ID);
-#if HSFC_VERSION == 1
-    boost::hash_combine(seed, move_.Tuple.RelationIndex);
-#else
     boost::hash_combine(seed, move_.Tuple.Index);
-#endif
     return seed;
 }
 
@@ -375,39 +341,39 @@ Game::Game(const Game& other)
         << ErrorMsgInfo("Internal error: Illegal use of Game::Game() copy constructor");
 }
 
-Game::Game(const std::string& gdldescription, bool usegadelac)
+Game::Game(const std::string& gdldescription)
 {
     manager_ = boost::make_shared<HSFCManager>();
-    initialise(gdldescription, usegadelac);
+    initialise(gdldescription);
 }
 
-Game::Game(const char* gdldescription, bool usegadelac)
+Game::Game(const char* gdldescription)
 {
     manager_ = boost::make_shared<HSFCManager>();
-    initialise(std::string(gdldescription), usegadelac);
+    initialise(std::string(gdldescription));
 }
 
-Game::Game(const boost::filesystem::path& gdlfile, bool usegadelac)
+Game::Game(const boost::filesystem::path& gdlfile)
 {
     manager_ = boost::make_shared<HSFCManager>();
-    initialise(gdlfile, usegadelac);
+    initialise(gdlfile);
 }
 
-void Game::initialise(const std::string& gdldescription, bool usegadelac)
+void Game::initialise(const std::string& gdldescription)
 {
     hsfcGDLParameters params;
     initInternals(params);
 
-    manager_->Initialise(gdldescription, params, usegadelac);
+    manager_->Initialise(gdldescription, params);
     initstate_.reset(new State(*this));
 }
 
-void Game::initialise(const boost::filesystem::path& gdlfile, bool usegadelac)
+void Game::initialise(const boost::filesystem::path& gdlfile)
 {
     hsfcGDLParameters params;
     initInternals(params);
 
-    manager_->Initialise(gdlfile, params, usegadelac);
+    manager_->Initialise(gdlfile, params);
     initstate_.reset(new State(*this));
 }
 
@@ -417,14 +383,6 @@ void Game::initInternals(hsfcGDLParameters& params)
     // Note: not really sure what are sane options here so copying
     // from Michael's example code.
 
-#if HSFC_VERSION == 1
-    params.ReadGDLOnly = false;      // Validate the GDL without creating the schema
-    params.SchemaOnly = false;      // Validate the GDL & Schema without grounding the rules
-    params.MaxRelationSize = 1000000;  // Max bytes per relation for high speed storage
-    params.MaxReferenceSize = 1000000;  // Max bytes per lookup table for grounding
-    params.OrderRules = true;      // Optimise the rule execution cost
-
-#else
 	params.LogDetail = 2;
 	params.LogFileName = NULL;
 	params.LowSpeedOnly = false;
@@ -438,7 +396,6 @@ void Game::initInternals(hsfcGDLParameters& params)
     params.MaxPlayoutRound = 1000;
 	params.SCLOnly = false;
 	params.SchemaOnly = false;
-#endif
 }
 
 const State& Game::initState() const
@@ -470,7 +427,6 @@ bool Game::operator!=(const Game& other) const
     return this != &other;
 }
 
-#if HSFC_VERSION > 1
 void validate(const std::string& gdldescription)
 {
     std::string& tmp = const_cast<std::string&>(gdldescription);
@@ -488,7 +444,6 @@ void validate(const std::string& gdldescription)
     hsfcEngine engine;
     engine.Validate(&tmp, params);
 }
-#endif
 
 
 /*****************************************************************************************

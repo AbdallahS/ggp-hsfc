@@ -6,9 +6,6 @@
 //=============================================================================
 #include "stdafx.h"
 #include "hsfcGDL.h"
-#include "hsfc_config.h"
-
-using namespace std;
 
 //=============================================================================
 // CLASS: hsfcGDLAtom
@@ -17,11 +14,7 @@ using namespace std;
 //-----------------------------------------------------------------------------
 // Constructor
 //-----------------------------------------------------------------------------
-hsfcGDLAtom::hsfcGDLAtom(hsfcLexicon* Lexicon){
-
-	// Allocate the memory
-	this->Relation = NULL;
-	this->TermIndex = 0;
+hsfcGDLAtom::hsfcGDLAtom(hsfcLexicon* Lexicon) {
 
 	// Set up the Lexicon
 	this->Lexicon = Lexicon;
@@ -31,496 +24,77 @@ hsfcGDLAtom::hsfcGDLAtom(hsfcLexicon* Lexicon){
 //-----------------------------------------------------------------------------
 // Destructor
 //-----------------------------------------------------------------------------
-hsfcGDLAtom::~hsfcGDLAtom(void){
+hsfcGDLAtom::~hsfcGDLAtom(void) {
 
-	// Destroy the memory
-	if (this->Relation != NULL) delete this->Relation;
+	// Delete any terms
+	this->DeleteTerms();
 
 }
 
 //-----------------------------------------------------------------------------
 // Initialise
 //-----------------------------------------------------------------------------
-void hsfcGDLAtom::Initialise(){
+void hsfcGDLAtom::Initialise() {
+
+	// Delete any terms
+	this->DeleteTerms();
 
 	// Initialise the properties
-	if (this->Relation != NULL) delete this->Relation;
-	this->Relation = NULL;
-	this->TermIndex = 0;
-
-}
-
-//-----------------------------------------------------------------------------
-// FromGDLAtom
-//-----------------------------------------------------------------------------
-void hsfcGDLAtom::FromGDLAtom(hsfcGDLAtom* Source) {
-
-	this->Initialise();
-
-	// Copy the source
-	if (Source->TermIndex != 0) {
-		this->TermIndex = Source->TermIndex;
-	}
-	if (Source->Relation != NULL) {
-		this->Relation = new hsfcGDLRelation(this->Lexicon);
-		this->Relation->FromGDLRelation(Source->Relation);
-	}
+	this->PredicateIndex = 0;
 
 }
 
 //-----------------------------------------------------------------------------
 // Read
 //-----------------------------------------------------------------------------
-int hsfcGDLAtom::Read(char* Text) {
+bool hsfcGDLAtom::Read(hsfcWFTElement* WFT) {
 
-	char TermText[128];
-	int Index = 0;
+	hsfcGDLAtom* NewTerm;
 
+	// Initialise the atom
 	this->Initialise();
 
-	// Is it a single term or a relation
-	if (Text[0] == '(') {
-		// Create a new relation and read it
-		this->Relation = new hsfcGDLRelation(this->Lexicon);
-		this->Relation->Initialise();
-		Index = this->Relation->Read(Text);
-	} else {
-		// Read the term text 
-		TermText[0] = 0;
-		for (Index = 0; Index < 127; Index++) {
-			if ((Text[Index] <= ' ') || (Text[Index] == '(') || (Text[Index] == ')')) {
-				TermText[Index] = 0;
-				goto AddTerm;
+	// Does this element have an opening bracket '('
+	if (WFT->LexiconIndex == 0) {
+
+		// Does this element have any children
+		if (WFT->Child.size() > 0) {
+			// The first child is the predicate
+			if (WFT->Child[0]->LexiconIndex == 0) {
+				this->Lexicon->IO->WriteToLog(0, false, "Error: Double brackets '((' in hsfcGDLAtom::Read\n");
+				return false; 
 			}
-			TermText[Index] = Text[Index];
-		}
-		// Term text is too long
-		printf("Error: Term text too long\n %s\n", Text);
-		abort();
-
-AddTerm:
-		// Was there any text
-		if (TermText[0] == 0) {
-			printf("Error: No term text found\n %s\n", Text);
-			abort();
-		}
-		
-		// Load the term text
-		this->TermIndex = this->Lexicon->Index(TermText);
-	}
-
-	return Index;
-
-}
-
-//-----------------------------------------------------------------------------
-// Terms
-//-----------------------------------------------------------------------------
-void hsfcGDLAtom::Terms(vector<hsfcTuple>& Term) {
-
-	hsfcTuple NewTerm;
-
-	// Important: The list must be cleared before the original call
-	// as calls may be recursive
-
-	// Is it a single term
-	if (this->TermIndex!= 0) {
-		NewTerm.RelationIndex = -1;
-		NewTerm.ID = this->TermIndex;
-		Term.push_back(NewTerm);
-		return;
-	}
-
-	// Is it a relation
-	if (this->Relation != NULL) {
-		this->Relation->Terms(Term);
-		return;
-	}
-
-}
-
-// --- Overload ---------------------------------------------------------------
-void hsfcGDLAtom::Terms(int PredicateIndex, vector<hsfcGDLTerm>& Term) {
-
-	hsfcGDLTerm NewTerm;
-
-	// Important: The list must be cleared before the original call
-	// as calls may be recursive
-
-	// Is it a single term
-	if (this->TermIndex!= 0) {
-		NewTerm.PredicateIndex = PredicateIndex;
-		NewTerm.Tuple.RelationIndex = -1;
-		NewTerm.Tuple.ID = this->TermIndex;
-		Term.push_back(NewTerm);
-		return;
-	}
-
-	// Is it a relation
-	if (this->Relation != NULL) {
-		this->Relation->Terms(Term);
-		return;
-	}
-
-
-}
-
-//-----------------------------------------------------------------------------
-// AsText
-//-----------------------------------------------------------------------------
-int hsfcGDLAtom::AsText(char* Text, int Length){
-
-	int Index;
-
-	// Construct the text
-	Index = 0;
-	if (this->TermIndex != 0) {
-		if (strlen(this->Lexicon->Text(this->TermIndex)) < Length) {
-			Index += sprintf(&Text[Index], "%s", this->Lexicon->Text(this->TermIndex));
-		}
-	}
-	if (this->Relation != NULL) {
-		Index += this->Relation->AsText(Text, Length); 
-	}
-
-	return Index;
-
-}
-
-//=============================================================================
-// CLASS: hsfcGDLRelation
-//=============================================================================
-
-//-----------------------------------------------------------------------------
-// Constructor
-//-----------------------------------------------------------------------------
-hsfcGDLRelation::hsfcGDLRelation(hsfcLexicon* Lexicon){
-
-	// Allocate the memory
-	this->Atom.resize(16);
-
-	// Set up the Lexicon
-	this->Lexicon = Lexicon;
-
-}
-
-//-----------------------------------------------------------------------------
-// Destructor
-//-----------------------------------------------------------------------------
-hsfcGDLRelation::~hsfcGDLRelation(void){
-
-	// Free the atoms
-	for (unsigned int i = 0; i < this->Atom.size(); i++) {
-		delete this->Atom[i];
-	}
-	this->Atom.clear();
-
-}
-
-//-----------------------------------------------------------------------------
-// Initialise
-//-----------------------------------------------------------------------------
-void hsfcGDLRelation::Initialise(){
-
-	// Free the atoms
-	for (unsigned int i = 0; i < this->Atom.size(); i++) {
-		delete this->Atom[i];
-	}
-	this->Atom.clear();
-
-	// Set the properties
-	this->Not = false;
-
-}
-
-//-----------------------------------------------------------------------------
-// FromGDLRelation
-//-----------------------------------------------------------------------------
-void hsfcGDLRelation::FromGDLRelation(hsfcGDLRelation* Source){
-
-	hsfcGDLAtom* NewAtom;
-
-	this->Initialise();
-
-	// Copy the atoms
-	for (unsigned int i = 0; i < Source->Atom.size(); i++) {
-		// Copy the atom
-		NewAtom = this->AddAtom();
-		NewAtom->FromGDLAtom(Source->Atom[i]);
-	}
-
-}
-
-//-----------------------------------------------------------------------------
-// Read
-//-----------------------------------------------------------------------------
-int hsfcGDLRelation::Read(char* Text) {
-
-	hsfcGDLAtom* NewAtom;
-	int Level;
-	int Index;
-
-	/* Example of relation structures
-	terminal
-	(cell 1 1)
-	(legal xplayer (move 1 1))
-	(succ ?x ?y)
-	*/
-
-	// Look for empty string 
-	if (Text[0] == 0) return 0;
-
-	// Traverse the text reading atoms / relations as we go
-	Index = 0;
-	Level = 0;
-	do {
-
-		// Ignore any leading white space
-		if (Text[Index] <= ' ') {
-			Index++;
-			continue;
+			this->PredicateIndex = WFT->Child[0]->LexiconIndex;
 		}
 
-		// Is this the end of a relation
-		if (Text[Index] == ')') {
-			Level--;
-			if (Level > 0) Index++;  // Must return pointing to the last ')'
-			continue;
-		}
-
-		// Is this the start of a relation
-		if (Text[Index] == '(') {
-			Level++;
-			// Is this the first '(' or an embedded relation
-			if (Level == 1) {
-				Index++;
-				continue;
-			}
-		}
-
-		// This must be an atom
-		NewAtom = this->AddAtom();
-		Index += NewAtom->Read(&Text[Index]);
-
-	} while ((Level > 0) && (Text[Index] != 0));
-
-	return Index;
-
-}
-
-//-----------------------------------------------------------------------------
-// NormaliseTerms
-//-----------------------------------------------------------------------------
-void hsfcGDLRelation::NormaliseTerms() {
-
-	char Predicate[256];
-	char Text[1024];
-
-	// This must only be run once
-	// Calls are recursive
-
-	if (this->Lexicon->Match(this->PredicateIndex(), "distinct")) return;
-
-	// Is this an (next (...)) relation
-	if (this->Lexicon->Match(this->PredicateIndex(), "next")) {
-		// Check integrity
-		if (this->Atom[1]->Relation == NULL) {
-			this->AsText(Text, 1024);
-			printf("Error: Unable to parse '%s'\n", Text);
-			abort();
-		}
-		// Create a compound predicate
-		sprintf(Predicate, "next~%s", this->Lexicon->Text(this->Atom[1]->Relation->PredicateIndex()));
-		this->Atom[1]->Relation->Atom[0]->TermIndex = this->Lexicon->Index(Predicate);
-		// Point the relation to the second atom
-		this->Atom = this->Atom[1]->Relation->Atom;
-	}
-
-	// Is this an (init (...)) relation
-	if (this->Lexicon->Match(this->PredicateIndex(), "init")) {
-		// Check integrity
-		if (this->Atom[1]->Relation == NULL) {
-			this->AsText(Text, 1024);
-			printf("Error: Unable to parse '%s'\n", Text);
-			abort();
-		}
-		// Create a compound predicate
-		sprintf(Predicate, "init~%s", this->Lexicon->Text(this->Atom[1]->Relation->PredicateIndex()));
-		this->Atom[1]->Relation->Atom[0]->TermIndex = this->Lexicon->Index(Predicate);
-		// Point the relation to the second atom
-		this->Atom = this->Atom[1]->Relation->Atom;
-	}
-
-	// Is this an (true (...)) relation
-	if (this->Lexicon->Match(this->PredicateIndex(), "true")) {
-		// Check integrity
-		if (this->Atom[1]->Relation == NULL) {
-			this->AsText(Text, 1024);
-			printf("Error: Unable to parse '%s'\n", Text);
-			abort();
-		}
-		// Create a compound predicate
-		sprintf(Predicate, "true~%s", this->Lexicon->Text(this->Atom[1]->Relation->PredicateIndex()));
-		this->Atom[1]->Relation->Atom[0]->TermIndex = this->Lexicon->Index(Predicate);
-		// Point the relation to the second atom
-		this->Atom = this->Atom[1]->Relation->Atom;
-	}
-
-	// Converts (nested (mark ?x ?y) (piece ?p))
-	// into (nested/2 (mark/2 ?x ?y) (piece/1 ?p))
-	sprintf(Predicate, "%s/%d", this->Lexicon->Text(this->PredicateIndex()), this->Arity());
-	this->Atom[0]->TermIndex = this->Lexicon->Index(Predicate);
-
-	// Look at each atom for a nested relation
-	for (unsigned int i = 0; i < this->Atom.size(); i++) {
-		if (this->Atom[i]->Relation != NULL) {
-			this->Atom[i]->Relation->NormaliseTerms();
-		}
-	}
-
-}
-
-//-----------------------------------------------------------------------------
-// FindArity
-//-----------------------------------------------------------------------------
-void hsfcGDLRelation::FindArity() {
-
-	hsfcGDLRelation* NewRelation;
-	hsfcGDLAtom* NewAtom;
-	bool FoundZeroArity;
-	int AtomIndex;
-
-	// Find the arity of all of the relation
-	// (init (cell 0 0 x))  ==>  (init/1 (cell/3 0 0 x))
-
-	// First promote any zero arity relations so they get a schema and/or database relation
-	FoundZeroArity = false;
-	if (this->Lexicon->Match(this->PredicateIndex(), "init")) {
-		if (this->Atom[1]->Relation == NULL) {
-			FoundZeroArity = true;
-			AtomIndex = 1;
-		}
-	}
-	if (this->Lexicon->Match(this->PredicateIndex(), "next")) {
-		if ((this->Atom[1]->Relation == NULL) && (!this->Lexicon->PartialMatch(this->Atom[1]->TermIndex, "?"))) {
-			FoundZeroArity = true;
-			AtomIndex = 1;
-		}
-	}
-	if (this->Lexicon->Match(this->PredicateIndex(), "not")) {
-		if ((this->Atom[1]->Relation == NULL) && (!this->Lexicon->PartialMatch(this->Atom[1]->TermIndex, "?"))) {
-			FoundZeroArity = true;
-			AtomIndex = 1;
-		} else {
-			this->Atom[1]->Relation->FindArity();
-		}
-	}
-	if (this->Lexicon->Match(this->PredicateIndex(), "true")) {
-		if ((this->Atom[1]->Relation == NULL) && (!this->Lexicon->PartialMatch(this->Atom[1]->TermIndex, "?"))) {
-			FoundZeroArity = true;
-			AtomIndex = 1;
-		}
-	}
-
-	if (FoundZeroArity) {
-		// Copy the atom
-		NewAtom = new hsfcGDLAtom(this->Lexicon);
-		NewAtom->FromGDLAtom(this->Atom[AtomIndex]);
-		// Create a new relation
-		NewRelation = new hsfcGDLRelation(this->Lexicon);
-		NewRelation->Initialise();
-		// Add the old atom to the new zero arity relation
-		NewRelation->Atom.push_back(NewAtom);
-		// Add the new relation to the atoms for the primary relation
-		this->Atom[AtomIndex]->Relation = NewRelation;
-		this->Atom[AtomIndex]->TermIndex = 0;
-		if (DEBUG) {char Text[256]; this->AsText(Text, 256); printf("Zero Arity: %s\n", Text);}
-	}
-
-
-
-
-
-}
-
-//-----------------------------------------------------------------------------
-// Terms
-//-----------------------------------------------------------------------------
-void hsfcGDLRelation::Terms(vector<hsfcTuple>& Term) {
-
-	// Important: The list must be cleared before the original call
-	// as calls may be recursive
-
-	// Add in the term for each atom
-	for (unsigned int i = 0; i < this->Atom.size(); i++) {
-		this->Atom[i]->Terms(Term);
-	}
-
-}
-
-// --- Overload ---------------------------------------------------------------
-void hsfcGDLRelation::Terms(vector<hsfcGDLTerm>& Term) {
-
-	// Important: The list must be cleared before the original call
-	// as calls may be recursive
-
-	// Add in the term for each atom
-	for (unsigned int i = 0; i < this->Atom.size(); i++) {
-		this->Atom[i]->Terms(this->PredicateIndex(), Term);
-	}
-
-}
-
-//-----------------------------------------------------------------------------
-// Arity
-//-----------------------------------------------------------------------------
-int hsfcGDLRelation::Arity(){
-
-	return this->Atom.size() - 1;
-
-}
-
-//-----------------------------------------------------------------------------
-// PredicateIndex
-//-----------------------------------------------------------------------------
-int hsfcGDLRelation::PredicateIndex(){
-
-	if (this->Atom.size() == 0) return 0;
-	return this->Atom[0]->TermIndex;
-
-}
-
-//-----------------------------------------------------------------------------
-// AddRelation
-//-----------------------------------------------------------------------------
-bool hsfcGDLRelation::AddRelationDetail(vector<hsfcRelationDetail>& RelationDetail){
-
-	hsfcRelationDetail Detail;
-
-	// Get the detail of this relation
-	Detail.PredicateIndex = this->PredicateIndex();
-	Detail.Arity = this->Arity();
-
-	// Check if its already there
-	for (unsigned int i = 0; i < RelationDetail.size(); i++) {
-		if (Detail.PredicateIndex == RelationDetail[i].PredicateIndex) {
-			if (Detail.Arity == RelationDetail[i].Arity) {
-				return true;
+		// Load the terms from the children
+		for (unsigned int i = 1; i < WFT->Child.size(); i++) {
+			// Create a new term
+			NewTerm = new hsfcGDLAtom(this->Lexicon);
+			// Read it and check for errors
+			if (NewTerm->Read(WFT->Child[i])) {
+				this->Term.push_back(NewTerm);
 			} else {
-				printf("Error: Conflicting arity %s\n", this->Lexicon->Text(Detail.PredicateIndex));
+				delete NewTerm;
 				return false;
 			}
 		}
-	}
 
-	// Allocate the memory
-	RelationDetail.push_back(Detail);
+	} else {
 
-	// Add the relation details for any embedded relation
-	for (unsigned int i = 0; i < this->Atom.size(); i++) {
-		if (this->Atom[i]->Relation != NULL) {
-			if (!this->AddRelationDetail(RelationDetail)) return false;
+		// Test the term
+		if (this->Lexicon->Text(WFT->LexiconIndex)[0] == '"') {
+			this->Lexicon->IO->WriteToLog(0, false, "Error: Literal not term in hsfcGDLAtom::Read\n");
+			return false; 
 		}
+		if (strstr(this->Lexicon->Text(WFT->LexiconIndex), " ") != NULL) {
+			this->Lexicon->IO->WriteToLog(0, false, "Error: Term contains space ' ' in hsfcGDLAtom::Read\n");
+			return false; 
+		}
+
+		// This is just a term
+		this->PredicateIndex = WFT->LexiconIndex;
+
 	}
 
 	return true;
@@ -528,222 +102,44 @@ bool hsfcGDLRelation::AddRelationDetail(vector<hsfcRelationDetail>& RelationDeta
 }
 
 //-----------------------------------------------------------------------------
-// AsText
+// DeleteTerms
 //-----------------------------------------------------------------------------
-int hsfcGDLRelation::AsText(char* Text, int Length){
+void hsfcGDLAtom::DeleteTerms() {
 
-	int Index;
-
-	Index = 0;
-
-	if ((this->Not) && (Length - Index > 4)) {
-		Index += sprintf(&Text[Index], "not "); 
+	// Delete any children
+	for (unsigned int i = 0; i < this->Term.size(); i++) {
+		delete this->Term[i];
 	}
+	this->Term.clear();
 
-	if (Length - Index > 1) {
-		Index += sprintf(&Text[Index], "(");
-	}
+}
 
-	for (unsigned int i = 0; i < this->Atom.size(); i++) {
-		if ((i > 0) && (Length - Index > 1)) {
-			Index += sprintf(&Text[Index], " ");
+//-----------------------------------------------------------------------------
+// Print
+//-----------------------------------------------------------------------------
+void hsfcGDLAtom::Print() {
+
+	// Print the predicate
+	if (this->Term.size() == 0) {
+		this->Lexicon->IO->FormatToLog(0, false, " %s", this->Lexicon->Text(this->PredicateIndex));
+	} else {
+		this->Lexicon->IO->FormatToLog(0, false, " (%s", this->Lexicon->Text(this->PredicateIndex));
+		for (unsigned int i = 0; i < this->Term.size(); i++) {
+			// Is this a rule
+			if (this->Lexicon->Match(this->PredicateIndex, "<=") && (i > 0)) {
+				this->Lexicon->IO->WriteToLog(0, false, "    ");
+			}
+			this->Term[i]->Print();
+			// Is this a rule
+			if (this->Lexicon->Match(this->PredicateIndex, "<=") && (i < this->Term.size() - 1)) {
+				this->Lexicon->IO->WriteToLog(0, false, "\n");
+			}
 		}
-		Index += this->Atom[i]->AsText(&Text[Index], Length - Index);
-	}
-	
-	if (Length - Index > 1) {
-		Index += sprintf(&Text[Index], ")");
-	}
-
-	return Index;
-
-}
-
-//-----------------------------------------------------------------------------
-// AddAtom
-//-----------------------------------------------------------------------------
-hsfcGDLAtom* hsfcGDLRelation::AddAtom(){
-
-	hsfcGDLAtom* NewAtom;
-
-	// Allocate the memory
-	NewAtom = new hsfcGDLAtom(this->Lexicon);
-	NewAtom->Initialise();
-	this->Atom.push_back(NewAtom);
-
-	return NewAtom;
-
-}
-
-//=============================================================================
-// CLASS: hsfcGDLRule
-//=============================================================================
-
-//-----------------------------------------------------------------------------
-// Constructor
-//-----------------------------------------------------------------------------
-hsfcGDLRule::hsfcGDLRule(hsfcLexicon* Lexicon){
-
-	// Allocate the memory
-	this->Relation.resize(16);
-
-	// Set up the Lexicon
-	this->Lexicon = Lexicon;
-
-}
-
-//-----------------------------------------------------------------------------
-// Destructor
-//-----------------------------------------------------------------------------
-hsfcGDLRule::~hsfcGDLRule(void){
-
-	// Free the Relations
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		delete this->Relation[i];
-	}
-	this->Relation.clear();
-
-}
-
-//-----------------------------------------------------------------------------
-// Initialise
-//-----------------------------------------------------------------------------
-void hsfcGDLRule::Initialise(){
-
-	// Free the Relations
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		delete this->Relation[i];
-	}
-	this->Relation.clear();
-
-}
-
-//-----------------------------------------------------------------------------
-// FromGDLRule
-//-----------------------------------------------------------------------------
-void hsfcGDLRule::FromGDLRule(hsfcGDLRule* Source){
-
-	hsfcGDLRelation* NewRelation;
-
-	this->Initialise();
-
-	// Copy the Relations
-	for (unsigned int i = 0; i < Source->Relation.size(); i++) {
-		// Copy the Relation
-		NewRelation = this->AddRelation();
-		NewRelation->FromGDLRelation(Source->Relation[i]);
+		this->Lexicon->IO->WriteToLog(0, false, ")");
 	}
 
 }
 
-//-----------------------------------------------------------------------------
-// Read
-//-----------------------------------------------------------------------------
-int hsfcGDLRule::Read(char* Text) {
-
-	hsfcGDLRelation* NewRelation;
-	int Level;
-	int Index;
-
-	/* Example of Rule structures
-	terminal
-	(cell 1 1)
-	(legal xplayer (move 1 1))
-	(succ ?x ?y)
-	*/
-
-	// Look for empty string 
-	if (Text[0] == 0) return 0;
-
-	// Traverse the text reading Relations / Rules as we go
-	// All rules start with '(<= '
-	Index = 4;
-	Level = 1;
-	do {
-
-		// Ignore any leading white space
-		if (Text[Index] <= ' ') {
-			Index++;
-			continue;
-		}
-
-		// Is this the end of a relation
-		if (Text[Index] == ')') {
-			Level--;
-			if (Level > 0) Index++;  // Must return pointing to the last ')'
-			continue;
-		}
-
-		// Is this the start of a relation
-		if (Text[Index] == '(') {
-			Level++;
-		}
-
-		// This must be a relation
-		NewRelation = this->AddRelation();
-		Index += NewRelation->Read(&Text[Index]);
-
-	} while ((Level > 0) && (Text[Index] != 0));
-
-	return Index;
-
-}
-
-//-----------------------------------------------------------------------------
-// Arity
-//-----------------------------------------------------------------------------
-int hsfcGDLRule::Arity(){
-
-	return this->Relation.size() - 1;
-
-}
-
-//-----------------------------------------------------------------------------
-// AsText
-//-----------------------------------------------------------------------------
-int hsfcGDLRule::AsText(char* Text, int Length){
-
-	int Index;
-
-	Index = 0;
-	
-	if (Length - Index > 4) {
-		Index += sprintf(&Text[Index], "(<= ");
-	}
-
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		if ((i > 0) && (Length - Index > 4)) {
-			Index += sprintf(&Text[Index], "    ");
-		}
-		Index += this->Relation[i]->AsText(&Text[Index], Length - Index);
-		if (Length - Index > 1) {
-			Index += sprintf(&Text[Index], "\n");
-		}
-	}
-
-	if (Length - Index > 1) {
-		Index += sprintf(&Text[Index], ")");
-	}
-
-	return Index;
-
-}
-
-//-----------------------------------------------------------------------------
-// AddRelation
-//-----------------------------------------------------------------------------
-hsfcGDLRelation* hsfcGDLRule::AddRelation(){
-
-	hsfcGDLRelation* NewRelation;
-
-	// Allocate the memory
-	NewRelation = new hsfcGDLRelation(this->Lexicon);
-	NewRelation->Initialise();
-	this->Relation.push_back(NewRelation);
-
-	return NewRelation;
-
-}
 
 //=============================================================================
 // CLASS: hsfcGDL
@@ -752,7 +148,7 @@ hsfcGDLRelation* hsfcGDLRule::AddRelation(){
 //-----------------------------------------------------------------------------
 // Constructor
 //-----------------------------------------------------------------------------
-hsfcGDL::hsfcGDL(hsfcLexicon* Lexicon){
+hsfcGDL::hsfcGDL(hsfcLexicon* Lexicon) {
 
 	// Set up the Lexicon
 	this->Lexicon = Lexicon;
@@ -762,123 +158,77 @@ hsfcGDL::hsfcGDL(hsfcLexicon* Lexicon){
 //-----------------------------------------------------------------------------
 // Destructor
 //-----------------------------------------------------------------------------
-hsfcGDL::~hsfcGDL(void){
+hsfcGDL::~hsfcGDL(void) {
 
-	// Free the relations
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		delete this->Relation[i];
-	}
-	this->Relation.clear();
-
-	// Free the rules
-	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-		delete this->Rule[i];
-	}
-	this->Rule.clear();
+	// Delete the GDL
+	this->DeleteRules();
+	this->DeleteStatements();
 
 }
 
 //-----------------------------------------------------------------------------
 // Initialise
 //-----------------------------------------------------------------------------
-void hsfcGDL::Initialise(){
+void hsfcGDL::Initialise() {
 
-	// Free the relations
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		delete this->Relation[i];
-	}
-	this->Relation.clear();
-
-	// Free the rules
-	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-		delete this->Rule[i];
-	}
-	this->Rule.clear();
+	// Delete the GDL
+	this->DeleteRules();
+	this->DeleteStatements();
 
 }
 
 //-----------------------------------------------------------------------------
 // Read
 //-----------------------------------------------------------------------------
-int hsfcGDL::Read(char* Script) {
+bool hsfcGDL::Read(hsfcWFT* WFT) {
 
-	hsfcGDLRelation* NewRelation;
-	hsfcGDLRule* NewRule;
-	int Index;
+	hsfcGDLAtom* NewAtom;
+	hsfcGDLAtom* NewAtomTerm;
 
-	/* Example of GDL structures
-	(role black)
-	(init (cell a 1 wr))
-	(<= terminal
-		(true (step 201)))
-	(<= (next (cell ?u ?v b))
-		(does ?player (move ?p ?u ?v ?x ?y)))
-	(<= (legal ?player (move ?piece ?u ?v ?x ?y))
-		(true (control ?player))
-		(or (true (check ?player rook ?tx ?ty)) (true (check ?player queen ?tx ?ty)))
-		(not (occupied_by_player ?x ?y ?player))
-		(piece_owner_type ?piece ?player ?ptype)
-		(distinct ?ptype king)
-		(piece_owner_type ?king ?player king)
-		(true (cell ?kx ?ky ?king))
-		(legal2 ?player (move ?piece ?u ?v ?x ?y))
-		(blocks_rook_threat ?x ?y ?tx ?ty ?kx ?ky)
-		(not (threatened_with_capture ?player ?tx ?ty ?kx ?ky ?u ?v)))
-	)
-	*/
+	// Initialise the GDL
+	this->Initialise();
+	this->Lexicon->IO->WriteToLog(2, true, "Reading WFT into GDL ...\n");
 
-	// Traverse the script reading rules / relations as we go
-	Index = 0;
-	while (true) {
+	// Read the level 0 elements in the WFT
+	for (unsigned int i = 0; i < WFT->Structure->RootElement->Child.size(); i++) {
 
-		// Ignore any leading white space or the last ')' of the rule or relation
-		while ((Script[Index] <= ' ') || (Script[Index] == ')')) {
-			if (Script[Index] == 0) return Index;
-			Index++;
-		}
+		// Is it just a comment
+		if (WFT->Structure->RootElement->Child[i]->LexiconIndex != 0) continue;
 
-		// Is this a rule or relation
-		if (strncmp(&Script[Index], "(<= ", 4) == 0) {
-			// Read the rule
-			NewRule = this->AddRule();
-			Index += NewRule->Read(&Script[Index]);
+		// Create a new atom
+		NewAtom = new hsfcGDLAtom(this->Lexicon);
+		// Read the WFT element
+		if (NewAtom->Read(WFT->Structure->RootElement->Child[i])) {
+			// Is this s rule or a statement
+			if (this->Lexicon->Match(NewAtom->PredicateIndex, "<=")) {
+				// Check the rule integrity
+				if (NewAtom->Term.size() == 0) {
+					this->Lexicon->IO->WriteToLog(0, false, "Error: empty rule in hsfcGDL::Read\n");
+					return false;
+				}
+				// Is a rule with only an output
+				if (NewAtom->Term.size() == 1) {
+					NewAtomTerm = NewAtom->Term[0];
+					NewAtom->Term.clear();
+					delete NewAtom;
+
+					this->Statement.push_back(NewAtomTerm);
+				} else {
+					// Add the new rule
+					this->Rule.push_back(NewAtom);
+				}
+			} else {
+				this->Statement.push_back(NewAtom);
+			}
 		} else {
-			// Read the relation
-			NewRelation = this->AddRelation();
-			Index += NewRelation->Read(&Script[Index]);
+			// Atom read failed
+			delete NewAtom;
+			return false;
 		}
 	}
 
-}
-
-//-----------------------------------------------------------------------------
-// GetRelationDetails
-//-----------------------------------------------------------------------------
-bool hsfcGDL::GetRelationDetails() {
-
-	// Construct a list of relations and their arity
-	this->RelationDetail.clear();
-
-	// Check all relations
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		if (!this->Relation[i]->AddRelationDetail(this->RelationDetail)) return false;
-	}
-
-	// Check all rule relations
-	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-		for (unsigned int j = 0; j < this->Rule[i]->Relation.size(); j++) {
-			if (!this->Rule[i]->Relation[j]->AddRelationDetail(this->RelationDetail)) return false;
-		}
-	}
-
-	for (unsigned int i = 0; i < this->RelationDetail.size(); i++) {
-		printf("%s / %d\n", this->Lexicon->Text(this->RelationDetail[i].PredicateIndex), this->RelationDetail[i].Arity);
-	}
-
-	// Find any literals that are really zero arity relations
-	// eg. (legal agent (dirt)) (at 1 1 dirt) ==> (at 1 1 (dirt))
-
-
+	this->Lexicon->IO->WriteToLog(2, true, "succeeded\n");
+	if (this->Lexicon->IO->Parameters->LogDetail > 2) this->Print();
 	return true;
 
 }
@@ -886,60 +236,50 @@ bool hsfcGDL::GetRelationDetails() {
 //-----------------------------------------------------------------------------
 // Print
 //-----------------------------------------------------------------------------
-void hsfcGDL::Print(char* Title) {
+void hsfcGDL::Print() {
 
-	char Text[2048];
-	int Index;
+	this->Lexicon->IO->WriteToLog(0, true, "\n--- GDL ---\n");
 
-	printf("\n--- %s ----------------------------------------------------\n", Title);
-
-	// Print relations
-	printf("Relations\n");
-	for (unsigned int i = 0; i < this->Relation.size(); i++) {
-		Index = this->Relation[i]->AsText(Text, 2048);
-		Text[Index] = 0;
-		printf("%s\n", Text);
+	// Print statement
+	this->Lexicon->IO->WriteToLog(0, true, "\nStatements\n\n");
+	for (unsigned int i = 0; i < this->Statement.size(); i++) {
+		this->Statement[i]->Print();
+		this->Lexicon->IO->WriteToLog(0, true, "\n");
 	}
 
 	// Print rules
-	printf("Rules\n");
+	this->Lexicon->IO->WriteToLog(0, true, "\nRules\n");
 	for (unsigned int i = 0; i < this->Rule.size(); i++) {
-		Index = this->Rule[i]->AsText(Text, 2048);
-		Text[Index] = 0;
-		printf("%s\n", Text);
+		this->Lexicon->IO->WriteToLog(0, true, "\n");
+		this->Rule[i]->Print();
+		this->Lexicon->IO->WriteToLog(0, true, "\n");
 	}
 
 }
 
 //-----------------------------------------------------------------------------
-// AddRelation
+// DeleteStatements
 //-----------------------------------------------------------------------------
-hsfcGDLRelation* hsfcGDL::AddRelation(){
+void hsfcGDL::DeleteStatements() {
 
-	hsfcGDLRelation* NewRelation;
-
-	// Allocate the memory
-	NewRelation = new hsfcGDLRelation(this->Lexicon);
-	NewRelation->Initialise();
-	this->Relation.push_back(NewRelation);
-
-	return NewRelation;
+	// Delete any children
+	for (unsigned int i = 0; i < this->Statement.size(); i++) {
+		delete this->Statement[i];
+	}
+	this->Statement.clear();
 
 }
 
 //-----------------------------------------------------------------------------
-// AddRule
+// DeleteTerms
 //-----------------------------------------------------------------------------
-hsfcGDLRule* hsfcGDL::AddRule(){
+void hsfcGDL::DeleteRules() {
 
-	hsfcGDLRule* NewRule;
-
-	// Allocate the memory
-	NewRule = new hsfcGDLRule(this->Lexicon);
-	NewRule->Initialise();
-	this->Rule.push_back(NewRule);
-
-	return NewRule;
+	// Delete any children
+	for (unsigned int i = 0; i < this->Rule.size(); i++) {
+		delete this->Rule[i];
+	}
+	this->Rule.clear();
 
 }
 

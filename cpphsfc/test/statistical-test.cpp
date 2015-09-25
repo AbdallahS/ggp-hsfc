@@ -151,7 +151,8 @@ struct playermovename_loader
 
 BOOST_AUTO_TEST_CASE(tictactoe_test)
 {
-    Game game(std::string(g_tictactoe), true);
+    std::string tictactoe(g_tictactoe);
+    Game game(tictactoe);
     State state1(game);
     BOOST_CHECK(!state1.isTerminal());
 
@@ -205,7 +206,8 @@ const unsigned int NUM_BREAKTHROUGH_PLAYOUTS=1000;
 
 BOOST_AUTO_TEST_CASE(breakthrough_test)
 {
-    Game game(std::string(g_breakthrough), true);
+    std::string breakthrough(g_breakthrough);
+    Game game(breakthrough);
 
     std::cerr << "Breakthrough loaded. Now to run the playout test" << std::endl;
     State state1(game);

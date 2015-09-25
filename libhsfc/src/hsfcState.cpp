@@ -6,7 +6,6 @@
 //=============================================================================
 #include "stdafx.h"
 #include "hsfcState.h"
-#include "hsfc_config.h"
 
 using namespace std;
 
@@ -17,10 +16,11 @@ using namespace std;
 //-----------------------------------------------------------------------------
 // Constructor
 //-----------------------------------------------------------------------------
-hsfcStateManager::hsfcStateManager(hsfcLexicon* Lexicon){
+hsfcStateManager::hsfcStateManager(hsfcLexicon* Lexicon, hsfcDomainManager* DomainManager){
 
 	// Allocate the memory
 	this->Lexicon = Lexicon;
+	this->DomainManager = DomainManager;
 	this->NextRelationIndex = NULL;
 
 }
@@ -30,7 +30,8 @@ hsfcStateManager::hsfcStateManager(hsfcLexicon* Lexicon){
 //-----------------------------------------------------------------------------
 hsfcStateManager::~hsfcStateManager(void){
 
-
+	// Destroy the domains
+	//this->FreeDomains();
 
 }
 
@@ -39,8 +40,11 @@ hsfcStateManager::~hsfcStateManager(void){
 //-----------------------------------------------------------------------------
 void hsfcStateManager::Initialise(){
 
+	// Destroy the domains
+	//this->FreeDomains();
+
 	// Set the properties
-	this->Schema = Schema;
+	this->Schema = NULL;
 
 	// Reset the relation indexes
 	this->RoleRelationIndex = 0;
@@ -52,64 +56,258 @@ void hsfcStateManager::Initialise(){
 	if (this->NextRelationIndex != NULL) delete[](this->NextRelationIndex);
 	this->NoNextRelation = 0;
 	this->StateSize = 0;
-	this->MaxStateSize = 0;
-	this->MaxRelationSize = 1000000;
+	this->MaxRelationSize = 0;
+	//this->FullPermanent.clear(); 
+	//this->PartPermanent.clear(); 
+	//this->Initial.clear();
+	//this->Next.clear();
 
 }
 
 //-----------------------------------------------------------------------------
 // SetSchema
 //-----------------------------------------------------------------------------
-void hsfcStateManager::SetSchema(hsfcSchema* Schema, int MaxRelationSize){
+bool hsfcStateManager::SetSchema(hsfcSchema* Schema){
 
 	int NoNextRelation;
 	int Index;
+	unsigned int RoleSize;
+	unsigned int Size;
+	hsfcTuple* RoleEntry;
+	hsfcTuple* GoalEntry;
+	hsfcTuple* LegalEntry;
+	hsfcTuple* DoesEntry;
+	hsfcTuple* SeesEntry;
+	int TrueIndex;
+	hsfcReference NewReference;
+
+	this->Lexicon->IO->WriteToLog(2, true, "Translating Schema ...\n");
 
 	// Set the properties
 	this->Initialise();
-	this->MaxRelationSize = MaxRelationSize;
+	this->MaxRelationSize = this->Lexicon->IO->Parameters->MaxRelationSize;
 	this->Schema = Schema;
+
+	this->Lexicon->IO->WriteToLog(2, true, "  Classify Relations\n");
 
 	// Set the relation indexes
 	NoNextRelation = 0;
-	for (unsigned int i = 0; i < this->Schema->Relation.size(); i++) {
-		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "role/1")) {
+	for (unsigned int i = 1; i < this->Schema->RelationSchema.size(); i++) {
+		if (this->Lexicon->Match(this->Schema->RelationSchema[i]->NameID, "role/1")) {
 			this->RoleRelationIndex = i;
+			this->Lexicon->IO->FormatToLog(3, true, "    RoleRelationIndex = %u\n", i);
 		}
-		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "terminal/0")) {
+		if (this->Lexicon->Match(this->Schema->RelationSchema[i]->NameID, "terminal/0")) {
 			this->TerminalRelationIndex = i;
+			this->Lexicon->IO->FormatToLog(3, true, "    TerminalRelationIndex = %u\n", i);
 		}
-		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "goal/2")) {
+		if (this->Lexicon->Match(this->Schema->RelationSchema[i]->NameID, "goal/2")) {
 			this->GoalRelationIndex = i;
+			this->Lexicon->IO->FormatToLog(3, true, "    GoalRelationIndex = %u\n", i);
 		}
-		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "legal/2")) {
+		if (this->Lexicon->Match(this->Schema->RelationSchema[i]->NameID, "legal/2")) {
 			this->LegalRelationIndex = i;
+			this->Lexicon->IO->FormatToLog(3, true, "    LegalRelationIndex = %u\n", i);
 		}
-		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "does/2")) {
+		if (this->Lexicon->Match(this->Schema->RelationSchema[i]->NameID, "does/2")) {
 			this->DoesRelationIndex = i;
+			this->Lexicon->IO->FormatToLog(3, true, "    DoesRelationIndex = %u\n", i);
 		}
-		if (this->Lexicon->Match(this->Schema->Relation[i]->PredicateIndex, "sees/2")) {
+		if (this->Lexicon->Match(this->Schema->RelationSchema[i]->NameID, "sees/2")) {
 			this->SeesRelationIndex = i;
+			this->Lexicon->IO->FormatToLog(3, true, "    SeesRelationIndex = %u\n", i);
 		}
-		if (this->Lexicon->PartialMatch(this->Schema->Relation[i]->PredicateIndex, "next~")) {
+		if (this->Lexicon->PartialMatch(this->Schema->RelationSchema[i]->NameID, "next:")) {
 			this->NoNextRelation++;
 		}
 	}
 
+	this->Lexicon->IO->WriteToLog(2, true, "  Index (next ...)\n");
+
 	// Create the next relation array
-	this->NextRelationIndex = new int[this->NoNextRelation];
+	this->NextRelationIndex = new unsigned int[this->NoNextRelation];
 
 	// Add the reference to the next relations
 	Index = 0;
-	for (unsigned int i = 0; i < this->Schema->Relation.size(); i++) {
-		if (this->Lexicon->PartialMatch(this->Schema->Relation[i]->PredicateIndex, "next~")) {
+	for (unsigned int i = 1; i < this->Schema->RelationSchema.size(); i++) {
+		if (this->Lexicon->PartialMatch(this->Schema->RelationSchema[i]->NameID, "next:")) {
 			NextRelationIndex[Index] = i;
+			this->Lexicon->IO->FormatToLog(3, true, "    NextRelationIndex = %d\n", i);
 			Index++;
 		}
 	}
 
+	this->Lexicon->IO->WriteToLog(2, true, "  Sizing State\n");
+
+	// Check the maximum relation size
+	if (this->MaxRelationSize < MAX_DOMAIN_ENTRIES) {
+		this->Lexicon->IO->WriteToLog(0, false, "Warning: resetting MaxRelationSize = MAX_DOMAIN_ENTRIES hsfcStateManager::SetSchema\n");
+		//this->MaxRelationSize = MAX_DOMAIN_ENTRIES;
+	}
+
+	// Calculate the sizes of the state
+	this->StateSize = 0;
+	for (unsigned int i = 1; i < this->Schema->RelationSchema.size(); i++) {
+		if (this->Schema->RelationSchema[i]->IsInState) {
+			// Calculate the size of the state
+			if (this->DomainManager->Domain[i].IDCount > this->MaxRelationSize) {
+				this->StateSize += this->MaxRelationSize * sizeof(unsigned int);
+				this->StateSize += this->MaxRelationSize * sizeof(unsigned int);
+				this->Lexicon->IO->FormatToLog(4, true, "    Relation %d  Size = %d\n", i, 2 * this->MaxRelationSize * sizeof(unsigned int));
+			} else {
+				this->StateSize += this->DomainManager->Domain[i].IDCount * sizeof(unsigned int);
+				this->StateSize += this->DomainManager->Domain[i].IDCount * sizeof(bool);
+				this->Lexicon->IO->FormatToLog(4, true, "    Relation %d  Size = %d\n", i, this->DomainManager->Domain[i].IDCount * sizeof(unsigned int) + this->DomainManager->Domain[i].IDCount * sizeof(bool));
+			}
+		}
+		// Is the state too big
+		this->Lexicon->IO->Parameters->StateSize = this->StateSize;
+		if (this->StateSize > this->Lexicon->IO->Parameters->MaxStateSize) {
+			this->Lexicon->IO->WriteToLog(0, false, "Error: state too big in hsfcStateManager::SetSchema\n");
+			return false;
+		}
+	}
+
+	// Cross link goal, legal, does, sees to role
+	if (this->RoleRelationIndex == 0) {
+		this->Lexicon->IO->WriteToLog(0, false, "Error: no (role ...) relation found in hsfcStateManager::SetSchema\n");
+		return false;
+	} else {
+		RoleSize = this->DomainManager->Domain[this->RoleRelationIndex].Size[0];
+	}
+
+	// Goal to role
+	if (this->GoalRelationIndex == 0) {
+
+		this->Lexicon->IO->WriteToLog(0, false, "Error: no (goal ...) relation found in hsfcStateManager::SetSchema\n");
+		return false;
+
+	} else {
+
+		// Create the cross link
+		Size = this->DomainManager->Domain[this->GoalRelationIndex].Size[0];
+		this->GoalToRole = new unsigned int[Size];
+
+		// Populate the cross reference for each goal entry
+		for (unsigned int i = 0; i < Size; i++) {
+			this->GoalToRole[i] = UNDEFINED;
+			GoalEntry = &this->DomainManager->Domain[this->GoalRelationIndex].Record[0][i].Relation;
+			// Find a matching role entry
+			for (unsigned int j = 0; j < RoleSize; j++) {
+				RoleEntry = &this->DomainManager->Domain[this->RoleRelationIndex].Record[0][j].Relation;
+				if (RoleEntry->Index != GoalEntry->Index) continue;
+				if (RoleEntry->ID != GoalEntry->ID) continue;
+				this->GoalToRole[i] = j;
+			}
+		}
+	}
+
+	// Legal to role
+	if (this->LegalRelationIndex == 0) {
+
+		this->Lexicon->IO->WriteToLog(0, false, "Error: no (Legal ...) relation found in hsfcStateManager::SetSchema\n");
+		return false;
+
+	} else {
+
+		// Create the cross link
+		Size = this->DomainManager->Domain[this->LegalRelationIndex].Size[0];
+		this->LegalToRole = new unsigned int[Size];
+
+		// Populate the cross reference for each Legal entry
+		for (unsigned int i = 0; i < Size; i++) {
+			this->LegalToRole[i] = UNDEFINED;
+			LegalEntry = &this->DomainManager->Domain[this->LegalRelationIndex].Record[0][i].Relation;
+			// Find a matching role entry
+			for (unsigned int j = 0; j < RoleSize; j++) {
+				RoleEntry = &this->DomainManager->Domain[this->RoleRelationIndex].Record[0][j].Relation;
+				if (RoleEntry->Index != LegalEntry->Index) continue;
+				if (RoleEntry->ID != LegalEntry->ID) continue;
+				this->LegalToRole[i] = j;
+			}
+		}
+	}
+
+	// Does to role
+	if (this->DoesRelationIndex == 0) {
+
+		this->Lexicon->IO->WriteToLog(0, false, "Error: no (Does ...) relation found in hsfcStateManager::SetSchema\n");
+		return false;
+
+	} else {
+
+		// Create the cross link
+		Size = this->DomainManager->Domain[this->DoesRelationIndex].Size[0];
+		this->DoesToRole = new unsigned int[Size];
+
+		// Populate the cross reference for each Does entry
+		for (unsigned int i = 0; i < Size; i++) {
+			this->DoesToRole[i] = UNDEFINED;
+			DoesEntry = &this->DomainManager->Domain[this->DoesRelationIndex].Record[0][i].Relation;
+			// Find a matching role entry
+			for (unsigned int j = 0; j < RoleSize; j++) {
+				RoleEntry = &this->DomainManager->Domain[this->RoleRelationIndex].Record[0][j].Relation;
+				if (RoleEntry->Index != DoesEntry->Index) continue;
+				if (RoleEntry->ID != DoesEntry->ID) continue;
+				this->DoesToRole[i] = j;
+			}
+		}
+	}
+
+	// Sees to role
+	if (this->SeesRelationIndex == 0) {
+
+		//this->Lexicon->IO->WriteToLog(0, false, "Error: no (Sees ...) relation found in hsfcStateManager::SetSchema\n");
+		//return false;
+
+	} else {
+
+		// Create the cross link
+		Size = this->DomainManager->Domain[this->SeesRelationIndex].Size[0];
+		this->SeesToRole = new unsigned int[Size];
+
+		// Populate the cross reference for each Sees entry
+		for (unsigned int i = 0; i < Size; i++) {
+			this->SeesToRole[i] = UNDEFINED;
+			SeesEntry = &this->DomainManager->Domain[this->SeesRelationIndex].Record[0][i].Relation;
+			// Find a matching role entry
+			for (unsigned int j = 0; j < RoleSize; j++) {
+				RoleEntry = &this->DomainManager->Domain[this->RoleRelationIndex].Record[0][j].Relation;
+				if (RoleEntry->Index != SeesEntry->Index) continue;
+				if (RoleEntry->ID != SeesEntry->ID) continue;
+				this->SeesToRole[i] = j;
+			}
+		}
+	}
+
+	// Create Next references
+	this->Lexicon->IO->WriteToLog(2, true, "  Setting (next ...) references\n");
+
+	// Reset the list
+	this->Next.clear();
+
+	// Link all Next --> True
+	for (unsigned int i = 1; i < this->Schema->RelationSchema.size(); i++) {
+		// Is this a (next ...)
+		if (this->Schema->RelationSchema[i]->Fact == hsfcFactNext) {
+			// Create the reference
+			TrueIndex = this->Lexicon->TrueFrom(this->Schema->RelationSchema[i]->Index);
+			NewReference.SourceIndex = this->Schema->RelationSchema[i]->Index;
+			NewReference.DestinationIndex = TrueIndex;
+			this->Next.push_back(NewReference);
+		}
+	}
+
+	this->Lexicon->IO->FormatToLog(3, true, "  State Size = %u\n", this->StateSize);
+	this->Lexicon->IO->WriteToLog(2, true, "succeeded\n");
+
+	return true;
+
 }
 
+//=============================================================================
+// State Methods
+//=============================================================================
 //-----------------------------------------------------------------------------
 // CreateState
 //-----------------------------------------------------------------------------
@@ -144,7 +342,7 @@ void hsfcStateManager::FreeState(hsfcState* State){
 	if (State->RelationID == NULL) return;
 	
 	// Free the memory for the state
-	for (int i = 0; i < this->NumRelationLists; i++) {
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
 		if ((State->RelationID[i] != NULL) && (State->RelationID[i] != NULL)) {
 			delete[](State->RelationID[i]);
 		}
@@ -187,59 +385,46 @@ void hsfcStateManager::InitialiseState(hsfcState* State){
 	this->FreeState(State);
 
 	// Initialise the State from the Schema
-	this->NumRelationLists = this->Schema->Relation.size();
+	this->NumRelationLists = this->Schema->RelationSchema.size();
 
 	// Create the arrays for each relation list
-	State->NumRelations = new int[this->NumRelationLists];
-	State->MaxNumRelations = new int[this->NumRelationLists];
-	State->RelationID = new int*[this->NumRelationLists];
+	State->NumRelations = new unsigned int[this->NumRelationLists];
+	State->MaxNumRelations = new unsigned int[this->NumRelationLists];
+	State->RelationID = new unsigned int*[this->NumRelationLists];
 	State->RelationExists = new bool*[this->NumRelationLists];
-	State->RelationIDSorted = new int*[this->NumRelationLists];
+	State->RelationIDSorted = new unsigned int*[this->NumRelationLists];
 
 	// Create the arrays for each relation
-	for (int i = 0; i < this->NumRelationLists; i++) {
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
 		State->NumRelations[i] = 0;
 		State->MaxNumRelations[i] = 0;
 		State->RelationID[i] = NULL;
 		State->RelationIDSorted[i] = NULL;
 		State->RelationExists[i] = NULL;
-		if (this->Schema->Relation[i]->IsInState) {
-			if (this->Schema->Relation[i]->IDCountDbl < (double)this->MaxRelationSize) {
-				State->MaxNumRelations[i] = this->Schema->Relation[i]->IDCount;
-				State->RelationID[i] = new int[State->MaxNumRelations[i]];
+		if (this->Schema->RelationSchema[i]->IsInState) {
+			if (this->DomainManager->Domain[i].IDCount < this->MaxRelationSize) {
+				State->MaxNumRelations[i] = this->DomainManager->Domain[i].IDCount;
+				State->RelationID[i] = new unsigned int[State->MaxNumRelations[i]];
 				this->StateSize += State->MaxNumRelations[i] * sizeof(int);
 				State->RelationExists[i] = new bool[State->MaxNumRelations[i]];
 				this->StateSize += State->MaxNumRelations[i] * sizeof(bool);
 				// Clear the exists array
-				for (int j = 0; j < State->MaxNumRelations[i]; j++) {
+				for (unsigned int j = 0; j < State->MaxNumRelations[i]; j++) {
 					State->RelationExists[i][j] = false;
 				}
 			} else {
 				State->MaxNumRelations[i] = this->MaxRelationSize;
-				State->RelationID[i] = new int[this->MaxRelationSize];
+				State->RelationID[i] = new unsigned int[this->MaxRelationSize];
 				this->StateSize += this->MaxRelationSize * sizeof(int);
-				State->RelationIDSorted[i] = new int[this->MaxRelationSize];
+				State->RelationIDSorted[i] = new unsigned int[this->MaxRelationSize];
 				this->StateSize += this->MaxRelationSize * sizeof(int);
 			}
 		}
 	}
 
-	// Fully populate any permanent fact relations
-	// Permanent facts cannot use IDSorted
-	for (unsigned int i = 0; i < this->Schema->Relation.size(); i++) {
-		if (this->Schema->Relation[i]->Fact == hsfcFactPermanent) {
-			for (int j = 0; j < State->MaxNumRelations[i]; j++) {
-				State->RelationID[i][j] = j;
-				State->RelationExists[i][j] = true;
-			}
-			State->NumRelations[i] = State->MaxNumRelations[i];
-		}
-	}
-
-	// Add the Fact relations from the reference table
-	for (unsigned int i = 0; i < this->Schema->Fact.size(); i++) {
-		// Add the RelationID to the state
-		this->AddRelation(State, &(this->Schema->Fact[i]));
+	// Add the permanent relations from the reference table
+	for (unsigned int i = 0; i < this->FullPermanent.size(); i++) {
+		this->AddRelation(State, this->FullPermanent[i]);
 	}
 
 	// Reset the step counters
@@ -257,9 +442,9 @@ void hsfcStateManager::FromState(hsfcState* State, hsfcState* Source){
 	this->ResetState(State);
 
 	// Copy the relations
-	for (int i = 0; i < this->NumRelationLists; i++) {
-		if (this->Schema->Relation[i]->Fact != hsfcFactPermanent) {
-			for (int j = 0; j < Source->NumRelations[i]; j++) {
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		if (this->Schema->RelationSchema[i]->Rigidity != hsfcRigidityFull) {
+			for (unsigned int j = 0; j < Source->NumRelations[i]; j++) {
 				if (State->RelationID[i] != NULL) {
 					State->RelationID[i][j] = Source->RelationID[i][j];
 				}
@@ -285,21 +470,16 @@ void hsfcStateManager::FromState(hsfcState* State, hsfcState* Source){
 //-----------------------------------------------------------------------------
 void hsfcStateManager::ResetState(hsfcState* State) {
 
-	// Go through all of the relations and clear all the lists; except the facts
-	for (int i = 0; i < this->NumRelationLists; i++) {
-		if (this->Schema->Relation[i]->Fact != hsfcFactPermanent) {
+	// Go through all of the relations and clear all the lists; except the permanent facts
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		if (this->Schema->RelationSchema[i]->Rigidity != hsfcRigidityFull) {
 			if (State->RelationExists[i] != NULL) {
-				for (int j = 0; j < State->NumRelations[i]; j++) {
+				for (unsigned int j = 0; j < State->NumRelations[i]; j++) {
 					State->RelationExists[i][State->RelationID[i][j]] = false;
 				}
 			}
 			State->NumRelations[i] = 0;
 		}
-	}
-
-	// Add the Fact relations from the reference table
-	for (unsigned int i = 0; i < this->Schema->Fact.size(); i++) {
-		this->AddRelation(State, &(this->Schema->Fact[i]));
 	}
 
 }
@@ -313,8 +493,13 @@ void hsfcStateManager::SetInitialState(hsfcState* State) {
 	this->ResetState(State);
 
 	// Add the (init (...)) relations from the state
-	for (unsigned int i = 0; i < this->Schema->Initial.size(); i++) {
-		this->AddRelation(State, &this->Schema->Initial[i]);
+	for (unsigned int i = 0; i < this->Initial.size(); i++) {
+		this->AddRelation(State, this->Initial[i]);
+	}
+
+	// Add the permanent relations from the reference table
+	for (unsigned int i = 0; i < this->PartPermanent.size(); i++) {
+		this->AddRelation(State, this->PartPermanent[i]);
 	}
 
 	// Reset the cycle counter
@@ -330,18 +515,18 @@ void hsfcStateManager::NextState(hsfcState* State) {
 
 	int SourceIndex;
 	int DestinationIndex;
-	hsfcTuple Reference;
+	hsfcTuple NewTuple;
 
 	// (next (cell ... ...)) ==> (cell ... ...)
 	// (next_cell ... ...) ==> (cell ... ...)
 	// Domains for (next_cell ) and (cell ) are identical
 	// So the lists can just be copied
 
-	// Clear all of the lists except for the facts and the next relations
-	for (int i = 0; i < this->NumRelationLists; i++) {
-		if (this->Schema->Relation[i]->Fact == hsfcFactNone) {
+	// Clear all of the lists except for the rigid and the next relations
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		if ((this->Schema->RelationSchema[i]->Rigidity != hsfcRigidityFull) && (this->Schema->RelationSchema[i]->Fact != hsfcFactNext)) {
 			if (State->RelationExists[i] != NULL) {
-				for (int j = 0; j < State->NumRelations[i]; j++) {
+				for (unsigned int j = 0; j < State->NumRelations[i]; j++) {
 					State->RelationExists[i][State->RelationID[i][j]] = false;
 				}
 			}
@@ -350,26 +535,26 @@ void hsfcStateManager::NextState(hsfcState* State) {
 	}
 
 	// Transfer the lists from next to predicate
-	for (unsigned int i = 0; i < this->Schema->Next.size(); i++) {
+	for (unsigned int i = 0; i < this->Next.size(); i++) {
 
-		SourceIndex = this->Schema->Next[i].SourceListIndex;
-		DestinationIndex = this->Schema->Next[i].DestinationListIndex;
+		SourceIndex = this->Next[i].SourceIndex;
+		DestinationIndex = this->Next[i].DestinationIndex;
 
 		// Transfer of relations
 		// There is an opportunity for a bulk transfer flag
-		for (int j = 0; j < State->NumRelations[SourceIndex]; j++) {
-			Reference.RelationIndex = DestinationIndex;
-			Reference.ID = State->RelationID[SourceIndex][j];
-			this->AddRelation(State, &Reference);
+		for (unsigned int j = 0; j < State->NumRelations[SourceIndex]; j++) {
+			NewTuple.Index = DestinationIndex;
+			NewTuple.ID = State->RelationID[SourceIndex][j];
+			this->AddRelation(State, NewTuple);
 		}
 
 	}
 
 	// Clear all of the next> lists
-	for (int i = 0; i < this->NumRelationLists; i++) {
-		if (this->Schema->Relation[i]->Fact == hsfcFactNext) {
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		if (this->Schema->RelationSchema[i]->Fact == hsfcFactNext) {
 			if (State->RelationExists[i] != NULL) {
-				for (int j = 0; j < State->NumRelations[i]; j++) {
+				for (unsigned int j = 0; j < State->NumRelations[i]; j++) {
 					State->RelationExists[i][State->RelationID[i][j]] = false;
 				}
 			}
@@ -378,8 +563,8 @@ void hsfcStateManager::NextState(hsfcState* State) {
 	}
 
 	// Add in any permanent relations that are in nonpermanent lists eg. (legal role noop)
-	for (unsigned int i = 0; i < this->Schema->Fact.size(); i++) {
-		this->AddRelation(State, &(this->Schema->Fact[i]));
+	for (unsigned int i = 0; i < this->PartPermanent.size(); i++) {
+		this->AddRelation(State, this->PartPermanent[i]);
 	}
 
 	// Advance the Cycle counter
@@ -389,9 +574,44 @@ void hsfcStateManager::NextState(hsfcState* State) {
 }
 
 //-----------------------------------------------------------------------------
+// GetFluents
+//-----------------------------------------------------------------------------
+void hsfcStateManager::GetFluents(hsfcState* State, vector<hsfcTuple>& Fluent) {
+
+	unsigned int Count;
+
+	// Independent of current step
+
+	// Go through all of the lists and count the number of fluents
+	Count = 0;
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		if (this->Schema->RelationSchema[i]->Fact == hsfcFactTrue) {
+			Count += State->NumRelations[i];
+		}
+	}
+
+	// Resize the vector
+	Fluent.resize(Count);
+
+	// Go through all of the lists and add the fluents
+	Count = 0;
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		if (this->Schema->RelationSchema[i]->Fact == hsfcFactTrue) {
+			for (unsigned int j = 0; j < State->NumRelations[i]; j++) {
+				Fluent[Count].Index = i;
+				Fluent[Count].ID = State->RelationID[i][j];
+				Count++;
+			}
+		}
+	}
+
+
+}
+
+//-----------------------------------------------------------------------------
 // AddRelation
 //-----------------------------------------------------------------------------
-void hsfcStateManager::AddRelation(hsfcState* State, hsfcTuple* Tuple){
+bool hsfcStateManager::AddRelation(hsfcState* State, hsfcTuple& Tuple){
 
 	int Target;
 	int LowerBound;
@@ -399,7 +619,7 @@ void hsfcStateManager::AddRelation(hsfcState* State, hsfcTuple* Tuple){
 	int Compare;
 
 	// Does the list have Exists or Sorted
-	if (State->RelationIDSorted[Tuple->RelationIndex] != NULL) {
+	if (State->RelationIDSorted[Tuple.Index] != NULL) {
 
 		// Uses Sorted
 		// Binary search of the list; adding any unfound values in sort order
@@ -409,18 +629,18 @@ void hsfcStateManager::AddRelation(hsfcState* State, hsfcTuple* Tuple){
 		Compare = 0;
 		
 		// Is the list empty
-		if (State->NumRelations[Tuple->RelationIndex] > 0) {
+		if (State->NumRelations[Tuple.Index] > 0) {
 
 			// Look for the Tuple according to its value
-			UpperBound = State->NumRelations[Tuple->RelationIndex] - 1;
+			UpperBound = State->NumRelations[Tuple.Index] - 1;
 			while (LowerBound <= UpperBound) {
 
 				// Find the target value and compare
 				Target = (LowerBound + UpperBound) / 2;
-				if (State->RelationIDSorted[Tuple->RelationIndex][Target] > Tuple->ID) {
+				if (State->RelationIDSorted[Tuple.Index][Target] > Tuple.ID) {
 					Compare = -1;
 				} else {
-					if (State->RelationIDSorted[Tuple->RelationIndex][Target] == Tuple->ID) {
+					if (State->RelationIDSorted[Tuple.Index][Target] == Tuple.ID) {
 						Compare = 0;
 					} else {
 						Compare = 1;
@@ -428,7 +648,7 @@ void hsfcStateManager::AddRelation(hsfcState* State, hsfcTuple* Tuple){
 				}
 
 				// Compare the values
-				if (Compare == 0) return;
+				if (Compare == 0) return false;
 				if (Compare < 0) UpperBound = Target - 1;
 				if (Compare > 0) LowerBound = Target + 1;
 			}
@@ -440,31 +660,36 @@ void hsfcStateManager::AddRelation(hsfcState* State, hsfcTuple* Tuple){
 		// If Compare < 0 then new value is before Target
 		if (Compare > 0) Target++;
 
+		if (State->NumRelations[Tuple.Index] >= State->MaxNumRelations[Tuple.Index]) {
+			this->Lexicon->IO->FormatToLog(0, false, "Warning: MaxRelationSize exceeded in %s in hsfcStateManager::AddRelation\n\n", this->Lexicon->Relation(Tuple.Index));
+			return false;
+		}
+
 		// Shuffle everything down
-		for (int i = State->NumRelations[Tuple->RelationIndex]; i > Target; i--) {
-			State->RelationIDSorted[Tuple->RelationIndex][i] = State->RelationIDSorted[Tuple->RelationIndex][i - 1];
+		for (int i = State->NumRelations[Tuple.Index]; i > Target; i--) {
+			State->RelationIDSorted[Tuple.Index][i] = State->RelationIDSorted[Tuple.Index][i - 1];
 		}
 		// Add it to the list
-		State->RelationID[Tuple->RelationIndex][State->NumRelations[Tuple->RelationIndex]] = Tuple->ID;
-		State->RelationIDSorted[Tuple->RelationIndex][Target] = Tuple->ID;
+		State->RelationID[Tuple.Index][State->NumRelations[Tuple.Index]] = Tuple.ID;
+		State->RelationIDSorted[Tuple.Index][Target] = Tuple.ID;
 
 		// Increment the number of relations in the list
-		State->NumRelations[Tuple->RelationIndex]++;
+		State->NumRelations[Tuple.Index]++;
 
-		if (State->NumRelations[Tuple->RelationIndex] == State->MaxNumRelations[Tuple->RelationIndex]) {
-			printf("Error: MaxRelationSize exceeded\n");
-			abort();
-		}
+		return true;
 
 	} else {
 
 		// Uses Exists
-		if (!State->RelationExists[Tuple->RelationIndex][Tuple->ID]) {
+		if (State->RelationExists[Tuple.Index][Tuple.ID]) {
+			return false;
+		} else {
 			// Add it to the list
-			State->RelationID[Tuple->RelationIndex][State->NumRelations[Tuple->RelationIndex]] = Tuple->ID;
-			State->RelationExists[Tuple->RelationIndex][Tuple->ID] = true;
+			State->RelationID[Tuple.Index][State->NumRelations[Tuple.Index]] = Tuple.ID;
+			State->RelationExists[Tuple.Index][Tuple.ID] = true;
 			// Increment the number of relations in the list
-			State->NumRelations[Tuple->RelationIndex]++;
+			State->NumRelations[Tuple.Index]++;
+			return true;
 		}
 
 	}
@@ -474,7 +699,7 @@ void hsfcStateManager::AddRelation(hsfcState* State, hsfcTuple* Tuple){
 //-----------------------------------------------------------------------------
 // RelationExists
 //-----------------------------------------------------------------------------
-bool hsfcStateManager::RelationExists(hsfcState* State, hsfcTuple* Tuple){
+bool hsfcStateManager::RelationExists(hsfcState* State, hsfcTuple& Tuple){
 
 	int Target;
 	int LowerBound;
@@ -482,7 +707,7 @@ bool hsfcStateManager::RelationExists(hsfcState* State, hsfcTuple* Tuple){
 	int Compare;
 
 	// Does the list have Exists or Sorted
-	if (State->RelationIDSorted[Tuple->RelationIndex] != NULL) {
+	if (State->RelationIDSorted[Tuple.Index] != NULL) {
 
 		// Uses Sorted
 		// Binary search of the list; adding any unfound values in sort order
@@ -492,18 +717,18 @@ bool hsfcStateManager::RelationExists(hsfcState* State, hsfcTuple* Tuple){
 		Compare = 0;
 		
 		// Is the list empty
-		if (State->NumRelations[Tuple->RelationIndex] > 0) {
+		if (State->NumRelations[Tuple.Index] > 0) {
 
 			// Look for the Tuple according to its value
-			UpperBound = State->NumRelations[Tuple->RelationIndex] - 1;
+			UpperBound = State->NumRelations[Tuple.Index] - 1;
 			while (LowerBound <= UpperBound) {
 
 				// Find the target value and compare
 				Target = (LowerBound + UpperBound) / 2;
-				if (State->RelationIDSorted[Tuple->RelationIndex][Target] > Tuple->ID) {
+				if (State->RelationIDSorted[Tuple.Index][Target] > Tuple.ID) {
 					Compare = -1;
 				} else {
-					if (State->RelationIDSorted[Tuple->RelationIndex][Target] == Tuple->ID) {
+					if (State->RelationIDSorted[Tuple.Index][Target] == Tuple.ID) {
 						Compare = 0;
 					} else {
 						Compare = 1;
@@ -522,208 +747,229 @@ bool hsfcStateManager::RelationExists(hsfcState* State, hsfcTuple* Tuple){
 	} else {
 
 		// Uses Exists
-		return State->RelationExists[Tuple->RelationIndex][Tuple->ID];
+		return State->RelationExists[Tuple.Index][Tuple.ID];
 
 	}
-
-}
-
-//-----------------------------------------------------------------------------
-// CalculateStateSize
-//-----------------------------------------------------------------------------
-bool hsfcStateManager::CalculateStateSize() {
-
-	bool Result;
-
-	// Initialise the State from the Schema
-	Result = true;
-	this->NumRelationLists = this->Schema->Relation.size();
-	this->MaxStateSize = 0;
-	this->StateSize = 0;
-
-	// Calculate the maximum size of the database
-	this->MaxStateSize += (double)(2 * this->NumRelationLists * sizeof(int));
-	for (int i = 0; i < this->NumRelationLists; i++) {
-		if (this->Schema->Relation[i]->IsInState) {
-			this->MaxStateSize += this->Schema->Relation[i]->IDCountDbl * (double)sizeof(int);
-			this->MaxStateSize += this->Schema->Relation[i]->IDCountDbl * (double)sizeof(bool);
-		}
-	}
-
-	// Calculate the size of the database
-	this->StateSize = 0;
-	this->StateSize += 2 * this->NumRelationLists * sizeof(int);
-	for (int i = 0; i < this->NumRelationLists; i++) {
-		if (this->Schema->Relation[i]->IsInState) {
-			if (this->Schema->Relation[i]->IDCountDbl > (double)this->MaxRelationSize) {
-				this->StateSize += this->MaxRelationSize * sizeof(int);
-				this->StateSize += this->MaxRelationSize * sizeof(bool);
-				if (this->Schema->Relation[i]->Fact == hsfcFactPermanent) {
-					printf("Error: Permanent Fact too big\n");
-					Result = false;
-				}
-			} else {
-				this->StateSize += this->Schema->Relation[i]->IDCount * sizeof(int);
-				this->StateSize += this->Schema->Relation[i]->IDCount * sizeof(bool);
-			}
-		}
-	}
-
-	return Result;
-
-}
-
-//-----------------------------------------------------------------------------
-// CompareStates
-//-----------------------------------------------------------------------------
-void hsfcStateManager::CompareStates(hsfcState* State1, hsfcState* State2) {
-
-	hsfcTuple Tuple;
-	int Index;
-
-	printf("\n--- States -------------------------------------------------\n");
-
-	// Print the relations
-	for (int i = 0; i < this->NumRelationLists; i++) {
-		Index = 0;
-		Tuple.RelationIndex = i;
-		while ((Index < State1->NumRelations[i]) || (Index < State2->NumRelations[i])) {
-			if (this->Schema->Relation[i]->Fact == hsfcFactPermanent) {
-				if (State1->RelationID[i][Index] != State2->RelationID[i][Index]) {
-					Tuple.ID = State1->RelationID[i][Index];
-					this->Schema->PrintRelation(&Tuple, false);
-					printf(" != \t");
-					Tuple.ID = State2->RelationID[i][Index];
-					this->Schema->PrintRelation(&Tuple, true);
-				}
-			} else {
-				if (Index < State1->NumRelations[i]) {
-					printf("%6d.%d\t", i, State1->RelationID[i][Index]);
-					Tuple.ID = State1->RelationID[i][Index];
-					this->Schema->PrintRelation(&Tuple, false);
-				}
-				if (Index < State2->NumRelations[i]) {
-					printf("%6d.%d\t", i, State2->RelationID[i][Index]);
-					Tuple.ID = State2->RelationID[i][Index];
-					this->Schema->PrintRelation(&Tuple, false);
-				}
-				printf("\n");
-			}
-			Index++;
-		}
-	}
-
-	printf("------------------------------------------------------------\n");
-
-}
-
-//-----------------------------------------------------------------------------
-// StateAsText
-//-----------------------------------------------------------------------------
-char* hsfcStateManager::StateAsText(hsfcState* State) {
-
-	char* Text;
-	int Length;
-	char TupleText[24];
-
-	// Start with the round and the step
-	Length = sprintf(TupleText, "%d %d ", State->Round, State->CurrentStep);
-
-	// Go through all of the relations and convert to tuples; except the facts
-	// Calculate the size of the sting first
-	for (int i = 0; i < this->NumRelationLists; i++) {
-		if (this->Schema->Relation[i]->Fact != hsfcFactPermanent) {
-			for (int j = 0; j < State->NumRelations[i]; j++) {
-				Length += sprintf(TupleText, "%d.%d ", i, State->RelationID[i][j]);
-			}
-		}
-	}
-
-	// Allocate the memory
-	Text = new char[Length + 1];
-
-	// Do it for real
-	Length = sprintf(Text, "%d %d ", State->Round, State->CurrentStep);
-
-	// Convert to text
-	for (int i = 0; i < this->NumRelationLists; i++) {
-		if (this->Schema->Relation[i]->Fact != hsfcFactPermanent) {
-			for (int j = 0; j < State->NumRelations[i]; j++) {
-				Length += sprintf(&Text[Length], "%d.%d ", i, State->RelationID[i][j]);
-			}
-		}
-	}
-	Text[Length - 1] = 0;
-
-	return Text;
-
-}
-
-//-----------------------------------------------------------------------------
-// StateFromText
-//-----------------------------------------------------------------------------
-bool hsfcStateManager::StateFromText(hsfcState* State, char* Text) {
-
-	hsfcTuple Tuple;
-	char* TupleText;
-
-	// Text format
-	// "# # #.# #.# #.# #.#" == "round step list.id list.id ... "
-
-	// Reset the state
-	this->ResetState(State);
-
-	// Start with the round 
-	TupleText = Text;
-	if (sscanf(TupleText, "%d", &State->Round) != 1) return false;
-	TupleText = strchr(TupleText, ' ');
-	if (TupleText == NULL) return false;
-
-	// Next the current step
-	TupleText++;
-	if (sscanf(TupleText, "%d", &State->CurrentStep) != 1) return false;
-	TupleText = strchr(TupleText, ' ');
-	if (TupleText == NULL) return true;
-
-	// Go through all of the relations and convert text to relations
-	while(TupleText != NULL) {
-		TupleText++;
-		if (sscanf(TupleText, "%d.%d", &Tuple.RelationIndex, &Tuple.ID) != 2) return false;
-		this->AddRelation(State, &Tuple);
-		TupleText = strchr(TupleText, ' ');
-	}
-
-	return true;
 
 }
 
 //-----------------------------------------------------------------------------
 // PrintRelations
 //-----------------------------------------------------------------------------
-void hsfcStateManager::PrintRelations(hsfcState* State, bool PermanentFacts) {
+void hsfcStateManager::PrintRelations(hsfcState* State, bool ShowRigids) {
 
-	hsfcTuple Tuple;
+	hsfcTuple Relation;
+	char* KIF;
+	hsfcRelationSchema* RelationSchema;
 
-	printf("\n--- State --------------------------------------------------\n");
+	this->Lexicon->IO->WriteToLog(0, false, "\n--- State ---\n");
 
 	// Print the relations
-	for (int i = 0; i < this->NumRelationLists; i++) {
-		if (PermanentFacts || (this->Schema->Relation[i]->Fact != hsfcFactPermanent)) {
-			for (int j = 0; (j < State->NumRelations[i]) && (j <= 32); j++) {
-				printf("%6d.%d\t", i, State->RelationID[i][j]);
-				Tuple.RelationIndex = i;
-				Tuple.ID = State->RelationID[i][j];
-				this->Schema->PrintRelation(&Tuple, true);
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		if (this->Schema->RelationSchema[i]->IsInState) {
+
+			this->Lexicon->IO->FormatToLog(0, false, "Relation %-3d - %-24s", i, this->Lexicon->Relation(i)); 
+			this->Lexicon->IO->FormatToLog(0, false, "  Count %-8d Max %-8d ", State->NumRelations[i], State->MaxNumRelations[i]); 
+
+			RelationSchema = this->Schema->RelationSchema[i];
+			if (RelationSchema != NULL) {
+				switch (RelationSchema->Fact) {
+					case 0:
+						this->Lexicon->IO->WriteToLog(0, false, "None ");
+						break;
+					case 1:
+						this->Lexicon->IO->WriteToLog(0, false, "Emb  ");
+						break;
+					case 2:
+						this->Lexicon->IO->WriteToLog(0, false, "Aux  ");
+						break;
+					case 3:
+						this->Lexicon->IO->WriteToLog(0, false, "Init ");
+						break;
+					case 4:
+						this->Lexicon->IO->WriteToLog(0, false, "True ");
+						break;
+					case 5:
+						this->Lexicon->IO->WriteToLog(0, false, "Next ");
+						break;
+					default:
+						this->Lexicon->IO->WriteToLog(0, false, "Err  ");
+						break;
+				}
+				switch (RelationSchema->Rigidity) {
+					case 0:
+						this->Lexicon->IO->WriteToLog(0, false, "None\n");
+						break;
+					case 1:
+						this->Lexicon->IO->WriteToLog(0, false, "Some\n");
+						break;
+					case 2:
+						this->Lexicon->IO->WriteToLog(0, false, "Full\n");
+						break;
+					default:
+						this->Lexicon->IO->WriteToLog(0, false, "Err \n");
+						break;
+				}
+				if (ShowRigids || (RelationSchema->Rigidity != hsfcRigidityFull)) {
+					for (unsigned int j = 0; (j < State->NumRelations[i]) && (j < 128); j++) {
+						this->Lexicon->IO->FormatToLog(0, false, "%4d.%-9d", i, State->RelationID[i][j]);
+						Relation.Index = i;
+						Relation.ID = State->RelationID[i][j];
+						KIF = NULL;
+						this->DomainManager->RelationAsKIF(Relation, &KIF);
+						this->Lexicon->IO->FormatToLog(0, false, "  %s\n", KIF);
+						delete[] KIF;
+					}
+					if ((RelationSchema->Rigidity != hsfcRigidityFull) && (State->NumRelations[i] > 128)) {
+						this->Lexicon->IO->FormatToLog(0, false, "Count = %u\n", State->NumRelations[i]);
+					}
+				}
 			}
-			if ((this->Schema->Relation[i]->Fact != hsfcFactPermanent) && (State->NumRelations[i] > 16)) {
-				printf("Count = %d\n", State->NumRelations[i]);
+
+		} else {
+			this->Lexicon->IO->FormatToLog(0, false, "Relation %-3d - %-24s Not stored in State\n", i, this->Lexicon->Relation(i)); 
+		}
+	}
+
+	this->Lexicon->IO->WriteToLog(0, false, "--- End of State ---\n\n");
+
+}
+
+//-----------------------------------------------------------------------------
+// CreateRigids
+//-----------------------------------------------------------------------------
+void hsfcStateManager::CreateRigids(hsfcState* State) {
+
+	hsfcRelationSchema* RelationSchema;
+	hsfcTuple* Term;
+	hsfcFactType FactType;
+	unsigned int ID;
+
+	// Change the schema to compress the rigid IDs
+	// Leave Init as is because the domains for (init: ...) (true: ...) (next: ...) are identical
+
+	// Load relations from the state to the schema as permanents or initial
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		// Find the relation schema
+		RelationSchema = this->Schema->RelationSchema[i];
+		if ((RelationSchema->Rigidity == hsfcRigidityFull) && (RelationSchema->IsInState)) {
+			// Is this a permanent or an initial
+			//if (!this->Lexicon->PartialMatch(RelationSchema->NameID, "init:")) {
+				// Create the terms array
+				Term = new hsfcTuple[RelationSchema->Arity + 1];
+				// Reset the schema
+				FactType = RelationSchema->Fact;
+				RelationSchema->Initialise(RelationSchema->NameID, RelationSchema->Arity, RelationSchema->Index);
+				RelationSchema->Rigidity = hsfcRigidityFull;
+				RelationSchema->IsInState = true;
+				RelationSchema->Fact = FactType;
+				for (int j = 0; j < RelationSchema->Arity; j++) {
+					RelationSchema->DomainSchema[j]->Rigid = true;
+				}
+				
+				// Rebuild the schema from the rigids in the state
+				// Load each relation
+				for (unsigned int j = 0; j < State->NumRelations[i]; j++) {
+					// Get the terms from the old domain structure
+					this->DomainManager->IDToTerms(i, Term, State->RelationID[i][j]); 
+					// Load the terms into the new schema
+					RelationSchema->AddRigidTerms(Term);
+				}
+
+				// Clean up memory
+				delete[] Term;
+			//}
+		}
+	}
+
+	// Reduild the domain as a rigid domain
+	// Load relations from the state to the schema as permanents or initial
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		// Find the relation schema
+		RelationSchema = this->Schema->RelationSchema[i];
+		if ((RelationSchema->Rigidity == hsfcRigidityFull) && (RelationSchema->IsInState)) {
+			this->DomainManager->Domain[i].Rigid = true;
+			this->DomainManager->RebuildRigidDomain(RelationSchema, i);
+		}
+	}
+
+	// Print the new domains
+	if (this->Lexicon->IO->Parameters->LogDetail > 2) this->DomainManager->Print();
+
+	// Validate the new domains
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		// Find the relation schema
+		RelationSchema = this->Schema->RelationSchema[i];
+		if ((RelationSchema->Rigidity == hsfcRigidityFull) && (RelationSchema->IsInState)) {
+			Term = new hsfcTuple[RelationSchema->Arity + 1];
+			for (unsigned int j = 0; j < this->DomainManager->Domain[i].IDCount; j++) {
+				this->DomainManager->IDToTerms(i, Term, j);
+				this->DomainManager->TermsToID(i, Term, ID);
+				if (ID != j) {
+					this->Lexicon->IO->WriteToLog(0, false, "Warning: Bad ID to Terms to ID conversion::CreateRigids\n\n");
+				}
+			}
+			delete[] Term;
+		}
+	}
+
+
+}
+
+//-----------------------------------------------------------------------------
+// CreatePermanents
+//-----------------------------------------------------------------------------
+void hsfcStateManager::CreatePermanents(hsfcState* State) {
+
+	hsfcTuple Relation;
+	hsfcRelationSchema* RelationSchema;
+
+	// This is calculated from an initiailsed state after running all/only of the rigid rules
+	this->PartPermanent.clear();
+	this->FullPermanent.clear();
+	this->Initial.clear();
+
+	// All the rigid relations have now got different IDs
+	// But they are all fully instantiated
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		Relation.Index = i;
+		// Find the relation schema
+		RelationSchema = this->Schema->RelationSchema[i];
+		if ((RelationSchema->Rigidity == hsfcRigidityFull) && (RelationSchema->IsInState)) {
+			// Is this a permanent or an initial
+			if (!this->Lexicon->PartialMatch(RelationSchema->NameID, "init:")) {
+				// Add every one to the state
+				for (unsigned int j = 0; j < this->DomainManager->Domain[i].IDCount; j++) {
+					Relation.ID = j;
+					// Add the relation instance to the schema
+					this->FullPermanent.push_back(Relation);
+				}
 			}
 		}
 	}
 
-	printf("------------------------------------------------------------\n");
+	// Load relations from the state to the schema as permanents or initial
+	for (unsigned int i = 1; i < this->NumRelationLists; i++) {
+		Relation.Index = i;
+		for (unsigned int j = 0; j < State->NumRelations[i]; j++) {
+			// Find the relation schema
+			RelationSchema = this->Schema->RelationSchema[i];
+			Relation.ID = State->RelationID[i][j];
+			// Is this a permanent or an initial
+			if (this->Lexicon->PartialMatch(RelationSchema->NameID, "init:")) {
+				// The domains for (init: ...) (true: ...) (next: ...) are identical
+				Relation.Index = this->Lexicon->TrueFrom(Relation.Index);
+				// Add the relation instance to the schema
+				this->Initial.push_back(Relation);
+			} else {
+				// Is this a partial permanent, fully permanents ar ealready done
+				if (RelationSchema->Rigidity != hsfcRigidityFull) {
+					this->PartPermanent.push_back(Relation);
+				}
+			}
+		}
+	}
 
 }
-
 
 

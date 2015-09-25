@@ -123,8 +123,7 @@ public:
 
     /* A constructor substitute to work with python keyword arguments */
     PyGame(const std::string& gdldescription,
-           const std::string& gdlfilename,
-           bool use_gadelac);
+           const std::string& gdlfilename);
 
     /* Returns the list of players */
     py::list players();
@@ -141,8 +140,7 @@ const char* PyGame::ds_num_players =
 players and then finding the length of the list.";
 
 PyGame::PyGame(const std::string& gdldescription,
-               const std::string& gdlfilename,
-               bool usegadelac)
+               const std::string& gdlfilename)
 {
     if (gdldescription.empty() && gdlfilename.empty())
         throw HSFCValueError()
@@ -151,9 +149,9 @@ PyGame::PyGame(const std::string& gdldescription,
         throw HSFCValueError()
             << ErrorMsgInfo("Cannot speficy both a GDL file and description");
     if (!gdldescription.empty())
-        Game::initialise(gdldescription, usegadelac);
+        Game::initialise(gdldescription);
     else
-        Game::initialise(boost::filesystem::path(gdlfilename), usegadelac);
+        Game::initialise(boost::filesystem::path(gdlfilename));
 }
 
 py::list PyGame::players()
@@ -412,8 +410,8 @@ BOOST_PYTHON_MODULE(pyhsfc)
 
     py::class_<PyGame,boost::noncopyable>
         ("Game", PyGame::ds_class,
-         py::init<const std::string&, const std::string&, bool>(
-             (py::arg("gdl")=std::string(), py::arg("file")=std::string(), py::arg("gadelac")=false)))
+         py::init<const std::string&, const std::string&>(
+             (py::arg("gdl")=std::string(), py::arg("file")=std::string())))
         .def("players", &PyGame::players, PyGame::ds_players)
         .def("num_players", &Game::numPlayers, PyGame::ds_num_players)
         ;
