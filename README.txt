@@ -98,3 +98,7 @@ query from python with:
       >>> help (pyhsfc)
 
 Finally see testing/example.py for a python version of the C++ example.
+
+LICENSE
+-------
+BSD 2-clause "Simplified" License, see LICENSE file
