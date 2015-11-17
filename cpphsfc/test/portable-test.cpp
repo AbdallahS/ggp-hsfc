@@ -60,6 +60,40 @@ Player get_player(const Game& game, const std::string& playername)
     throw std::string("To prevent clang compiler warning");
 }
 
+
+/****************************************************************
+ * Test PortableState hash function for use with boost::unordered_set/map
+ ****************************************************************/
+
+BOOST_AUTO_TEST_CASE(portablestate_unorderedset)
+{
+    typedef boost::unordered_set<PortableState> pstate_set_t;
+
+    Game game(g_tictactoe);
+    State state1(game);
+    State state2(game);
+    state2.playout();
+
+    PortableState pstate1(state1);
+    PortableState pstate2(state2);
+
+    pstate_set_t pstate_set;
+    std::pair<pstate_set_t::iterator, bool> result1, result2;
+
+    // Insert the same element twice. The first insertion should succeed, but the
+    // second insertion should fail.
+    result1 = pstate_set.insert(pstate1);
+    BOOST_CHECK(result1.second);
+    result2 = pstate_set.insert(pstate1);
+    BOOST_CHECK(!result2.second);
+    BOOST_CHECK(result1.second != result2.second);
+
+    // Now test that the pstate1 is in the set but pstate2 is not.
+    BOOST_CHECK(pstate_set.find(pstate1) == result1.first);
+    BOOST_CHECK(pstate_set.find(pstate2) == pstate_set.end());
+}
+
+
 /****************************************************************
  * Testing that PortableState works across games. Load 2 games.
  * For a state in game 1 playout (so it is in a terminal state).
