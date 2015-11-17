@@ -1,11 +1,11 @@
 /*****************************************************************************************
- * 
+ *
  * A Collection of PlayerMoves.
  * This is a convenience class that makes accessing PlayerMove instances easier.
  *
  * The State::legals() functions returns a collection of PlayerMove objects to
  * to represent all the legal moves that are possible for players in a given
- * state. However, there are many different ways you may want to examine 
+ * state. However, there are many different ways you may want to examine
  * these legal moves:
  *
  * - Simply treat it as a list of PlayerMove objects to iterate over.
@@ -16,10 +16,10 @@
  *
  * - Generate all valid joint moves available from this state (eg., for UCT).
  *
- * This class allows you to do all these operations on the same collection of object by 
- * offering different (read-only) views over the data. 
- * 
- * Note: currently, there is no way to remove individual elements (except a global clear). 
+ * This class allows you to do all these operations on the same collection of object by
+ * offering different (read-only) views over the data.
+ *
+ * Note: currently, there is no way to remove individual elements (except a global clear).
  *       May add this in the future if there is a need.
  *
  *****************************************************************************************/
@@ -48,6 +48,7 @@ public:
     // list of PlayerMove objects.
 
     typedef std::size_t size_type;
+    typedef PlayerMove value_type;
 
     // Note: iterator and const_iterator are the same because we don't want
     // to allow a value to be modified directly from the iterator as it can
@@ -66,8 +67,8 @@ public:
     const_iterator end() const;
 
     // Insert into collection. Note: hint iterator version is needed for std::inserter.
-    iterator insert(const PlayerMove& pm);   
-    iterator insert(const_iterator posn, const PlayerMove& pm);   
+    iterator insert(const PlayerMove& pm);
+    iterator insert(const_iterator posn, const PlayerMove& pm);
 
     void clear();
     bool empty() const;
@@ -80,7 +81,7 @@ public:
     PlayerMoves(const PlayerMoves& other);
     PlayerMoves& operator=(const PlayerMoves& other);
 
-    // A Player view to iterate over the players. 
+    // A Player view to iterate over the players.
     // Note: there is only a singleton object for this class. It is designed to be accessed
     // directly by the user, hence uses a different naming convention.
     class ViewPlayers
@@ -97,7 +98,7 @@ public:
 
         iterator find(Player& p);
         const_iterator find(Player& p) const;
-                
+
         bool empty() const;
         size_type size() const;
     private:
@@ -130,7 +131,7 @@ public:
         size_type size() const;
     private:
         friend class PlayerMoves;
-        
+
         PlayerMoves::const_iterator begin_;
         PlayerMoves::const_iterator end_;
         ViewMovesByPlayer(PlayerMoves& pms, const Player& p);
@@ -150,18 +151,16 @@ public:
         iterator begin();
         iterator end();
         const_iterator begin() const;
-        const_iterator end() const;        
+        const_iterator end() const;
 
     private:
         JointMove();
     };
     class ViewJointMoves
     {
-        
-        
+
     public:
-        
-        
+
     };
     */
 
