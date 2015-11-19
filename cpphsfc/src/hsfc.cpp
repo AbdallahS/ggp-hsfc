@@ -4,7 +4,6 @@
 #include <cassert>
 #include <map>
 #include <boost/assert.hpp>
-#include <boost/variant/get.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/make_shared.hpp>
 #include <hsfc/hsfc.h>
