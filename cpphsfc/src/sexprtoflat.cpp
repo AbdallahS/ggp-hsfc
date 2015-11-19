@@ -4,6 +4,8 @@
 #include <sstream>
 #include <algorithm>
 #include <vector>
+
+#include <boost/type_traits/remove_cv.hpp>
 #include <boost/variant/get.hpp>
 #include <boost/foreach.hpp>
 #include <boost/tuple/tuple.hpp>
