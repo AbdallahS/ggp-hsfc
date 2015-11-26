@@ -35,7 +35,12 @@ target_link_libraries(pyhsfc ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
 # Installing python HSFC
 #----------------------------------------------------
 
-install(TARGETS pyhsfc LIBRARY DESTINATION "lib/python${PYTHON_BASE_VERSION}/site-packages")
+install(
+  TARGETS pyhsfc
+  LIBRARY DESTINATION "lib/python${PYTHON_BASE_VERSION}/site-packages"
+  ARCHIVE DESTINATION "lib/python${PYTHON_BASE_VERSION}/site-packages"
+  COMPONENT library
+)
 
 #----------------------------------------------------
 # Unit testing
