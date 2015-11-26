@@ -39,11 +39,6 @@ private:
     std::vector<std::string> playernames_;
     void PopulatePlayerNamesFromLegalMoves();
 
-    void RunGadelac(const boost::filesystem::path& infile,
-                    const boost::filesystem::path& outfile,
-                    const std::string& extra_options = std::string());
-
-
     boost::scoped_ptr<hsfcGDLParameters> params_;
 
 public:
