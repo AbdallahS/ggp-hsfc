@@ -117,8 +117,8 @@ private:
     friend std::ostream& operator<<(std::ostream& os, const Fluent& fluent);
 
     boost::shared_ptr<const HSFCManager> manager_;
-    uint hsfc_index_;
-    uint hsfc_ID_;
+    unsigned int hsfc_index_;
+    unsigned int hsfc_ID_;
     Fluent(boost::shared_ptr<const HSFCManager> manager, const hsfcTuple& fluent);
 };
 
