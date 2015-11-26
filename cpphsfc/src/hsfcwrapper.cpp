@@ -170,75 +170,40 @@ std::ostream& HSFCManager::PrintState(std::ostream& os, const hsfcState& GameSta
  *****************************************************************************************/
 
 void HSFCManager::Initialise(const boost::filesystem::path& gdlfile,
-                             const hsfcGDLParameters& Parameters)
+                             const hsfcGDLParameters& parameters)
 {
     namespace bfs=boost::filesystem;
-    bfs::path infile;
-    bfs::path nocommentfile;
-
-    try
+    // Check that the file exists
+    if (!bfs::is_regular_file(gdlfile))
     {
-        // Check that the file exists
-        if (!bfs::is_regular_file(gdlfile))
-        {
-            std::ostringstream ss;
-            ss << "File does not exist: " << gdlfile.native();
-            throw HSFCValueError() << ErrorMsgInfo(ss.str());
-        }
-
-        nocommentfile = bfs::unique_path();
-        std::ifstream ts(gdlfile.native().c_str());
-        std::string tmpgdl;
-        ts.seekg(0, std::ios::end);
-        tmpgdl.reserve(ts.tellg());
-        ts.seekg(0, std::ios::beg);
-        tmpgdl.assign((std::istreambuf_iterator<char>(ts)),
-            std::istreambuf_iterator<char>());
-        std::ofstream os(nocommentfile.native().c_str());
-        os << gdl_keywords_to_lowercase(tmpgdl);
-        os.close();
-        infile = nocommentfile;
-
-        // needed to avoid non-const in hsfcGDLManager::Initialise
-        std::string tmpstr(infile.native());
-
-        params_.reset(new hsfcGDLParameters(Parameters));
-        if (!internal_->InitialiseFromFile(&tmpstr, params_.get()))
-        {
-            std::ostringstream ss;
-            ss << "Failed to initialise the HSFC engine.";
-            throw HSFCInternalError() << ErrorMsgInfo(ss.str());
-        }
-        // Now jump through hoops to workout the names of the players.
-        PopulatePlayerNamesFromLegalMoves();
-
-        bfs::remove(nocommentfile);
-    } catch (...)
-    {
-        bfs::remove(nocommentfile);
-        throw;
+        std::ostringstream ss;
+        ss << "File does not exist: " << gdlfile.string();
+        throw HSFCValueError() << ErrorMsgInfo(ss.str());
     }
+
+    bfs::ifstream ts(gdlfile);
+    std::string gdlstr;
+    ts.seekg(0, std::ios::end);
+    gdlstr.reserve(ts.tellg());
+    ts.seekg(0, std::ios::beg);
+    gdlstr.assign((std::istreambuf_iterator<char>(ts)),
+                  std::istreambuf_iterator<char>());
+    ts.close();
+    Initialise(gdlstr, parameters);
 }
 
 void HSFCManager::Initialise(const std::string& gdldescription,
-                             const hsfcGDLParameters& Parameters)
+                             const hsfcGDLParameters& parameters)
 {
-    namespace bfs=boost::filesystem;
-    bfs::path tmppath = bfs::unique_path();
-    try {
-        bfs::ofstream gdlfile(tmppath);
-        if (gdlfile.fail()) throw HSFCInternalError()
-                                << ErrorMsgInfo("Failed to create temporary file");
-
-        gdlfile << gdldescription;
-        gdlfile.close();
-        Initialise(tmppath, Parameters);
-        bfs::remove(tmppath);
-    } catch (...)
+    std::string tmpgdl = gdl_keywords_to_lowercase(gdldescription);
+    params_.reset(new hsfcGDLParameters(parameters));
+    if (!internal_->Initialise(&tmpgdl, params_.get()))
     {
-        if (bfs::is_regular_file(tmppath)) bfs::remove(tmppath);
-        throw;
+        std::ostringstream ss;
+        ss << "Failed to initialise the HSFC engine.";
+        throw HSFCInternalError() << ErrorMsgInfo(ss.str());
     }
+    PopulatePlayerNamesFromLegalMoves();
 }
 
 
