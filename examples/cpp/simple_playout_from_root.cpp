@@ -59,7 +59,7 @@ std::ostream& operator<<(std::ostream& os, const timespec &t)
 
 void run(const std::string& gdlfilename, unsigned int numplayouts, bool verbose=false)
 {
-    HSFC::Game game(boost::filesystem::path(gdlfilename.c_str()), false);
+    HSFC::Game game(boost::filesystem::path(gdlfilename.c_str()));
     if (verbose) std::cout << "Loaded: " << gdlfilename << std::endl;
     HSFC::State base_state(game);
     HSFC::JointGoal goals;
